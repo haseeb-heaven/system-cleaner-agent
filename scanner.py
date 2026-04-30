@@ -25,32 +25,39 @@ def check_auth(token):
         print(f"Error connecting to GitHub: {e}")
         sys.exit(1)
 
-def search_github(token, query, page=1):
-    """Searches GitHub for code matching the query."""
+def search_github(token, query, page=1, max_retries=3):
+    """Searches GitHub for code matching the query with a retry loop."""
     headers = {
         "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github.v3+json"
     }
     url = f"https://api.github.com/search/code?q={query}&page={page}"
-    print(f"Searching GitHub (Page {page})...")
     
-    try:
-        response = requests.get(url, headers=headers, timeout=10)
-        
-        if response.status_code == 403:
-            # Handle rate limiting or secondary limits
-            print("Rate limit hit or secondary limit detected. Sleeping for 60s...")
-            time.sleep(60)
-            return search_github(token, query, page)
+    retries = 0
+    while retries < max_retries:
+        try:
+            print(f"Searching GitHub (Query: {query}, Page: {page}, Attempt: {retries+1})...")
+            response = requests.get(url, headers=headers, timeout=10)
             
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.HTTPError as e:
-        print(f"HTTP Error: {e}")
-        return {}
-    except Exception as e:
-        print(f"Error during search: {e}")
-        return {}
+            if response.status_code == 403:
+                print("Rate limit hit or secondary limit detected. Sleeping for 60s...")
+                time.sleep(60)
+                retries += 1
+                continue
+                
+            response.raise_for_status()
+            return response.json()
+            
+        except requests.exceptions.Timeout:
+            print(f"Error: Search timed out for page {page}. Retrying...")
+            retries += 1
+            time.sleep(5)
+        except requests.exceptions.RequestException as e:
+            print(f"Error during search (Page {page}): {e}")
+            return None
+            
+    print(f"Error: Maximum retries reached for page {page}.")
+    return None
 
 def main():
     """Main entry point for the scanner."""
