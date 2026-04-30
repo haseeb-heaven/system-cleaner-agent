@@ -121,34 +121,46 @@ def main():
     check_auth(token)
     print(f"Starting scan for pattern: {args.pattern}")
 
+    page = 1
+    total_processed = 0
     query = f'"{args.pattern}"'
-    results = search_github(token, query)
     
-    if not results or "items" not in results:
-        print("No results found or error occurred.")
-        return
+    while page <= 10:
+        results = search_github(token, query, page=page)
+        
+        if not results or "items" not in results or not results["items"]:
+            print(f"No more results or error at page {page}.")
+            break
 
-    print(f"Found {len(results['items'])} potential files. Verifying...")
-    
-    for item in results.get("items", []):
-        repo_full_name = item["repository"]["full_name"]
-        file_path = item["path"]
-        html_url = item["html_url"]
+        print(f"Processing page {page} ({len(results['items'])} items)...")
         
-        # Construct raw URL
-        raw_url = html_url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
+        for item in results.get("items", []):
+            repo_full_name = item["repository"]["full_name"]
+            file_path = item["path"]
+            html_url = item["html_url"]
+            
+            # Construct raw URL
+            raw_url = html_url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
+            
+            matches, content = verify_match(raw_url, token)
+            if matches:
+                lines = content.splitlines()
+                for m in matches:
+                    # Find the first line containing the match
+                    match_line = next((l for l in lines if m in l), "N/A").strip()
+                    save_result(repo_full_name, file_path, m, match_line, html_url)
+                    print(f"Found match: {m} in {repo_full_name}")
+            
+            total_processed += 1
+            # Stay under rate limits for raw content fetch
+            time.sleep(1)
         
-        matches, content = verify_match(raw_url, token)
-        if matches:
-            lines = content.splitlines()
-            for m in matches:
-                # Find the first line containing the match
-                match_line = next((l for l in lines if m in l), "N/A").strip()
-                save_result(repo_full_name, file_path, m, match_line, html_url)
-                print(f"Found match: {m} in {repo_full_name}")
-        
-        # Stay under 10 requests/minute (Search API + Raw Content Fetch)
-        time.sleep(6)
+        page += 1
+        if page <= 10:
+            print(f"Waiting 6 seconds before next search request...")
+            time.sleep(6) # Delay between Search API calls
+
+    print(f"\nScan complete. Total files processed: {total_processed}")
 
 if __name__ == "__main__":
     main()
