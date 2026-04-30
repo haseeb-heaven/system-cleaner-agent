@@ -5,6 +5,7 @@ import argparse
 import re
 import requests
 import time
+import csv
 from dotenv import load_dotenv
 
 def check_auth(token):
@@ -92,6 +93,18 @@ def verify_match(raw_url, token):
         print(f"Error fetching raw content from {raw_url}: {e}")
         return None, None
 
+def save_result(repo, path, match, line, url):
+    """Saves a finding to the CSV file."""
+    file_exists = os.path.isfile("github_scan_results.csv")
+    try:
+        with open("github_scan_results.csv", "a", newline="", encoding="utf-8") as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(["Repository", "Path", "Match", "Line", "URL"])
+            writer.writerow([repo, path, match, line, url])
+    except Exception as e:
+        print(f"Error saving result to CSV: {e}")
+
 def main():
     """Main entry point for the scanner."""
     load_dotenv()
@@ -107,6 +120,35 @@ def main():
         
     check_auth(token)
     print(f"Starting scan for pattern: {args.pattern}")
+
+    query = f'"{args.pattern}"'
+    results = search_github(token, query)
+    
+    if not results or "items" not in results:
+        print("No results found or error occurred.")
+        return
+
+    print(f"Found {len(results['items'])} potential files. Verifying...")
+    
+    for item in results.get("items", []):
+        repo_full_name = item["repository"]["full_name"]
+        file_path = item["path"]
+        html_url = item["html_url"]
+        
+        # Construct raw URL
+        raw_url = html_url.replace("github.com", "raw.githubusercontent.com").replace("/blob/", "/")
+        
+        matches, content = verify_match(raw_url, token)
+        if matches:
+            lines = content.splitlines()
+            for m in matches:
+                # Find the first line containing the match
+                match_line = next((l for l in lines if m in l), "N/A").strip()
+                save_result(repo_full_name, file_path, m, match_line, html_url)
+                print(f"Found match: {m} in {repo_full_name}")
+        
+        # Stay under 10 requests/minute (Search API + Raw Content Fetch)
+        time.sleep(6)
 
 if __name__ == "__main__":
     main()
