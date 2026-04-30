@@ -61,17 +61,28 @@ def search_github(token, query, page=1, max_retries=3):
     return None
 
 def verify_match(raw_url, token):
-    """Fetches raw content and verifies the pattern using regex."""
+    """Fetches raw content and verifies the pattern using regex with size limits."""
     headers = {"Authorization": f"Bearer {token}"}
     try:
-        resp = requests.get(raw_url, headers=headers, timeout=10)
-        if resp.status_code != 200:
-            return None, None
+        # Use stream=True to check headers before downloading body
+        resp = requests.get(raw_url, headers=headers, timeout=10, stream=True)
         
+        if resp.status_code != 200:
+            print(f"Warning: Failed to fetch raw content from {raw_url} (Status: {resp.status_code})")
+            return None, None
+            
+        # Check file size (Content-Length)
+        file_size = int(resp.headers.get("Content-Length", 0))
+        if file_size > 1024 * 1024:  # 1MB limit
+            print(f"Skipping large file: {raw_url} ({file_size} bytes)")
+            return None, None
+            
+        # Note: If Content-Length is missing (chunked encoding), we might still read a large file.
+        # But for GitHub raw content, it's usually present.
         content = resp.text
         # Pattern: sk-ant- followed by 11 or more alphanumeric chars
-        # This ensures the length after prefix is > 10.
-        pattern = re.compile(r"sk-ant-[a-zA-Z0-9]{11,}")
+        # \b ensures we match the start of the token correctly.
+        pattern = re.compile(r"\bsk-ant-[a-zA-Z0-9]{11,}")
         matches = pattern.findall(content)
         
         if matches:
