@@ -7,13 +7,19 @@ from dotenv import load_dotenv
 
 def check_auth(token):
     """Verifies the GitHub Personal Access Token."""
-    headers = {"Authorization": f"token {token}"}
+    headers = {"Authorization": f"Bearer {token}"}
     try:
-        response = requests.get("https://api.github.com/user", headers=headers)
-        if response.status_code != 200:
+        response = requests.get("https://api.github.com/user", headers=headers, timeout=10)
+        if response.status_code == 401:
+            print("Error: 401 Unauthorized. Please check if your GITHUB_TOKEN is correct and has the required scopes.")
+            sys.exit(1)
+        elif response.status_code != 200:
             print(f"Error: Invalid GITHUB_TOKEN (Status: {response.status_code})")
             sys.exit(1)
         print("Authentication successful.")
+    except requests.exceptions.Timeout:
+        print("Error: Connection to GitHub timed out (10s limit).")
+        sys.exit(1)
     except Exception as e:
         print(f"Error connecting to GitHub: {e}")
         sys.exit(1)
