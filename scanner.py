@@ -2,6 +2,7 @@
 import os
 import sys
 import argparse
+import re
 import requests
 import time
 from dotenv import load_dotenv
@@ -58,6 +59,27 @@ def search_github(token, query, page=1, max_retries=3):
             
     print(f"Error: Maximum retries reached for page {page}.")
     return None
+
+def verify_match(raw_url, token):
+    """Fetches raw content and verifies the pattern using regex."""
+    headers = {"Authorization": f"Bearer {token}"}
+    try:
+        resp = requests.get(raw_url, headers=headers, timeout=10)
+        if resp.status_code != 200:
+            return None, None
+        
+        content = resp.text
+        # Pattern: sk-ant- followed by 11 or more alphanumeric chars
+        # This ensures the length after prefix is > 10.
+        pattern = re.compile(r"sk-ant-[a-zA-Z0-9]{11,}")
+        matches = pattern.findall(content)
+        
+        if matches:
+            return matches, content
+        return None, None
+    except Exception as e:
+        print(f"Error fetching raw content from {raw_url}: {e}")
+        return None, None
 
 def main():
     """Main entry point for the scanner."""
