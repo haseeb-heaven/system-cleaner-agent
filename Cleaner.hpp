@@ -19,12 +19,17 @@ class Cleaner {
     std::vector<Target> targets;
 
     std::string GetEnv(const char* name) {
+#ifdef _WIN32
         char* val = nullptr;
         size_t len = 0;
         _dupenv_s(&val, &len, name);
         std::string res = val ? val : "";
         if (val) free(val);
         return res;
+#else
+        char* val = std::getenv(name);
+        return val ? std::string(val) : "";
+#endif
     }
 
     void FindRecursiveTargets(const fs::path& root, const std::vector<std::string>& dirNames, std::vector<fs::path>& found) {
@@ -116,7 +121,6 @@ public:
         if (!userProfile.empty()) {
             targets.push_back({userProfile + "\\.cache", false, ".cache folder"});
             targets.push_back({userProfile + "\\.npm", false, ".npm folder"});
-            targets.push_back({userProfile, true, "Project caches"});
         }
     }
 
