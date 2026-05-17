@@ -121,6 +121,8 @@ public:
         if (!userProfile.empty()) {
             targets.push_back({userProfile + "\\.cache", false, ".cache folder"});
             targets.push_back({userProfile + "\\.npm", false, ".npm folder"});
+            // Deep targets (recursive)
+            targets.push_back({userProfile, true, "User Profile Project Caches"});
         }
     }
 
@@ -137,7 +139,11 @@ public:
                 }
             } else {
                 Logger::Instance().Info("Searching for project caches recursively in " + target.path.string() + "...");
-                std::vector<std::string> targetNames = {"node_modules", "__pycache__", ".pytest_cache"};
+                std::vector<std::string> targetNames = {
+                    "node_modules", "venv", ".venv", "env", "__pycache__", 
+                    ".pytest_cache", ".next", ".nuxt", ".cache", ".sass-cache", 
+                    "dist", "build"
+                };
                 std::vector<fs::path> foundDirs;
                 FindRecursiveTargets(target.path, targetNames, foundDirs);
                 
@@ -165,7 +171,11 @@ public:
                 }
             } else {
                 Logger::Instance().Info("Cleaning project caches recursively in " + target.path.string() + "...");
-                std::vector<std::string> targetNames = {"node_modules", "__pycache__", ".pytest_cache"};
+                std::vector<std::string> targetNames = {
+                    "node_modules", "venv", ".venv", "env", "__pycache__", 
+                    ".pytest_cache", ".next", ".nuxt", ".cache", ".sass-cache", 
+                    "dist", "build"
+                };
                 std::vector<fs::path> foundDirs;
                 FindRecursiveTargets(target.path, targetNames, foundDirs);
                 
