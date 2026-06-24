@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include "Logger.hpp"
 #include <filesystem>
 #include <vector>
@@ -109,18 +109,33 @@ public:
         std::string winDir = GetEnv("WINDIR");
         std::string localAppData = GetEnv("LOCALAPPDATA");
         std::string userProfile = GetEnv("USERPROFILE");
+        std::string programData = GetEnv("PROGRAMDATA");
 
         if (!temp.empty()) targets.push_back({temp, false, "Windows User Temp"});
-        if (!winDir.empty()) targets.push_back({winDir + "\\Temp", false, "Windows System Temp"});
+        if (!winDir.empty()) {
+            targets.push_back({winDir + "\\Temp", false, "Windows System Temp"});
+            targets.push_back({winDir + "\\SoftwareDistribution\\Download", false, "Windows Update Downloads"});
+            targets.push_back({winDir + "\\Prefetch", false, "Windows Prefetch"});
+        }
+        if (!programData.empty()) {
+            targets.push_back({programData + "\\Microsoft\\Windows\\WER\\ReportArchive", false, "WER Archive"});
+            targets.push_back({programData + "\\Microsoft\\Windows\\WER\\ReportQueue", false, "WER Queue"});
+        }
         if (!localAppData.empty()) {
             targets.push_back({localAppData + "\\npm-cache", false, "npm cache"});
             targets.push_back({localAppData + "\\uv\\cache", false, "uv cache"});
             targets.push_back({localAppData + "\\pip\\Cache", false, "pip cache"});
             targets.push_back({localAppData + "\\Yarn\\Cache", false, "Yarn cache"});
+            targets.push_back({localAppData + "\\CrashDumps", false, "Crash Dumps"});
+            targets.push_back({localAppData + "\\D3DSCache", false, "DirectX Shader Cache"});
+            targets.push_back({localAppData + "\\go-build", false, "Go Build Cache"});
         }
         if (!userProfile.empty()) {
             targets.push_back({userProfile + "\\.cache", false, ".cache folder"});
             targets.push_back({userProfile + "\\.npm", false, ".npm folder"});
+            targets.push_back({userProfile + "\\.nuget\\packages", false, "NuGet Cache"});
+            targets.push_back({userProfile + "\\.cargo\\registry\\cache", false, "Cargo Cache"});
+            targets.push_back({userProfile + "\\.gradle\\caches", false, "Gradle Cache"});
             // Deep targets (recursive)
             targets.push_back({userProfile, true, "User Profile Project Caches"});
         }

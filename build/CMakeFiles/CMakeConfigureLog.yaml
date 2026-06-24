@@ -147,6 +147,7 @@ events:
         - "D:\\Software\\Windsurf\\bin"
         - "c:\\Users\\hasee\\.antigravity\\extensions\\ms-python.debugpy-2025.18.0-win32-x64\\bundled\\scripts\\noConfigScripts"
         - "D:\\Software"
+        - "C:\\Users\\hasee\\AppData\\Local\\devin\\cli\\bin"
   -
     kind: "message-v1"
     backtrace:
@@ -163,7 +164,7 @@ events:
       The output was:
       0
       MSBuild version 17.14.23+b0019275e for .NET Framework
-      Build started 4/27/2026 12:24:13 PM.
+      Build started 5/3/2026 3:02:09 AM.
       
       Project "D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\4.2.0\\CompilerIdCXX\\CompilerIdCXX.vcxproj" on node 1 (default targets).
       PrepareForBuild:
@@ -201,7 +202,7 @@ events:
           0 Warning(s)
           0 Error(s)
       
-      Time Elapsed 00:00:01.78
+      Time Elapsed 00:00:01.94
       
       
       Compilation of the CXX compiler identification source "CMakeCXXCompilerId.cpp" produced "CompilerIdCXX.exe"
@@ -274,6 +275,7 @@ events:
       - "D:/Software/Windsurf/bin/"
       - "C:/Users/hasee/.antigravity/extensions/ms-python.debugpy-2025.18.0-win32-x64/bundled/scripts/noConfigScripts/"
       - "D:/Software/"
+      - "C:/Users/hasee/AppData/Local/devin/cli/bin/"
     searched_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.com"
     found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.exe"
@@ -391,6 +393,7 @@ events:
         - "D:\\Software\\Windsurf\\bin"
         - "c:\\Users\\hasee\\.antigravity\\extensions\\ms-python.debugpy-2025.18.0-win32-x64\\bundled\\scripts\\noConfigScripts"
         - "D:\\Software"
+        - "C:\\Users\\hasee\\AppData\\Local\\devin\\cli\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -454,6 +457,7 @@ events:
       - "D:/Software/Windsurf/bin/"
       - "C:/Users/hasee/.antigravity/extensions/ms-python.debugpy-2025.18.0-win32-x64/bundled/scripts/noConfigScripts/"
       - "D:/Software/"
+      - "C:/Users/hasee/AppData/Local/devin/cli/bin/"
     searched_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.com"
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lld-link.exe"
@@ -578,6 +582,9 @@ events:
       - "D:/Software/lld-link.com"
       - "D:/Software/lld-link.exe"
       - "D:/Software/lld-link"
+      - "C:/Users/hasee/AppData/Local/devin/cli/bin/lld-link.com"
+      - "C:/Users/hasee/AppData/Local/devin/cli/bin/lld-link.exe"
+      - "C:/Users/hasee/AppData/Local/devin/cli/bin/lld-link"
     found: false
     search_context:
       ENV{PATH}:
@@ -693,6 +700,7 @@ events:
         - "D:\\Software\\Windsurf\\bin"
         - "c:\\Users\\hasee\\.antigravity\\extensions\\ms-python.debugpy-2025.18.0-win32-x64\\bundled\\scripts\\noConfigScripts"
         - "D:\\Software"
+        - "C:\\Users\\hasee\\AppData\\Local\\devin\\cli\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -754,6 +762,7 @@ events:
       - "D:/Software/Windsurf/bin/"
       - "C:/Users/hasee/.antigravity/extensions/ms-python.debugpy-2025.18.0-win32-x64/bundled/scripts/noConfigScripts/"
       - "D:/Software/"
+      - "C:/Users/hasee/AppData/Local/devin/cli/bin/"
     searched_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.com"
     found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/link.exe"
@@ -871,6 +880,7 @@ events:
         - "D:\\Software\\Windsurf\\bin"
         - "c:\\Users\\hasee\\.antigravity\\extensions\\ms-python.debugpy-2025.18.0-win32-x64\\bundled\\scripts\\noConfigScripts"
         - "D:\\Software"
+        - "C:\\Users\\hasee\\AppData\\Local\\devin\\cli\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -932,6 +942,7 @@ events:
       - "D:/Software/Windsurf/bin/"
       - "C:/Users/hasee/.antigravity/extensions/ms-python.debugpy-2025.18.0-win32-x64/bundled/scripts/noConfigScripts/"
       - "D:/Software/"
+      - "C:/Users/hasee/AppData/Local/devin/cli/bin/"
     searched_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt.com"
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/mt.exe"
@@ -1056,6 +1067,9 @@ events:
       - "D:/Software/mt.com"
       - "D:/Software/mt.exe"
       - "D:/Software/mt"
+      - "C:/Users/hasee/AppData/Local/devin/cli/bin/mt.com"
+      - "C:/Users/hasee/AppData/Local/devin/cli/bin/mt.exe"
+      - "C:/Users/hasee/AppData/Local/devin/cli/bin/mt"
     found: false
     search_context:
       ENV{PATH}:
@@ -1171,6 +1185,7 @@ events:
         - "D:\\Software\\Windsurf\\bin"
         - "c:\\Users\\hasee\\.antigravity\\extensions\\ms-python.debugpy-2025.18.0-win32-x64\\bundled\\scripts\\noConfigScripts"
         - "D:\\Software"
+        - "C:\\Users\\hasee\\AppData\\Local\\devin\\cli\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -1232,6 +1247,7 @@ events:
       - "D:/Software/Windsurf/bin/"
       - "C:/Users/hasee/.antigravity/extensions/ms-python.debugpy-2025.18.0-win32-x64/bundled/scripts/noConfigScripts/"
       - "D:/Software/"
+      - "C:/Users/hasee/AppData/Local/devin/cli/bin/"
     searched_directories:
       - "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lib.com"
     found: "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/lib.exe"
@@ -1349,6 +1365,7 @@ events:
         - "D:\\Software\\Windsurf\\bin"
         - "c:\\Users\\hasee\\.antigravity\\extensions\\ms-python.debugpy-2025.18.0-win32-x64\\bundled\\scripts\\noConfigScripts"
         - "D:\\Software"
+        - "C:\\Users\\hasee\\AppData\\Local\\devin\\cli\\bin"
   -
     kind: "find-v1"
     backtrace:
@@ -1412,6 +1429,7 @@ events:
       - "D:/Software/Windsurf/bin/"
       - "C:/Users/hasee/.antigravity/extensions/ms-python.debugpy-2025.18.0-win32-x64/bundled/scripts/noConfigScripts/"
       - "D:/Software/"
+      - "C:/Users/hasee/AppData/Local/devin/cli/bin/"
       - "C:/Program Files/bin/"
       - "C:/Program Files/sbin/"
       - "C:/Program Files/"
@@ -1545,6 +1563,9 @@ events:
       - "D:/Software/rc.com"
       - "D:/Software/rc.exe"
       - "D:/Software/rc"
+      - "C:/Users/hasee/AppData/Local/devin/cli/bin/rc.com"
+      - "C:/Users/hasee/AppData/Local/devin/cli/bin/rc.exe"
+      - "C:/Users/hasee/AppData/Local/devin/cli/bin/rc"
       - "C:/Program Files/bin/rc.com"
       - "C:/Program Files/bin/rc.exe"
       - "C:/Program Files/bin/rc"
@@ -1696,6 +1717,7 @@ events:
         - "D:\\Software\\Windsurf\\bin"
         - "c:\\Users\\hasee\\.antigravity\\extensions\\ms-python.debugpy-2025.18.0-win32-x64\\bundled\\scripts\\noConfigScripts"
         - "D:\\Software"
+        - "C:\\Users\\hasee\\AppData\\Local\\devin\\cli\\bin"
       CMAKE_INSTALL_PREFIX: "C:/Program Files (x86)/GeminiSysCleaner"
       CMAKE_SYSTEM_PREFIX_PATH:
         - "C:/Program Files"
@@ -1711,8 +1733,8 @@ events:
     checks:
       - "Detecting CXX compiler ABI info"
     directories:
-      source: "D:/Software/gemini-sys-cleaner/build/CMakeFiles/CMakeScratch/TryCompile-oamorw"
-      binary: "D:/Software/gemini-sys-cleaner/build/CMakeFiles/CMakeScratch/TryCompile-oamorw"
+      source: "D:/Software/gemini-sys-cleaner/build/CMakeFiles/CMakeScratch/TryCompile-jkoajt"
+      binary: "D:/Software/gemini-sys-cleaner/build/CMakeFiles/CMakeScratch/TryCompile-jkoajt"
     cmakeVariables:
       CMAKE_CXX_FLAGS: "/DWIN32 /D_WINDOWS /W3 /GR /EHsc"
       CMAKE_CXX_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
@@ -1722,48 +1744,48 @@ events:
       variable: "CMAKE_CXX_ABI_COMPILED"
       cached: true
       stdout: |
-        Change Dir: 'D:/Software/gemini-sys-cleaner/build/CMakeFiles/CMakeScratch/TryCompile-oamorw'
+        Change Dir: 'D:/Software/gemini-sys-cleaner/build/CMakeFiles/CMakeScratch/TryCompile-jkoajt'
         
-        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_22f9a.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        Run Build Command(s): "C:/Program Files/Microsoft Visual Studio/2022/Community/MSBuild/Current/Bin/amd64/MSBuild.exe" cmTC_f3d88.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
         MSBuild version 17.14.23+b0019275e for .NET Framework
-        Build started 4/27/2026 12:24:15 PM.
+        Build started 5/3/2026 3:02:12 AM.
         
-        Project "D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\CMakeScratch\\TryCompile-oamorw\\cmTC_22f9a.vcxproj" on node 1 (default targets).
+        Project "D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jkoajt\\cmTC_f3d88.vcxproj" on node 1 (default targets).
         PrepareForBuild:
           Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
-          Creating directory "D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\CMakeScratch\\TryCompile-oamorw\\Debug\\".
-          Creating directory "cmTC_22f9a.dir\\Debug\\cmTC_22f9a.tlog\\".
+          Creating directory "D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jkoajt\\Debug\\".
+          Creating directory "cmTC_f3d88.dir\\Debug\\cmTC_f3d88.tlog\\".
         InitializeBuildStatus:
-          Creating "cmTC_22f9a.dir\\Debug\\cmTC_22f9a.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
-          Touching "cmTC_22f9a.dir\\Debug\\cmTC_22f9a.tlog\\unsuccessfulbuild".
+          Creating "cmTC_f3d88.dir\\Debug\\cmTC_f3d88.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_f3d88.dir\\Debug\\cmTC_f3d88.tlog\\unsuccessfulbuild".
         VcpkgTripletSelection:
           Using triplet "x64-windows" from "D:\\Code\\vcpkg\\installed\\x64-windows\\"
           Using normalized configuration "Debug"
         ClCompile:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /I"D:\\Code\\vcpkg\\installed\\x64-windows\\include" /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /Fo"cmTC_22f9a.dir\\Debug\\\\" /Fd"cmTC_22f9a.dir\\Debug\\vc143.pdb" /external:W3 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\CL.exe /c /I"D:\\Code\\vcpkg\\installed\\x64-windows\\include" /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /Fo"cmTC_f3d88.dir\\Debug\\\\" /Fd"cmTC_f3d88.dir\\Debug\\vc143.pdb" /external:W3 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
           Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35221 for x64
           Copyright (C) Microsoft Corporation.  All rights reserved.
-          cl /c /I"D:\\Code\\vcpkg\\installed\\x64-windows\\include" /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /Fo"cmTC_22f9a.dir\\Debug\\\\" /Fd"cmTC_22f9a.dir\\Debug\\vc143.pdb" /external:W3 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
+          cl /c /I"D:\\Code\\vcpkg\\installed\\x64-windows\\include" /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D _MBCS /D "CMAKE_INTDIR=\\"Debug\\"" /EHsc /RTC1 /MDd /GR /Fo"cmTC_f3d88.dir\\Debug\\\\" /Fd"cmTC_f3d88.dir\\Debug\\vc143.pdb" /external:W3 /TP /errorReport:queue "C:\\Program Files\\CMake\\share\\cmake-4.2\\Modules\\CMakeCXXCompilerABI.cpp"
           CMakeCXXCompilerABI.cpp
         Link:
-          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\CMakeScratch\\TryCompile-oamorw\\Debug\\cmTC_22f9a.exe" /INCREMENTAL /ILK:"cmTC_22f9a.dir\\Debug\\cmTC_22f9a.ilk" /NOLOGO /LIBPATH:"D:\\Code\\vcpkg\\installed\\x64-windows\\debug\\lib" /LIBPATH:"D:\\Code\\vcpkg\\installed\\x64-windows\\debug\\lib\\manual-link" kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib "D:\\Code\\vcpkg\\installed\\x64-windows\\debug\\lib\\*.lib" /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/Software/gemini-sys-cleaner/build/CMakeFiles/CMakeScratch/TryCompile-oamorw/Debug/cmTC_22f9a.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/Software/gemini-sys-cleaner/build/CMakeFiles/CMakeScratch/TryCompile-oamorw/Debug/cmTC_22f9a.lib" /MACHINE:X64  /machine:x64 cmTC_22f9a.dir\\Debug\\CMakeCXXCompilerABI.obj
-          cmTC_22f9a.vcxproj -> D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\CMakeScratch\\TryCompile-oamorw\\Debug\\cmTC_22f9a.exe
+          C:\\Program Files\\Microsoft Visual Studio\\2022\\Community\\VC\\Tools\\MSVC\\14.44.35207\\bin\\HostX64\\x64\\link.exe /OUT:"D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jkoajt\\Debug\\cmTC_f3d88.exe" /INCREMENTAL /ILK:"cmTC_f3d88.dir\\Debug\\cmTC_f3d88.ilk" /NOLOGO /LIBPATH:"D:\\Code\\vcpkg\\installed\\x64-windows\\debug\\lib" /LIBPATH:"D:\\Code\\vcpkg\\installed\\x64-windows\\debug\\lib\\manual-link" kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib "D:\\Code\\vcpkg\\installed\\x64-windows\\debug\\lib\\*.lib" /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"D:/Software/gemini-sys-cleaner/build/CMakeFiles/CMakeScratch/TryCompile-jkoajt/Debug/cmTC_f3d88.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /IMPLIB:"D:/Software/gemini-sys-cleaner/build/CMakeFiles/CMakeScratch/TryCompile-jkoajt/Debug/cmTC_f3d88.lib" /MACHINE:X64  /machine:x64 cmTC_f3d88.dir\\Debug\\CMakeCXXCompilerABI.obj
+          cmTC_f3d88.vcxproj -> D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jkoajt\\Debug\\cmTC_f3d88.exe
         AppLocalFromInstalled:
-          pwsh.exe -ExecutionPolicy Bypass -noprofile -File "D:\\Code\\vcpkg\\scripts\\buildsystems\\msbuild\\applocal.ps1" "D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\CMakeScratch\\TryCompile-oamorw\\Debug\\cmTC_22f9a.exe" "D:\\Code\\vcpkg\\installed\\x64-windows\\debug\\bin" "cmTC_22f9a.dir\\Debug\\cmTC_22f9a.tlog\\cmTC_22f9a.write.1u.tlog" "cmTC_22f9a.dir\\Debug\\vcpkg.applocal.log"
+          pwsh.exe -ExecutionPolicy Bypass -noprofile -File "D:\\Code\\vcpkg\\scripts\\buildsystems\\msbuild\\applocal.ps1" "D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jkoajt\\Debug\\cmTC_f3d88.exe" "D:\\Code\\vcpkg\\installed\\x64-windows\\debug\\bin" "cmTC_f3d88.dir\\Debug\\cmTC_f3d88.tlog\\cmTC_f3d88.write.1u.tlog" "cmTC_f3d88.dir\\Debug\\vcpkg.applocal.log"
           'pwsh.exe' is not recognized as an internal or external command,
           operable program or batch file.
-          The command "pwsh.exe -ExecutionPolicy Bypass -noprofile -File "D:\\Code\\vcpkg\\scripts\\buildsystems\\msbuild\\applocal.ps1" "D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\CMakeScratch\\TryCompile-oamorw\\Debug\\cmTC_22f9a.exe" "D:\\Code\\vcpkg\\installed\\x64-windows\\debug\\bin" "cmTC_22f9a.dir\\Debug\\cmTC_22f9a.tlog\\cmTC_22f9a.write.1u.tlog" "cmTC_22f9a.dir\\Debug\\vcpkg.applocal.log"" exited with code 9009.
-          "C:\\windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -ExecutionPolicy Bypass -noprofile -File "D:\\Code\\vcpkg\\scripts\\buildsystems\\msbuild\\applocal.ps1" "D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\CMakeScratch\\TryCompile-oamorw\\Debug\\cmTC_22f9a.exe" "D:\\Code\\vcpkg\\installed\\x64-windows\\debug\\bin" "cmTC_22f9a.dir\\Debug\\cmTC_22f9a.tlog\\cmTC_22f9a.write.1u.tlog" "cmTC_22f9a.dir\\Debug\\vcpkg.applocal.log"
+          The command "pwsh.exe -ExecutionPolicy Bypass -noprofile -File "D:\\Code\\vcpkg\\scripts\\buildsystems\\msbuild\\applocal.ps1" "D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jkoajt\\Debug\\cmTC_f3d88.exe" "D:\\Code\\vcpkg\\installed\\x64-windows\\debug\\bin" "cmTC_f3d88.dir\\Debug\\cmTC_f3d88.tlog\\cmTC_f3d88.write.1u.tlog" "cmTC_f3d88.dir\\Debug\\vcpkg.applocal.log"" exited with code 9009.
+          "C:\\windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe" -ExecutionPolicy Bypass -noprofile -File "D:\\Code\\vcpkg\\scripts\\buildsystems\\msbuild\\applocal.ps1" "D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jkoajt\\Debug\\cmTC_f3d88.exe" "D:\\Code\\vcpkg\\installed\\x64-windows\\debug\\bin" "cmTC_f3d88.dir\\Debug\\cmTC_f3d88.tlog\\cmTC_f3d88.write.1u.tlog" "cmTC_f3d88.dir\\Debug\\vcpkg.applocal.log"
         FinalizeBuildStatus:
-          Deleting file "cmTC_22f9a.dir\\Debug\\cmTC_22f9a.tlog\\unsuccessfulbuild".
-          Touching "cmTC_22f9a.dir\\Debug\\cmTC_22f9a.tlog\\cmTC_22f9a.lastbuildstate".
-        Done Building Project "D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\CMakeScratch\\TryCompile-oamorw\\cmTC_22f9a.vcxproj" (default targets).
+          Deleting file "cmTC_f3d88.dir\\Debug\\cmTC_f3d88.tlog\\unsuccessfulbuild".
+          Touching "cmTC_f3d88.dir\\Debug\\cmTC_f3d88.tlog\\cmTC_f3d88.lastbuildstate".
+        Done Building Project "D:\\Software\\gemini-sys-cleaner\\build\\CMakeFiles\\CMakeScratch\\TryCompile-jkoajt\\cmTC_f3d88.vcxproj" (default targets).
         
         Build succeeded.
             0 Warning(s)
             0 Error(s)
         
-        Time Elapsed 00:00:01.01
+        Time Elapsed 00:00:01.15
         
       exitCode: 0
   -
