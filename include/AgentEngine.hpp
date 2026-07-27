@@ -4,6 +4,7 @@
 #include "ProcessManager.hpp"
 #include "ContentInspector.hpp"
 #include "SmartScheduler.hpp"
+#include "LocalLLMBrain.hpp"
 
 #include <iostream>
 #include <string>
@@ -34,6 +35,7 @@ class AgentEngine {
     double memThreshold = 0.0;
     double diskThreshold = 0.0;
     bool verbose = true;
+    bool streamTokenOutput = true;
 
     std::string GetCurrentTimestamp() {
         auto now = std::chrono::system_clock::now();
@@ -60,7 +62,13 @@ class AgentEngine {
             case AgentStepType::Observation: label = "OBSERVATION"; color = "\033[1;32m"; break; // Green
         }
 
-        std::cout << color << "[" << GetCurrentTimestamp() << "] [" << label << "] " << text << "\033[0m" << std::endl;
+        std::string prefix = color + "[" + GetCurrentTimestamp() + "] [" + label + "] ";
+        std::cout << prefix;
+        if (streamTokenOutput) {
+            LocalLLMBrain::StreamTokenText(text, 5);
+        } else {
+            std::cout << text << "\033[0m" << std::endl;
+        }
         Logger::Instance().Info("[" + label + "] " + text);
     }
 
@@ -97,6 +105,7 @@ public:
     }
 
     void SetVerbose(bool v) { verbose = v; }
+    void SetStreamTokenOutput(bool enable) { streamTokenOutput = enable; }
     void SetCustomTargetPaths(const std::vector<fs::path>& paths) { targetCustomPaths = paths; }
     void SetMemThreshold(double t) { memThreshold = t; }
     void SetDiskThreshold(double t) { diskThreshold = t; }
@@ -112,7 +121,7 @@ public:
 
         std::cout << "\033[1;33m"
                   << "================================================================================\n"
-                  << "   system-cleaner-agent - Autonomous ReAct Execution Loop Initialized          \n"
+                  << "   system-cleaner-agent - Local Autonomous ReAct Engine Initialized           \n"
                   << "   Goal: " << userGoal << "\n";
         if (!targetCustomPaths.empty()) {
             std::cout << "   Target Path(s) Extracted: ";
@@ -124,6 +133,8 @@ public:
         std::cout << "================================================================================\n"
                   << "\033[0m\n";
 
+        GeneratedThought llmBrain = LocalLLMBrain::ReasonOnGoal(userGoal);
+
         // STEP 0: System Resource & Memory Threshold Inspection
         double curMem = SmartScheduler::GetMemoryUsagePercent();
         double curDisk = SmartScheduler::GetDiskUsagePercent();
@@ -133,8 +144,8 @@ public:
 
         // STEP 1: Reason about system state & target paths
         std::string targetDesc = targetCustomPaths.empty() ? "system target drives and cache locations" : "specified target path(s)";
-        AddStep(AgentStepType::Thought, "Analyzing " + targetDesc + " for cleanable storage junk...");
-        AddStep(AgentStepType::Action, "SCAN_SYSTEM_TARGETS(mode=multi_threaded)");
+        AddStep(AgentStepType::Thought, llmBrain.thoughts[0]);
+        AddStep(AgentStepType::Action, llmBrain.actions[0]);
         
         auto reports = cleaner.Scan();
         
@@ -177,6 +188,6 @@ public:
 
         AddStep(AgentStepType::Observation, "\033[1;32mGoal condition satisfied! Reclaimed " + Cleaner::FormatSize(totalJunkBytes) + " storage space safely.\033[0m");
 
-        std::cout << "\n\033[1;32m[ReAct Agent Loop Completed Successfully]\033[0m\n\n";
+        std::cout << "\n\033[1;32m[Local ReAct Engine Execution Completed Successfully]\033[0m\n\n";
     }
 };

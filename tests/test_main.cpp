@@ -5,6 +5,8 @@
 #include "AgentEngine.hpp"
 #include "OpenTUI.hpp"
 #include "SmartScheduler.hpp"
+#include "LocalLLMBrain.hpp"
+#include "SecurityGuard.hpp"
 
 #include <iostream>
 #include <cassert>
@@ -166,10 +168,24 @@ void TestSmartSchedulerEngine() {
     std::cout << "\033[32mPASSED (5 assertions)\033[0m\n";
 }
 
+void TestLocalLLMBrainEngine() {
+    std::cout << "[TEST] Running Local LLM Brain Reasoning Engine Tests... ";
+
+    GeneratedThought g1 = LocalLLMBrain::ReasonOnGoal("Perform secure shred on D:/Temp");
+    assert(g1.intent == "SECURE_SHRED_CLEANUP");
+    assert(g1.thoughts.size() >= 3);
+
+    GeneratedThought g2 = LocalLLMBrain::ReasonOnGoal("Clean RAM memory if over 80%");
+    assert(g2.intent == "MEMORY_THRESHOLD_MONITOR");
+
+    std::cout << "\033[32mPASSED (3 assertions)\033[0m\n";
+}
+
 void TestAgentGoalPathExtractor() {
     std::cout << "[TEST] Running Agent Goal Path Extractor Tests... ";
 
     AgentEngine agent1("Perform clean code on D:/Temp when mem>80%");
+    agent1.SetStreamTokenOutput(false);
     fs::path dummyTarget = fs::temp_directory_path() / "agent_goal_test";
     fs::create_directories(dummyTarget);
 
@@ -193,6 +209,7 @@ void TestReActAgentTrajectory() {
     }
 
     AgentEngine agent("Unit test ReAct agent storage optimization");
+    agent.SetStreamTokenOutput(false);
     agent.SetCustomTargetPaths({dummyTarget});
     agent.RunReActLoop(true);
 
@@ -206,9 +223,44 @@ void TestReActAgentTrajectory() {
     std::cout << "\033[32mPASSED (4 assertions)\033[0m\n";
 }
 
+void TestSecurityGuard() {
+    std::cout << "[TEST] Running Security Guard & Sandbox Mode Tests... ";
+
+    // Default sandbox ON, path protection ON
+    SecurityGuard guard;
+    assert(guard.sandboxEnabled == true);
+    assert(guard.dangerousPathProtection == true);
+
+    // Critical system path should always be blocked regardless of mode
+#ifdef _WIN32
+    SecurityReport cr = guard.AuditPath(fs::path("C:\\Windows\\System32"));
+#else
+    SecurityReport cr = guard.AuditPath(fs::path("/usr/bin"));
+#endif
+    assert(cr.level == ThreatLevel::Critical);
+    assert(cr.blocked == true);
+
+    // Sandbox mode: temp dir is suspicious (simulated) not critical
+    SecurityReport sr = guard.AuditPath(fs::temp_directory_path());
+    assert(sr.blocked == true);
+    assert(sr.level == ThreatLevel::Suspicious); // sandbox blocks as dry-run
+
+    // Sandbox OFF: same temp dir should now be safe
+    SecurityGuard noSandbox(false, true);
+    SecurityReport nr = noSandbox.AuditPath(fs::temp_directory_path());
+    assert(nr.blocked == false);
+    assert(nr.level == ThreatLevel::Safe);
+
+    // Dangerous extension detection
+    assert(guard.IsDangerousExtension(fs::path("main.cpp")) == true);
+    assert(guard.IsDangerousExtension(fs::path("cache.tmp")) == false);
+
+    std::cout << "\033[32mPASSED (9 assertions)\033[0m\n";
+}
+
 int main() {
     std::cout << "\033[1;36m====================================================================\n"
-              << "  system-cleaner-agent v5.0 - OpenTUI & SmartScheduler Suite         \n"
+              << "  system-cleaner-agent v5.0 - OpenTUI & Security Suite               \n"
               << "====================================================================\033[0m\n\n";
 
     TestHexHashDetector();
@@ -218,6 +270,8 @@ int main() {
     TestMagicBytes();
     TestOpenTUIFramework();
     TestSmartSchedulerEngine();
+    TestLocalLLMBrainEngine();
+    TestSecurityGuard();
     TestAgentGoalPathExtractor();
     TestReActAgentTrajectory();
 

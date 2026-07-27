@@ -5,6 +5,8 @@
 #include "include/TUI.hpp"
 #include "include/AgentEngine.hpp"
 #include "include/SmartScheduler.hpp"
+#include "include/LocalLLMBrain.hpp"
+#include "include/SecurityGuard.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -24,6 +26,7 @@ void PrintHelp() {
     std::cout << "\033[1mUSAGE:\033[0m\n"
               << "  system-cleaner-agent [COMMAND] [FLAGS]\n\n"
               << "\033[1mCOMMANDS:\033[0m\n"
+              << "  \033[36mchat\033[0m         Launch Interactive Local LLM ReAct Prompt Shell.\n"
               << "  \033[36magent\033[0m        Launch Autonomous ReAct Agent Loop (Thought->Action->Observation).\n"
               << "  \033[36mdaemon\033[0m       Run Smart Background Scheduler & Memory Threshold Monitoring Daemon.\n"
               << "  \033[36mscan\033[0m         Analyze system/drive targets and report cleanable storage.\n"
@@ -64,6 +67,7 @@ void PrintHelp() {
               << "  \033[33m--cron <duration>\033[0m      Run daemon service on recurring schedule (e.g. 10m, 1h).\n"
               << "  \033[33m--verbose\033[0m              Enable detailed trace logging.\n\n"
               << "\033[1mPRODUCTION EXAMPLES:\033[0m\n"
+              << "  system-cleaner-agent chat\n"
               << "  system-cleaner-agent daemon --mem-threshold 80% --interval 15s\n"
               << "  system-cleaner-agent agent --task \"Perform clean code on D:/Temp when mem>80%\"\n"
               << "  system-cleaner-agent scan --dry-run\n"
@@ -78,6 +82,27 @@ std::vector<std::string> SplitString(const std::string& str, char delim) {
         if (!token.empty()) tokens.push_back(token);
     }
     return tokens;
+}
+
+void RunInteractiveChatShell() {
+    PrintHeader();
+    std::cout << "\033[1;36m[Local LLM ReAct Prompt Shell Active - Type your instructions or 'exit']\033[0m\n\n";
+
+    while (true) {
+        std::cout << "\033[1;33muser> \033[0m";
+        std::string input;
+        if (!std::getline(std::cin, input) || input.empty()) continue;
+
+        std::string lowerInput = input;
+        std::transform(lowerInput.begin(), lowerInput.end(), lowerInput.begin(), ::tolower);
+        if (lowerInput == "exit" || lowerInput == "quit" || lowerInput == "q") {
+            std::cout << "\033[32mExiting Local LLM Prompt Shell. Goodbye!\033[0m\n";
+            break;
+        }
+
+        AgentEngine agent(input);
+        agent.RunReActLoop(true);
+    }
 }
 
 void ExportJsonReport(const std::string& jsonPath, const std::vector<TargetReport>& reports) {
@@ -156,6 +181,11 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
+    if (cmd == "chat" || cmd == "--chat") {
+        RunInteractiveChatShell();
+        return 0;
+    }
+
     if (cmd == "tui" || cmd == "--tui" || cmd == "--interactive" || cmd == "-i") {
         TUI::RunInteractiveMenu(cleaner);
         return 0;
@@ -167,6 +197,8 @@ int main(int argc, char* argv[]) {
     bool dryRun = false;
     bool recycleBin = false;
     bool killLocks = true;
+    bool sandboxMode = true;       // Sandbox ON by default — no real deletions unless disabled
+    bool pathProtection = true;    // Dangerous path guard ON by default
     long long cronIntervalSeconds = 0;
     long long daemonCheckIntervalSeconds = 15;
     double memThresholdPercent = 0.0;
@@ -189,6 +221,10 @@ int main(int argc, char* argv[]) {
 
         if (lowerArg == "--dry-run") {
             dryRun = true;
+        } else if (lowerArg == "--no-sandbox") {
+            sandboxMode = false;
+        } else if (lowerArg == "--no-path-protection") {
+            pathProtection = false;
         } else if (lowerArg == "--agent") {
             runAgentLoop = true;
         } else if (lowerArg == "--task" && i + 1 < argc) {
@@ -283,6 +319,8 @@ int main(int argc, char* argv[]) {
 
     cleaner.SetMode(cleanMode);
     cleaner.SetDryRun(dryRun);
+    cleaner.SetSandbox(sandboxMode);
+    cleaner.SetDangerousPathProtection(pathProtection);
     cleaner.SetEmptyRecycleBin(recycleBin);
     cleaner.SetKillLockingProcesses(killLocks);
     cleaner.SetCustomPaths(customPaths);

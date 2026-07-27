@@ -16,6 +16,8 @@ set(HEADERS
     include/TUI.hpp
     include/AgentEngine.hpp
     include/SmartScheduler.hpp
+    include/LocalLLMBrain.hpp
+    include/SecurityGuard.hpp
 )
 
 # Single Canonical Target Executable

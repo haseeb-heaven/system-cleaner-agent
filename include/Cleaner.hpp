@@ -2,6 +2,7 @@
 #include "Logger.hpp"
 #include "ContentInspector.hpp"
 #include "ProcessManager.hpp"
+#include "SecurityGuard.hpp"
 
 #include <filesystem>
 #include <vector>
@@ -60,6 +61,7 @@ class Cleaner {
 
     CleanMode mode = CleanMode::Light;
     InspectionConfig config;
+    SecurityGuard security;
 
     bool dryRun = false;
     bool emptyRecycleBin = false;
@@ -240,7 +242,13 @@ public:
     }
 
     void SetMode(CleanMode m) { mode = m; }
-    void SetDryRun(bool enable) { dryRun = enable; }
+    void SetDryRun(bool enable) {
+        dryRun = enable;
+        // Sandbox enabled = no real deletions; sandbox disables when dryRun=false AND user explicitly opted out
+        if (!enable) security.sandboxEnabled = false;
+    }
+    void SetSandbox(bool enable) { security.sandboxEnabled = enable; }
+    void SetDangerousPathProtection(bool enable) { security.dangerousPathProtection = enable; }
     void SetEmptyRecycleBin(bool enable) { emptyRecycleBin = enable; }
     void SetKillLockingProcesses(bool enable) { killLockingProcesses = enable; }
     void SetMaxThreads(size_t t) { maxThreads = (t > 0) ? t : 4; }
@@ -248,6 +256,7 @@ public:
     void SetTargetDrives(const std::vector<fs::path>& drives) { targetDrives = drives; }
     void SetProjectRoot(const fs::path& root) { projectRoot = root; }
     void SetInspectionConfig(const InspectionConfig& cfg) { config = cfg; }
+    const SecurityGuard& GetSecurity() const { return security; }
 
     static std::string FormatSize(uintmax_t bytes) {
         std::ostringstream ss;
@@ -356,11 +365,20 @@ public:
         uintmax_t grandTotal = 0;
         size_t itemsCount = 0;
 
+        // Print security status before every scan
+        security.PrintSecurityStatus();
+
         std::vector<Target> activeTargets;
 
         if (!customPaths.empty()) {
             for (const auto& cp : customPaths) {
                 if (fs::exists(cp)) {
+                    // Security audit: check path before accepting it
+                    SecurityReport sr = security.AuditPath(cp);
+                    if (sr.level == ThreatLevel::Critical) {
+                        SecurityGuard::PrintBlockedReport(sr);
+                        continue;
+                    }
                     activeTargets.push_back({cp, true, "Custom Path [" + cp.string() + "]", "Custom"});
                 }
             }
@@ -432,15 +450,26 @@ public:
 
         for (const auto& target : activeTargets) {
             if (!IsSystemProtectedRoot(target.path)) {
-                futures.push_back(std::async(std::launch::async, [this, target, modeHeader, &totalFreed, &cleanedCount]() {
+                // Security audit every target before clean
+                SecurityReport sr = security.AuditPath(target.path);
+                if (sr.level == ThreatLevel::Critical || sr.level == ThreatLevel::Dangerous) {
+                    SecurityGuard::PrintBlockedReport(sr);
+                    Logger::Instance().Warn("SECURITY BLOCKED: " + sr.reason);
+                    continue;
+                }
+                // In sandbox mode, SecurityReport.blocked=true but level=Suspicious — simulate only
+                bool simulateOnly = sr.blocked && security.sandboxEnabled;
+
+                futures.push_back(std::async(std::launch::async, [this, target, modeHeader, &totalFreed, &cleanedCount, simulateOnly, sr]() {
                     TargetReport report = InspectTarget(target);
                     if (report.sizeBytes > 0) {
                         Logger::Instance().Info(modeHeader + " Cleaning [" + target.category + "] " + target.name + " (" + FormatSize(report.sizeBytes) + ")...");
-                        if (!dryRun) {
+                        if (simulateOnly || dryRun) {
+                            if (simulateOnly) SecurityGuard::PrintBlockedReport(sr);
+                            totalFreed += report.sizeBytes;
+                        } else {
                             uintmax_t freed = SmartDeleteContentsFast(target.path);
                             totalFreed += freed;
-                        } else {
-                            totalFreed += report.sizeBytes;
                         }
                         cleanedCount++;
                     }
