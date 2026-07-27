@@ -248,7 +248,7 @@ struct ThemeStyle {
     std::string bannerSubtitle;
 };
 
-inline ThemeStyle GetThemeStyle(const std::string& themeName, const std::string& colorScheme = "Default (Engine Native)") {
+inline ThemeStyle GetThemeStyle(const std::string& themeName, const std::string& colorScheme = "Default", const std::string& fgOverride = "Default", const std::string& bgOverride = "Default") {
     std::string bTL = "╔", bTR = "╗", bBL = "╚", bBR = "╝", bH = "═", bV = "║", bSL = "╠", bSR = "╣", sel = "► ", banner = "[ AUTONOMOUS REACT AGENT | C++17 OPENTUI | AQL ENGINE ]";
     
     // Default Engine Native Color Palettes (Both Foreground and Background)
@@ -276,7 +276,7 @@ inline ThemeStyle GetThemeStyle(const std::string& themeName, const std::string&
         bg  = "\033[45m\033[1;97m";                    // Royal Purple Highlight Box, White Text
     }
 
-    // Explicit Color Scheme Overrides (when user picks specific color palette)
+    // Explicit Color Scheme Preset Overrides
     if (colorScheme == "Cyan Matrix") {
         pri = Color::BrightCyan + Color::Bold; sec = Color::BrightCyan; hdr = Color::BrightWhite + Color::Bold; acc = Color::BrightGreen; st = Color::BrightGreen;
         pBg = "\033[40m"; bg = "\033[46m\033[1;30m";
@@ -297,6 +297,25 @@ inline ThemeStyle GetThemeStyle(const std::string& themeName, const std::string&
         pBg = "\033[100m"; bg = "\033[47m\033[1;30m";
     }
 
+    // Granular Foreground Color Setting Override
+    if (fgOverride == "Cyan") pri = sec = "\033[1;96m";
+    else if (fgOverride == "Electric Magenta") pri = sec = "\033[1;95m";
+    else if (fgOverride == "Amber Gold") pri = sec = "\033[1;93m";
+    else if (fgOverride == "Emerald Green") pri = sec = "\033[1;92m";
+    else if (fgOverride == "Neon Pink") pri = sec = "\033[1;95m";
+    else if (fgOverride == "Bright White") pri = sec = "\033[1;97m";
+    else if (fgOverride == "Yellow") pri = sec = "\033[1;33m";
+    else if (fgOverride == "Royal Blue") pri = sec = "\033[1;94m";
+
+    // Granular Background Color Setting Override
+    if (bgOverride == "Black") pBg = "\033[40m";
+    else if (bgOverride == "Navy Blue") pBg = "\033[44m";
+    else if (bgOverride == "Electric Magenta") pBg = "\033[45m";
+    else if (bgOverride == "Amber Gold") pBg = "\033[43m";
+    else if (bgOverride == "Emerald Green") pBg = "\033[42m";
+    else if (bgOverride == "Dark Slate") pBg = "\033[100m";
+    else if (bgOverride == "Charcoal Gray") pBg = "\033[47m";
+
     return {
         themeName, pri, sec, hdr, acc, st, pBg, bg,
         bTL, bTR, bBL, bBR, bH, bV, bSL, bSR, sel, banner
@@ -308,8 +327,8 @@ inline ThemeStyle GetThemeStyle(const std::string& themeName, const std::string&
 // =============================================================================
 class Box {
 public:
-    static std::string DrawBorder(int width, const std::string& title = "", const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Cyan Matrix") {
-        auto style = GetThemeStyle(themeName, colorScheme);
+    static std::string DrawBorder(int width, const std::string& title = "", const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Default", const std::string& fg = "Default", const std::string& bg = "Default") {
+        auto style = GetThemeStyle(themeName, colorScheme, fg, bg);
         std::ostringstream ss;
         ss << style.panelBg << style.secondaryColor << style.borderTL;
         int titleLen = static_cast<int>(title.length());
@@ -326,8 +345,8 @@ public:
         return ss.str();
     }
 
-    static std::string DrawDivider(int width, const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Cyan Matrix") {
-        auto style = GetThemeStyle(themeName, colorScheme);
+    static std::string DrawDivider(int width, const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Default", const std::string& fg = "Default", const std::string& bg = "Default") {
+        auto style = GetThemeStyle(themeName, colorScheme, fg, bg);
         std::ostringstream ss;
         ss << style.panelBg << style.secondaryColor << style.borderSplitL;
         for (int i = 0; i < width - 2; ++i) ss << style.borderHoriz;
@@ -335,8 +354,8 @@ public:
         return ss.str();
     }
 
-    static std::string DrawFooter(int width, const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Cyan Matrix") {
-        auto style = GetThemeStyle(themeName, colorScheme);
+    static std::string DrawFooter(int width, const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Default", const std::string& fg = "Default", const std::string& bg = "Default") {
+        auto style = GetThemeStyle(themeName, colorScheme, fg, bg);
         std::ostringstream ss;
         ss << style.panelBg << style.secondaryColor << style.borderBL;
         for (int i = 0; i < width - 2; ++i) ss << style.borderHoriz;
@@ -421,8 +440,8 @@ public:
         return res;
     }
 
-    static std::string DrawLine(int width, const std::string& text, bool highlight = false, const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Cyan Matrix") {
-        auto style = GetThemeStyle(themeName, colorScheme);
+    static std::string DrawLine(int width, const std::string& text, bool highlight = false, const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Default", const std::string& fg = "Default", const std::string& bg = "Default") {
+        auto style = GetThemeStyle(themeName, colorScheme, fg, bg);
         std::ostringstream ss;
         ss << style.panelBg << style.secondaryColor << style.borderVert << " " << Color::Reset;
         std::string safeText = TruncateVisibleText(text, width - 7);
@@ -536,18 +555,24 @@ class Menu {
     std::string statusLine;
     std::vector<std::string> headerLines;
     std::string themeName = "OpenTUI";
-    std::string colorScheme = "Cyan Matrix";
+    std::string colorScheme = "Default";
+    std::string fgColor = "Default";
+    std::string bgColor = "Default";
     SpinnerAnimation spinner;
     std::function<void()> onPreRender = nullptr;
 
 public:
-    Menu(const std::string& t, const std::vector<std::string>& opts, const std::string& theme = "OpenTUI", const std::string& scheme = "Cyan Matrix")
-        : title(t), options(opts), themeName(theme), colorScheme(scheme) {}
+    Menu(const std::string& t, const std::vector<std::string>& opts, const std::string& theme = "OpenTUI", const std::string& scheme = "Default", const std::string& fg = "Default", const std::string& bg = "Default")
+        : title(t), options(opts), themeName(theme), colorScheme(scheme), fgColor(fg), bgColor(bg) {}
 
     void SetTheme(const std::string& t) { themeName = t; }
     std::string GetTheme() const { return themeName; }
     void SetColorScheme(const std::string& s) { colorScheme = s; }
     std::string GetColorScheme() const { return colorScheme; }
+    void SetFgColor(const std::string& fg) { fgColor = fg; }
+    std::string GetFgColor() const { return fgColor; }
+    void SetBgColor(const std::string& bg) { bgColor = bg; }
+    std::string GetBgColor() const { return bgColor; }
     void SetPreRenderCallback(std::function<void()> cb) { onPreRender = cb; }
     void SetStatusLine(const std::string& status) { statusLine = status; }
     void SetHeaderLines(const std::vector<std::string>& headers) { headerLines = headers; }
@@ -571,27 +596,27 @@ public:
                 std::cout.rdbuf(oldBuf);
             }
 
-            frame << Box::DrawBorder(80, title, themeName, colorScheme);
+            frame << Box::DrawBorder(80, title, themeName, colorScheme, fgColor, bgColor);
 
             if (!headerLines.empty()) {
                 for (const auto& h : headerLines) {
-                    frame << Box::DrawLine(80, h, false, themeName, colorScheme);
+                    frame << Box::DrawLine(80, h, false, themeName, colorScheme, fgColor, bgColor);
                 }
-                frame << Box::DrawDivider(80, themeName, colorScheme);
+                frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
             }
 
             for (size_t i = 0; i < options.size(); ++i) {
                 bool isSelected = (static_cast<int>(i) == selectedIndex);
-                frame << Box::DrawLine(80, options[i], isSelected, themeName, colorScheme);
+                frame << Box::DrawLine(80, options[i], isSelected, themeName, colorScheme, fgColor, bgColor);
             }
 
             if (!statusLine.empty()) {
-                frame << Box::DrawDivider(80, themeName, colorScheme);
+                frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
                 std::string animatedStatus = spinner.GetNextFrame() + " " + statusLine;
-                frame << Box::DrawLine(80, animatedStatus, false, themeName, colorScheme);
+                frame << Box::DrawLine(80, animatedStatus, false, themeName, colorScheme, fgColor, bgColor);
             }
 
-            frame << Box::DrawFooter(80, themeName, colorScheme);
+            frame << Box::DrawFooter(80, themeName, colorScheme, fgColor, bgColor);
             frame << "\033[90m Use UP/DOWN to navigate, LEFT/RIGHT or Enter to toggle/select, ESC/'q' to exit.\033[0m\n";
 
             TerminalEngine::MoveCursorToHome();
