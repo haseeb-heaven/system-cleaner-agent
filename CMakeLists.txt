@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(system-cleaner-agent VERSION 5.0.0 LANGUAGES CXX)
+project(system-cleaner-agent VERSION 5.3.1 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -41,6 +41,18 @@ if(WIN32)
     if(MSVC)
         set_property(TARGET system-cleaner-agent PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
         set_property(TARGET unit_tests PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    endif()
+
+    # Embed Windows icon and version info resource into the main executable
+    set(RC_FILE "${CMAKE_CURRENT_SOURCE_DIR}/resources/app_icon.rc")
+    if(EXISTS "${RC_FILE}")
+        configure_file("${RC_FILE}" "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc" COPYONLY)
+        configure_file(
+            "${CMAKE_CURRENT_SOURCE_DIR}/resources/app_icon.ico"
+            "${CMAKE_CURRENT_BINARY_DIR}/app_icon.ico"
+            COPYONLY
+        )
+        target_sources(system-cleaner-agent PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc")
     endif()
 endif()
 

@@ -350,11 +350,13 @@ class Menu {
     std::string statusLine;
     std::vector<std::string> headerLines;
     SpinnerAnimation spinner;
+    std::function<void()> onPreRender = nullptr;
 
 public:
     Menu(const std::string& t, const std::vector<std::string>& opts)
         : title(t), options(opts) {}
 
+    void SetPreRenderCallback(std::function<void()> cb) { onPreRender = cb; }
     void SetStatusLine(const std::string& status) { statusLine = status; }
     void SetHeaderLines(const std::vector<std::string>& headers) { headerLines = headers; }
     int GetSelectedIndex() const { return selectedIndex; }
@@ -369,6 +371,7 @@ public:
 
         while (true) {
             TerminalEngine::ClearScreen();
+            if (onPreRender) onPreRender();
             std::cout << Box::DrawBorder(80, title);
 
             if (!headerLines.empty()) {

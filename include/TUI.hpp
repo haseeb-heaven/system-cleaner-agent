@@ -299,6 +299,7 @@ public:
         };
 
         OpenTUI::Menu menu("SYSTEM-CLEANER-AGENT", options);
+        menu.SetPreRenderCallback([]() { PrintBanner(); });
 
         while (true) {
             menu.SetHeaderLines(GetLiveResourceHeaders());
