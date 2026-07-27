@@ -576,6 +576,11 @@ public:
     void SetPreRenderCallback(std::function<void()> cb) { onPreRender = cb; }
     void SetStatusLine(const std::string& status) { statusLine = status; }
     void SetHeaderLines(const std::vector<std::string>& headers) { headerLines = headers; }
+    void SetSelectedIndex(int idx) {
+        if (idx >= 0 && idx < static_cast<int>(options.size())) {
+            selectedIndex = idx;
+        }
+    }
     int GetSelectedIndex() const { return selectedIndex; }
 
     int Show() {
@@ -616,8 +621,11 @@ public:
                 frame << Box::DrawLine(80, animatedStatus, false, themeName, colorScheme, fgColor, bgColor);
             }
 
+            frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
+            std::string navHint = "Use UP/DOWN to navigate, LEFT/RIGHT or Enter to toggle/select, ESC/'q' to exit.";
+            frame << Box::DrawLine(80, navHint, false, themeName, colorScheme, fgColor, bgColor);
+
             frame << Box::DrawFooter(80, themeName, colorScheme, fgColor, bgColor);
-            frame << "\033[90m Use UP/DOWN to navigate, LEFT/RIGHT or Enter to toggle/select, ESC/'q' to exit.\033[0m\n";
 
             TerminalEngine::MoveCursorToHome();
             std::cout << frame.str() << "\033[J" << std::flush;

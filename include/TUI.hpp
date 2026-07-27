@@ -518,6 +518,7 @@ public:
         }
     }
     static void ShowSettingsMenu(Cleaner& cleaner) {
+        int currentSelected = 0;
         while (true) {
 #ifdef _WIN32
             static const std::string osName = "Windows";
@@ -542,7 +543,12 @@ public:
             };
 
             OpenTUI::Menu settingsMenu("SETTINGS & THEMES", settingsOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+            settingsMenu.SetSelectedIndex(currentSelected);
             OpenTUI::MenuSelection sel = settingsMenu.ShowExtended();
+
+            if (sel.index != -1) {
+                currentSelected = sel.index;
+            }
 
             if (sel.index == -1 || sel.index == 11) {
                 cleaner.SetSandbox(g_tuiSettings.sandboxMode);
@@ -745,12 +751,12 @@ public:
         }
 
         static const std::vector<std::string> preMadeQueries = {
-            "CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB",
-            "KILL PROCESS WHERE RAM > 200MB",
-            "MONITOR WHERE RAM > 80% EVERY 15S",
+            "KILL chrome.exe FROM PROCESS WHERE RAM > 80%",
+            "CLEAN TEMP_C WHERE DISK_C < 500MB",
+            "CLEAN APPDATA WHERE DISK_C < 1GB",
+            "MONITOR WHERE EXT IN ('.pyc', '.cache', 'node_modules') EVERY 5H",
             "SHRED 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE SIZE > 10MB",
-            "PURGE RECYCLE_BIN",
-            "SCAN 'C:\\' WHERE AGE > 24H"
+            "PURGE RECYCLE_BIN"
         };
 
         return preMadeQueries[choice - 1];
@@ -1064,10 +1070,6 @@ public:
                     break;
                 }
             }
-
-            std::cout << "\n\033[90mTask running in background! Press Enter to return to main OpenTUI menu...\033[0m";
-            FlushInputBuffer();
-            std::cin.get();
         }
     }
 };

@@ -824,14 +824,60 @@ void TestAQLStrictGrammarAndValidation() {
     PASS("AQLStrictGrammarAndValidation", 16);
 }
 
+void TestAQLRealUserScenariosLive() {
+    std::cout << "[TEST 25] AQL Real User Scenarios Live Testing... ";
+
+    Cleaner cleaner;
+
+    // 1. Kill Chrome IF RAM > 80% Usage
+    std::string q1 = "KILL chrome.exe FROM PROCESS WHERE RAM > 80%";
+    auto val1 = AQLEngine::Validate(q1);
+    assert(val1.isValid == true);
+    auto p1 = AQLEngine::Parse(q1);
+    assert(p1.command == "KILL");
+    assert(p1.ramThresholdPercent == 80.0);
+    AQLEngine::Execute(p1, cleaner, true);
+
+    // 2. Clean Temp in C drive if Drive < 500 MB
+    std::string q2 = "CLEAN TEMP_C WHERE DISK_C < 500MB";
+    auto val2 = AQLEngine::Validate(q2);
+    assert(val2.isValid == true);
+    auto p2 = AQLEngine::Parse(q2);
+    assert(p2.command == "CLEAN");
+    assert(p2.diskFreeBelowBytes == 500 * 1024 * 1024);
+    assert(!p2.targetPaths.empty());
+    AQLEngine::Execute(p2, cleaner, true);
+
+    // 3. Clean AppData if C Drive < 1 GB
+    std::string q3 = "CLEAN APPDATA WHERE DISK_C < 1GB";
+    auto val3 = AQLEngine::Validate(q3);
+    assert(val3.isValid == true);
+    auto p3 = AQLEngine::Parse(q3);
+    assert(p3.command == "CLEAN");
+    assert(p3.diskFreeBelowBytes == 1024 * 1024 * 1024);
+    assert(!p3.targetPaths.empty());
+    AQLEngine::Execute(p3, cleaner, true);
+
+    // 4. Kill Npm and PyCache after every 5 Hours
+    std::string q4 = "MONITOR WHERE EXT IN ('.pyc', '.cache', 'node_modules') EVERY 5H";
+    auto val4 = AQLEngine::Validate(q4);
+    assert(val4.isValid == true);
+    auto p4 = AQLEngine::Parse(q4);
+    assert(p4.command == "MONITOR");
+    assert(p4.intervalSeconds == 18000); // 5 hours = 18000s
+    AQLEngine::Execute(p4, cleaner, true);
+
+    PASS("AQLRealUserScenariosLive", 16);
+}
+
 // ===========================================================================
-// MAIN — Run all 24 test suites
+// MAIN — Run all 25 test suites
 // ===========================================================================
 int main() {
     std::cout << "\033[1;36m"
               << "=====================================================================\n"
               << "  system-cleaner-agent v5.5 — Comprehensive Unit Test Suite          \n"
-              << "  24 Test Functions | 235+ Assertions                                \n"
+              << "  25 Test Functions | 250+ Assertions                                \n"
               << "=====================================================================\n"
               << "\033[0m\n";
 
@@ -859,6 +905,7 @@ int main() {
     TestConfigManager();
     TestTUIThemesAndTaskActions();
     TestAQLStrictGrammarAndValidation();
+    TestAQLRealUserScenariosLive();
 
     std::cout << "\n\033[1;33m"
               << "---------------------------------------------------------------------\n"
