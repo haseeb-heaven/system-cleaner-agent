@@ -35,9 +35,15 @@ jobs:
         run: |
           cmake --build build --config Release
 
-      - name: Run Unit Tests
+      - name: Run Unit Tests (Windows)
+        if: runner.os == 'Windows'
         run: |
-          ctest --test-dir build -C Release --output-on-failure
+          .\build\Release\unit_tests.exe
+
+      - name: Run Unit Tests (Linux / macOS)
+        if: runner.os != 'Windows'
+        run: |
+          ./build/unit_tests
 
       - name: Verify Executable (Windows)
         if: runner.os == 'Windows'
