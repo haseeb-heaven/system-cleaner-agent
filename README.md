@@ -19,39 +19,24 @@
 
 ---
 
-## ⚡ 100% Pure Native C++ Architecture
+## ⚡ Default OpenTUI Mode
 
-`system-cleaner-agent` is written **100% natively in ISO C++17**. Zero external scripting dependencies (no Python, no Node.js, no Bash dependencies). Compiled directly to high-performance native machine code across Windows, Linux, and macOS.
+Running `system-cleaner-agent` with no arguments or `--tui` launches the key-navigable **OpenTUI Interactive Dashboard**:
 
-```
-                           ┌───────────────────────────┐
-                           │   system-cleaner-agent    │
-                           │   100% ISO C++17 Engine   │
-                           └─────────────┬─────────────┘
-                                         │
-                 ┌───────────────────────┼───────────────────────┐
-                 │                       │                       │
-     ┌───────────▼───────────┐ ┌─────────▼───────────┐ ┌─────────▼───────────┐
-     │   AgentEngine (ReAct) │ │ ContentInspector    │ │ OpenTUI Framework   │
-     │ Reason-Act-Observe    │ │ Magic Bytes & Shield│ │ Key-Navigable UI    │
-     └───────────┬───────────┘ └─────────┬───────────┘ └─────────┬───────────┘
-                 │                       │                       │
-                 └───────────────────────┼───────────────────────┘
-                                         │
-                               ┌─────────▼───────────┐
-                               │ Multi-Thread Async  │
-                               │ Parallel Engine     │
-                               └─────────────────────┘
+```powershell
+.\system-cleaner-agent.exe
+# or
+.\system-cleaner-agent.exe --tui
 ```
 
 ---
 
 ## 🤖 ReAct Autonomous Agent Architecture
 
-Runs an autonomous **Reasoning + Action + Observation (ReAct)** loop:
+Runs an autonomous **Reasoning + Action + Observation (ReAct)** loop with natural language path parsing:
 
 ```powershell
-.\system-cleaner-agent.exe agent --task "Perform autonomous storage optimization"
+.\system-cleaner-agent.exe agent --task "Perform clean code on D:/Temp"
 ```
 
 ---
@@ -59,7 +44,7 @@ Runs an autonomous **Reasoning + Action + Observation (ReAct)** loop:
 ## Key Features
 
 - ⚡ **100% Pure Native C++17 Engine**: Zero scripting overhead, native speed.
-- 🧠 **Autonomous ReAct Agent Loop (`AgentEngine.hpp`)**: Self-directed storage optimization trajectory.
+- 🧠 **Autonomous ReAct Agent Loop (`AgentEngine.hpp`)**: Self-directed storage optimization trajectory with target path extraction.
 - 💻 **OpenTUI Framework (`OpenTUI.hpp`)**: Zero-dependency cross-platform TUI with ANSI escape sequences, arrow-key menu navigation, and progress bars.
 - 🛡️ **Content Protection Shield**: Validates magic bytes (`%PDF`, `PNG`, `JPEG`, `SQLite format 3`) and protects user source code (`.py`, `.cpp`, `.js`).
 - 🔓 **Process Lock Manager**: Releases process handles (`mintty`, `cat`, `bash`, `werfault`) locking temporary paths.
@@ -68,17 +53,41 @@ Runs an autonomous **Reasoning + Action + Observation (ReAct)** loop:
 
 ---
 
-## Build Instructions
+## CLI Options & Usage
 
-### **Windows (MSVC / MinGW / CMake)**:
-```cmd
-build.bat
 ```
+USAGE:
+  system-cleaner-agent [COMMAND] [FLAGS]
 
-### **Linux / macOS (GCC / Clang / CMake)**:
-```bash
-chmod +x build.sh
-./build.sh
+COMMANDS:
+  agent        Launch Autonomous ReAct Agent Loop (Thought->Action->Observation).
+  scan         Analyze system/drive targets and report cleanable storage.
+  clean        Execute multi-threaded cleanup using active policy rules.
+  deep-clean   Perform full system cache cleanup + empty OS Recycle Bin / Trash.
+  tui          Launch interactive Terminal User Interface (TUI).
+  test         Execute automated engine diagnostic & unit test suite.
+  version      Display version, engine build, and architecture details.
+  help         Show this help and usage specification.
+
+AGENTIC REACT OPTIONS:
+  --task <goal>        Specify custom natural language goal for ReAct loop.
+  --agent              Enable autonomous reasoning and action trajectory.
+
+FILTERING & TARGET SELECTION:
+  --category <list>     Target categories: system, browser, dev, messaging, app.
+  --only-ext <exts>      Only clean matching file extensions (e.g. .log,.tmp).
+  --exclude-ext <exts>   Protect specific extensions from deletion (e.g. .py,.cpp).
+  --older-than <dur>     Filter files older than duration (e.g. 30m, 24h, 7d).
+
+LOCATION & SCOPE:
+  --path <p1,p2>         Specify custom directory path(s) to process.
+  --drive <drives>       Target specific drive(s) (e.g. C:\, D:\) or 'all'.
+
+EXECUTION CONTROL:
+  --mode <mode>          Execution mode: light, deep, full, shred (secure wipe).
+  --dry-run              Preview operational results without disk state mutation.
+  --recycle-bin          Purge Windows Recycle Bin / OS Trash via Shell API.
+  --json-report <file>   Export structured execution results to JSON report.
 ```
 
 ---

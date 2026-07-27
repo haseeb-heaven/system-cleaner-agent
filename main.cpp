@@ -21,8 +21,7 @@ void PrintHeader() {
 void PrintHelp() {
     PrintHeader();
     std::cout << "\033[1mUSAGE:\033[0m\n"
-              << "  system-cleaner-agent <COMMAND> [FLAGS]\n"
-              << "  SystemCleanerAgent   <COMMAND> [FLAGS]\n\n"
+              << "  system-cleaner-agent [COMMAND] [FLAGS]\n\n"
               << "\033[1mCOMMANDS:\033[0m\n"
               << "  \033[36magent\033[0m        Launch Autonomous ReAct Agent Loop (Thought->Action->Observation).\n"
               << "  \033[36mscan\033[0m         Analyze system/drive targets and report cleanable storage.\n"
@@ -35,7 +34,7 @@ void PrintHelp() {
               << "\033[1mAGENTIC REACT OPTIONS:\033[0m\n"
               << "  \033[33m--task <goal>\033[0m        Specify custom natural language goal for ReAct loop.\n"
               << "  \033[33m--agent\033[0m              Enable autonomous reasoning and action trajectory.\n\n"
-              << "\033[1mFILTERING & TARGET SELECTION (WHAT):\033[0m\n"
+              << "\033[1mFILTERING & TARGET SELECTION:\033[0m\n"
               << "  \033[33m--category <list>\033[0m     Target categories: system, browser, dev, messaging, app.\n"
               << "  \033[33m--exclude-category <c>\033[0m Exclude target categories from operation.\n"
               << "  \033[33m--only-ext <ext1,ext2>\033[0m Only operate on matching file extensions (e.g. .log,.tmp).\n"
@@ -44,11 +43,11 @@ void PrintHelp() {
               << "  \033[33m--min-size <size>\033[0m      Minimum file size threshold (e.g. 10MB, 100MB, 1GB).\n"
               << "  \033[33m--max-size <size>\033[0m      Maximum file size threshold.\n"
               << "  \033[33m--strategy <mode>\033[0m      Inspection policy: smart (default), force, safe.\n\n"
-              << "\033[1mLOCATION & SCOPE (WHERE):\033[0m\n"
+              << "\033[1mLOCATION & SCOPE:\033[0m\n"
               << "  \033[33m--path <p1,p2>\033[0m         Specify custom directory path(s) to process.\n"
               << "  \033[33m--drive <drives>\033[0m       Target specific drive(s) (e.g. C:\\, D:\\) or 'all'.\n"
               << "  \033[33m--project-root <dir>\033[0m   Root directory for recursive dev build cache discovery.\n\n"
-              << "\033[1mEXECUTION CONTROL (HOW):\033[0m\n"
+              << "\033[1mEXECUTION CONTROL:\033[0m\n"
               << "  \033[33m--mode <mode>\033[0m          Execution mode: light, deep, full, shred (secure wipe).\n"
               << "  \033[33m--dry-run\033[0m              Preview operational results without disk state mutation.\n"
               << "  \033[33m--recycle-bin\033[0m          Purge Windows Recycle Bin / OS Trash via Shell API.\n"
@@ -58,9 +57,8 @@ void PrintHelp() {
               << "  \033[33m--cron <duration>\033[0m      Run daemon service on recurring schedule (e.g. 10m, 1h).\n"
               << "  \033[33m--verbose\033[0m              Enable detailed trace logging.\n\n"
               << "\033[1mPRODUCTION EXAMPLES:\033[0m\n"
+              << "  system-cleaner-agent\n"
               << "  system-cleaner-agent agent --task \"Perform clean code on D:/Temp\"\n"
-              << "  system-cleaner-agent agent --dry-run\n"
-              << "  system-cleaner-agent tui\n"
               << "  system-cleaner-agent scan --dry-run\n"
               << "  system-cleaner-agent deep-clean --recycle-bin\n";
 }
@@ -131,8 +129,11 @@ int main(int argc, char* argv[]) {
 
     Logger::Instance().Init("gemini-sys-cleaner.log", verbose);
 
+    Cleaner cleaner;
+
+    // Running with no arguments defaults to OpenTUI Interactive Dashboard
     if (argc < 2) {
-        PrintHelp();
+        TUI::RunInteractiveMenu(cleaner);
         return 0;
     }
 
@@ -149,7 +150,11 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
-    Cleaner cleaner;
+    if (cmd == "tui" || cmd == "--tui" || cmd == "--interactive" || cmd == "-i") {
+        TUI::RunInteractiveMenu(cleaner);
+        return 0;
+    }
+
     InspectionConfig cfg;
     CleanMode cleanMode = CleanMode::Light;
 
@@ -239,11 +244,6 @@ int main(int argc, char* argv[]) {
         } else if (lowerArg == "--max-size" && i + 1 < argc) {
             cfg.maxSizeBytes = ContentInspector::ParseSizeToBytes(argv[++i]);
         }
-    }
-
-    if (cmd == "tui" || cmd == "--interactive" || cmd == "-i") {
-        TUI::RunInteractiveMenu(cleaner);
-        return 0;
     }
 
     if (cmd == "test" || cmd == "--test") {
