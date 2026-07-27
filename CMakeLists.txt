@@ -18,6 +18,7 @@ set(HEADERS
     include/SmartScheduler.hpp
     include/LocalLLMBrain.hpp
     include/SecurityGuard.hpp
+    include/AgentQueryLanguage.hpp
 )
 
 # Single Canonical Target Executable

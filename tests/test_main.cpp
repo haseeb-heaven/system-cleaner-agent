@@ -13,6 +13,7 @@
 #include "SmartScheduler.hpp"
 #include "LocalLLMBrain.hpp"
 #include "SecurityGuard.hpp"
+#include "AgentQueryLanguage.hpp"
 
 #include <iostream>
 #include <cassert>
@@ -634,13 +635,49 @@ void TestDiskFreeBelowThreshold() {
 }
 
 // ===========================================================================
-// MAIN — Run all 19 test suites
+// 20. Agent Query Language (AQL) Parser & Execution Suite
+// ===========================================================================
+void TestAgentQueryLanguage() {
+    std::cout << "[TEST 20] Agent Query Language (AQL) Engine..... ";
+
+    // Parse CLEAN query with FREE_DISK condition
+    AQLQuery q1 = AQLEngine::Parse("CLEAN 'C:\\Temp' WHERE FREE_DISK < 500MB");
+    assert(q1.command == "CLEAN");
+    assert(q1.targetPaths.size() == 1);
+    assert(q1.targetPaths[0].string() == "C:\\Temp");
+    assert(q1.diskFreeBelowBytes == 500ULL * 1024 * 1024);
+
+    // Parse MONITOR query with RAM condition
+    AQLQuery q2 = AQLEngine::Parse("MONITOR WHERE RAM > 80% EVERY 15S");
+    assert(q2.command == "MONITOR");
+    assert(q2.ramThresholdPercent == 80.0);
+    assert(q2.intervalSeconds == 15);
+
+    // Parse SHRED query with SIZE condition
+    AQLQuery q3 = AQLEngine::Parse("SHRED 'D:\\Temp' WHERE SIZE > 10MB");
+    assert(q3.command == "SHRED");
+    assert(q3.targetPaths.size() == 1);
+    assert(q3.minSizeBytes == 10ULL * 1024 * 1024);
+
+    // Parse PURGE query
+    AQLQuery q4 = AQLEngine::Parse("PURGE RECYCLE_BIN");
+    assert(q4.command == "PURGE");
+
+    // Execute dry-run sanity (no crash)
+    Cleaner c;
+    AQLEngine::Execute(q1, c, true);
+
+    PASS("AgentQueryLanguage", 10);
+}
+
+// ===========================================================================
+// MAIN — Run all 20 test suites
 // ===========================================================================
 int main() {
     std::cout << "\033[1;36m"
               << "=====================================================================\n"
               << "  system-cleaner-agent v5.0 — Comprehensive Unit Test Suite          \n"
-              << "  19 Test Functions | 178+ Assertions                                \n"
+              << "  20 Test Functions | 188+ Assertions                                \n"
               << "=====================================================================\n"
               << "\033[0m\n";
 
@@ -663,6 +700,7 @@ int main() {
     TestScheduleRuleEdgeCases();
     TestContentInspectorEdgeCases();
     TestDiskFreeBelowThreshold();
+    TestAgentQueryLanguage();
 
     std::cout << "\n\033[1;33m"
               << "---------------------------------------------------------------------\n"

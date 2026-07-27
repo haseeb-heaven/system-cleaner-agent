@@ -4,6 +4,7 @@
 #include "OpenTUI.hpp"
 #include "SmartScheduler.hpp"
 #include "AgentEngine.hpp"
+#include "AgentQueryLanguage.hpp"
 
 #include <iostream>
 #include <vector>
@@ -25,35 +26,35 @@ public:
 
     static std::string SelectAgentQuery() {
         std::vector<std::string> queryMenuOptions = {
-            "[Custom Query] Enter your own custom natural language goal",
-            "Clean C: drive temp & cache if free disk space < 500 MB",
-            "Monitor RAM usage and auto-clean if memory > 80%",
-            "Execute Secure Shred Cleanup (Zero-Overwrite Wipe)",
-            "Purge Windows Recycle Bin / OS Trash Bin",
-            "Perform full multi-threaded system storage optimization"
+            "[Custom Query] Enter natural language or AQL query (e.g. CLEAN WHERE FREE_DISK < 500MB)",
+            "AQL: CLEAN 'C:\\Temp' WHERE FREE_DISK < 500MB",
+            "AQL: MONITOR WHERE RAM > 80% EVERY 15S",
+            "AQL: SHRED 'C:\\Temp' WHERE SIZE > 10MB",
+            "AQL: PURGE RECYCLE_BIN",
+            "AQL: SCAN 'C:\\' WHERE AGE > 24H"
         };
 
-        OpenTUI::Menu agentMenu("CLEANER AGENT - SELECT PRE-MADE QUERY OR TYPE CUSTOM GOAL", queryMenuOptions);
+        OpenTUI::Menu agentMenu("AGENT QUERY LANGUAGE (AQL) - SELECT OR TYPE QUERY", queryMenuOptions);
         int choice = agentMenu.Show();
 
         if (choice <= 0) {
             OpenTUI::TerminalEngine::ClearScreen();
             PrintBanner();
-            std::cout << "\033[1;36mCleaner Agent > Enter your custom query:\033[0m ";
+            std::cout << "\033[1;36mCleaner Agent > Enter AQL Query or Natural Goal:\033[0m ";
             std::string userQuery;
             std::getline(std::cin, userQuery);
             if (userQuery.empty()) {
-                userQuery = "Perform autonomous system storage optimization";
+                userQuery = "CLEAN 'C:\\Temp' WHERE FREE_DISK < 500MB";
             }
             return userQuery;
         }
 
         static const std::vector<std::string> preMadeQueries = {
-            "Clean C: drive temp & cache if free disk space < 500 MB",
-            "Monitor RAM usage and auto-clean if memory > 80%",
-            "Execute Secure Shred Cleanup on temp directory (Zero-Overwrite Wipe)",
-            "Purge Windows Recycle Bin / OS Trash Bin",
-            "Perform full multi-threaded system storage optimization"
+            "CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB",
+            "MONITOR WHERE RAM > 80% EVERY 15S",
+            "SHRED 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE SIZE > 10MB",
+            "PURGE RECYCLE_BIN",
+            "SCAN 'C:\\' WHERE AGE > 24H"
         };
 
         return preMadeQueries[choice - 1];
@@ -61,18 +62,18 @@ public:
 
     static void RunInteractiveMenu(Cleaner& cleaner) {
         std::vector<std::string> options = {
-            "Storage Scan & Inspection (Dry-Run Preview)",
-            "Execute Smart Deep Clean (Preserve User Source & Docs)",
-            "Execute Secure Shred Cleanup (Zero-Overwrite Wipe)",
-            "Purge Windows Recycle Bin / OS Trash Bin",
-            "Run ReAct Autonomous Agent Execution Loop",
-            "Smart Daemon & Memory Threshold Monitor (RAM > 80% Auto-Clean)",
-            "Export System Scan Report to JSON",
-            "Run Engine Diagnostic & Unit Test Suite",
-            "Exit system-cleaner-agent"
+            "Storage Scan (Dry-Run)",
+            "Smart Deep Clean",
+            "Secure Shred Wipe",
+            "Empty Recycle Bin / Trash",
+            "Autonomous ReAct Agent & AQL",
+            "Smart Daemon & Monitor",
+            "Export JSON Report",
+            "Engine Unit Tests",
+            "Exit Agent"
         };
 
-        OpenTUI::Menu menu("SYSTEM-CLEANER-AGENT - OPENTUI DASHBOARD", options);
+        OpenTUI::Menu menu("SYSTEM-CLEANER-AGENT DASHBOARD", options);
 
         while (true) {
             int selected = menu.Show();

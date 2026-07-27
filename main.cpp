@@ -7,6 +7,7 @@
 #include "include/SmartScheduler.hpp"
 #include "include/LocalLLMBrain.hpp"
 #include "include/SecurityGuard.hpp"
+#include "include/AgentQueryLanguage.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -212,6 +213,13 @@ int main(int argc, char* argv[]) {
 
     if (cmd == "version" || cmd == "--version" || cmd == "-v") {
         std::cout << "system-cleaner-agent v5.0.0 (C++17 Autonomous ReAct Agentic Engine - 64-bit Architecture)\n";
+        return 0;
+    }
+
+    if (cmd == "aql") {
+        std::string queryStr = (args.size() > 1) ? args[1] : "CLEAN 'C:\\Temp' WHERE FREE_DISK < 500MB";
+        AQLQuery q = AQLEngine::Parse(queryStr);
+        AQLEngine::Execute(q, cleaner, true);
         return 0;
     }
 
