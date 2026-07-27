@@ -12,6 +12,7 @@
 #include <fstream>
 #include <filesystem>
 #include <vector>
+#include <cstdlib>
 
 namespace fs = std::filesystem;
 
@@ -221,5 +222,5 @@ int main() {
     TestReActAgentTrajectory();
 
     std::cout << "\n\033[1;32mALL UNIT TESTS PASSED SUCCESSFULLY! (100% REGRESSION PASS)\033[0m\n";
-    return 0;
+    std::exit(0);
 }

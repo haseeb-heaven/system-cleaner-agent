@@ -1,6 +1,8 @@
 @echo off
 setlocal
 
+taskkill /F /IM unit_tests.exe /IM system-cleaner-agent.exe >nul 2>nul
+
 echo Building system-cleaner-agent (C++17 ReAct Autonomous Agent Engine)...
 where cmake >nul 2>nul
 if %ERRORLEVEL% EQU 0 (
