@@ -19,13 +19,18 @@ set(HEADERS
     include/LocalLLMBrain.hpp
     include/SecurityGuard.hpp
     include/AgentQueryLanguage.hpp
+    include/gtlibc.hpp
+)
+
+set(SOURCES
+    include/gtlibc.cpp
 )
 
 # Single Canonical Target Executable
-add_executable(system-cleaner-agent main.cpp ${HEADERS})
+add_executable(system-cleaner-agent main.cpp ${HEADERS} ${SOURCES})
 
 # Comprehensive Unit Test Executable
-add_executable(unit_tests tests/test_main.cpp ${HEADERS})
+add_executable(unit_tests tests/test_main.cpp ${HEADERS} ${SOURCES})
 
 enable_testing()
 add_test(NAME system-cleaner-agent-tests COMMAND unit_tests)

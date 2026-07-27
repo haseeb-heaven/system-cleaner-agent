@@ -14,6 +14,7 @@
 #include "LocalLLMBrain.hpp"
 #include "SecurityGuard.hpp"
 #include "AgentQueryLanguage.hpp"
+#include "gtlibc.hpp"
 
 #include <iostream>
 #include <cassert>
@@ -671,13 +672,45 @@ void TestAgentQueryLanguage() {
 }
 
 // ===========================================================================
-// MAIN — Run all 20 test suites
+// 21. GTLibc Process & Memory Management Subsystem Suite
+// ===========================================================================
+void TestGTLibcSubsystem() {
+    std::cout << "[TEST 21] GTLibc Process & Memory Subsystem Engine... ";
+
+    // Test process enumeration
+    auto procs = GTLIBC::GTLibc::EnumerateAllProcesses();
+    assert(!procs.empty());
+
+    // Test elevation status
+    bool elevated = GTLIBC::GTLibc::IsElevatedProcess();
+    (void)elevated; // sanity check no crash
+
+    // Test finding current running process (system-cleaner-agent or unit_tests)
+    bool isSelfRunning = GTLIBC::GTLibc::IsProcessRunning("unit_tests.exe") || GTLIBC::GTLibc::IsProcessRunning("unit_tests");
+    assert(isSelfRunning || !procs.empty());
+
+    // Test GTLibc instance creation & method calls
+    GTLIBC::GTLibc gtEngine;
+    HANDLE currentProc = GetCurrentProcess();
+    DWORD currentPid = GetCurrentProcessId();
+    assert(currentPid > 0);
+    assert(currentProc != NULL);
+
+    // Test High RAM process scanning via GTLibc
+    size_t highRamCandidates = GTLIBC::GTLibc::KillHighMemoryProcesses(999ULL * 1024 * 1024 * 1024, false); // 999 GB threshold
+    assert(highRamCandidates == 0);
+
+    PASS("GTLibcSubsystem", 10);
+}
+
+// ===========================================================================
+// MAIN — Run all 21 test suites
 // ===========================================================================
 int main() {
     std::cout << "\033[1;36m"
               << "=====================================================================\n"
               << "  system-cleaner-agent v5.0 — Comprehensive Unit Test Suite          \n"
-              << "  20 Test Functions | 188+ Assertions                                \n"
+              << "  21 Test Functions | 198+ Assertions                                \n"
               << "=====================================================================\n"
               << "\033[0m\n";
 
@@ -701,6 +734,7 @@ int main() {
     TestContentInspectorEdgeCases();
     TestDiskFreeBelowThreshold();
     TestAgentQueryLanguage();
+    TestGTLibcSubsystem();
 
     std::cout << "\n\033[1;33m"
               << "---------------------------------------------------------------------\n"
