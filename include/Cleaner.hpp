@@ -3,6 +3,7 @@
 #include "ContentInspector.hpp"
 #include "ProcessManager.hpp"
 #include "SecurityGuard.hpp"
+#include "ConfigManager.hpp"
 
 #include <filesystem>
 #include <vector>
@@ -239,6 +240,12 @@ public:
         size_t threads = std::thread::hardware_concurrency();
         maxThreads = (threads > 0) ? threads : 8;
         InitTargets();
+
+        AppConfig cfg = ConfigManager::Load();
+        security.sandboxEnabled = cfg.sandboxMode;
+        security.dangerousPathProtection = cfg.pathProtection;
+        dryRun = cfg.dryRun;
+        killLockingProcesses = cfg.killLocks;
     }
 
     void SetMode(CleanMode m) { mode = m; }
