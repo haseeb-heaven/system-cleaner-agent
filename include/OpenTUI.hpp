@@ -217,18 +217,32 @@ public:
                 }
                 if (i < str.length()) i++; // skip 'm'
             } else {
-                unsigned char c = static_cast<unsigned char>(str[i]);
-                if (c < 0x80) {
+                unsigned char c1 = static_cast<unsigned char>(str[i]);
+                if (c1 < 0x80) {
                     width += 1;
                     i += 1;
-                } else if ((c & 0xE0) == 0xC0) {
+                } else if ((c1 & 0xE0) == 0xC0) {
                     width += 1;
                     i += 2;
-                } else if ((c & 0xF0) == 0xE0) {
-                    width += 1; // 1 visual column for 3-byte UTF-8 (Braille ⠋, ⚪)
+                } else if ((c1 & 0xF0) == 0xE0) {
+                    // 3-byte UTF-8
+                    if (i + 2 < str.length()) {
+                        unsigned char c2 = static_cast<unsigned char>(str[i+1]);
+                        unsigned char c3 = static_cast<unsigned char>(str[i+2]);
+                        uint32_t codepoint = ((c1 & 0x0F) << 12) | ((c2 & 0x3F) << 6) | (c3 & 0x3F);
+                        // U+26AA (⚪), U+26AB (⚫), U+26A0-U+26FF symbols are wide in terminals
+                        if (codepoint == 0x26AA || codepoint == 0x26AB || codepoint == 0x26BD || codepoint == 0x26BE || (codepoint >= 0x2600 && codepoint <= 0x26FF)) {
+                            width += 2;
+                        } else {
+                            width += 1;
+                        }
+                    } else {
+                        width += 1;
+                    }
                     i += 3;
-                } else if ((c & 0xF8) == 0xF0) {
-                    width += 1;
+                } else if ((c1 & 0xF8) == 0xF0) {
+                    // 4-byte UTF-8 Emojis (🟢 🔴 🟡 🚀 🧹 🔒 🗑️ ⚡ etc.) are 2 columns wide
+                    width += 2;
                     i += 4;
                 } else {
                     i += 1;
