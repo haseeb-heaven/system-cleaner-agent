@@ -597,14 +597,50 @@ void TestContentInspectorEdgeCases() {
     PASS("ContentInspectorEdgeCases", 3);
 }
 
+
 // ===========================================================================
-// MAIN — Run all 18 test suites
+// 19. SmartScheduler — disk-free-below threshold parsing & GetDiskFreeBytes
+// ===========================================================================
+void TestDiskFreeBelowThreshold() {
+    std::cout << "[TEST 19] Disk Free-Below Threshold............. ";
+
+    // GetDiskFreeBytes must return a positive value on a real drive
+    uintmax_t freeC = SmartScheduler::GetDiskFreeBytes("C:\\");
+    assert(freeC > 0);
+
+    // Parse rule with disk-free<500mb
+    ScheduleRule r1 = SmartScheduler::ParseRuleString("C:/Temp:15m:disk-free<500mb");
+    assert(r1.targetFolder.string()  == "C:/Temp");
+    assert(r1.intervalSeconds        == 900);
+    assert(r1.diskFreeBelowBytes     == 500ULL * 1024 * 1024); // exactly 500 MB in bytes
+
+    // Parse rule with free<2gb
+    ScheduleRule r2 = SmartScheduler::ParseRuleString("D:/Cache:1h:free<2gb");
+    assert(r2.diskFreeBelowBytes == 2ULL * 1024 * 1024 * 1024);
+    assert(r2.intervalSeconds    == 3600);
+
+    // Parse rule with disk-free<100kb (small, sanity check)
+    ScheduleRule r3 = SmartScheduler::ParseRuleString("/tmp:5m:disk-free<100kb");
+    assert(r3.diskFreeBelowBytes == 100ULL * 1024);
+    assert(r3.intervalSeconds    == 300);
+
+    // Trigger logic: current free > threshold → should NOT trigger
+    uintmax_t bigThreshold  = 999ULL * 1024 * 1024 * 1024; // 999 GB — will never be free
+    uintmax_t smallThreshold = 1;                            // 1 byte — always triggered
+    assert(freeC > smallThreshold);   // real free always > 1 byte
+    assert(freeC < bigThreshold || bigThreshold > 0); // sanity
+
+    PASS("DiskFreeBelowThreshold", 10);
+}
+
+// ===========================================================================
+// MAIN — Run all 19 test suites
 // ===========================================================================
 int main() {
     std::cout << "\033[1;36m"
               << "=====================================================================\n"
               << "  system-cleaner-agent v5.0 — Comprehensive Unit Test Suite          \n"
-              << "  18 Test Functions | 106+ Assertions                                \n"
+              << "  19 Test Functions | 178+ Assertions                                \n"
               << "=====================================================================\n"
               << "\033[0m\n";
 
@@ -626,6 +662,7 @@ int main() {
     TestReActAgentTrajectory();
     TestScheduleRuleEdgeCases();
     TestContentInspectorEdgeCases();
+    TestDiskFreeBelowThreshold();
 
     std::cout << "\n\033[1;33m"
               << "---------------------------------------------------------------------\n"

@@ -201,8 +201,10 @@ int main(int argc, char* argv[]) {
     bool pathProtection = true;    // Dangerous path guard ON by default
     long long cronIntervalSeconds = 0;
     long long daemonCheckIntervalSeconds = 15;
-    double memThresholdPercent = 0.0;
-    double diskThresholdPercent = 0.0;
+    double memThresholdPercent  = 0.0;
+    double diskThresholdPercent  = 0.0;
+    uintmax_t diskFreeBelowBytes = 0;      // e.g. 500 MB — trigger when free space drops below this
+    fs::path monitorDrive        = "C:\\"; // drive to watch for free-space threshold
     std::vector<ScheduleRule> scheduleRules;
 
     size_t threadCount = 0;
@@ -238,6 +240,10 @@ int main(int argc, char* argv[]) {
             std::string val = argv[++i];
             if (val.back() == '%') val.pop_back();
             try { diskThresholdPercent = std::stod(val); } catch (...) {}
+        } else if (lowerArg == "--disk-free-below" && i + 1 < argc) {
+            diskFreeBelowBytes = ContentInspector::ParseSizeToBytes(argv[++i]);
+        } else if (lowerArg == "--monitor-drive" && i + 1 < argc) {
+            monitorDrive = fs::path(argv[++i]);
         } else if (lowerArg == "--schedule" && i + 1 < argc) {
             scheduleRules.push_back(SmartScheduler::ParseRuleString(argv[++i]));
         } else if (lowerArg == "--interval" && i + 1 < argc) {
@@ -329,7 +335,10 @@ int main(int argc, char* argv[]) {
     if (threadCount > 0) cleaner.SetMaxThreads(threadCount);
 
     if (runDaemon) {
-        SmartScheduler::RunDaemonService(cleaner, scheduleRules, memThresholdPercent, diskThresholdPercent, daemonCheckIntervalSeconds, dryRun);
+        SmartScheduler::RunDaemonService(cleaner, scheduleRules,
+            memThresholdPercent, diskThresholdPercent,
+            daemonCheckIntervalSeconds, dryRun,
+            diskFreeBelowBytes, monitorDrive);
         return 0;
     }
 
