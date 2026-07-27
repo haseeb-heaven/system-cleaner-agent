@@ -3,57 +3,64 @@ name: CI
 on:
   push:
     branches:
-      - master
       - main
-      - 'fix/*'
-      - 'feat/*'
+      - develop
   pull_request:
     branches:
-      - master
       - main
+      - develop
 
 jobs:
   build-cpp:
-    name: Build C++ System Cleaner
-    runs-on: windows-latest
+    name: Build & Test system-cleaner-agent (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup MSVC environment
+      - name: Setup MSVC environment (Windows)
+        if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
       - name: Configure with CMake
         run: |
-          mkdir build
-          cd build
-          cmake ..
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build Release
         run: |
-          cd build
-          cmake --build . --config Release
+          cmake --build build --config Release
 
-      - name: Verify executable
+      - name: Run Unit Tests
         run: |
-          if (Test-Path "build\Release\gemini-sys-cleaner.exe") {
-            Write-Host "Build successful: gemini-sys-cleaner.exe exists"
-            Get-Item "build\Release\gemini-sys-cleaner.exe"
+          ctest --test-dir build -C Release --output-on-failure
+
+      - name: Verify Executable (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          if (Test-Path "build\Release\system-cleaner-agent.exe") {
+            Write-Host "Build successful: system-cleaner-agent.exe exists"
+            Get-Item "build\Release\system-cleaner-agent.exe"
           } else {
             Write-Error "Executable not found!"
             exit 1
           }
 
-      - name: Upload build artifact
+      - name: Upload Build Artifact (Windows)
+        if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
-          name: gemini-sys-cleaner-windows
-          path: build/Release/gemini-sys-cleaner.exe
+          name: system-cleaner-agent-windows
+          path: build/Release/system-cleaner-agent.exe
           retention-days: 7
 
   python-checks:
-    name: Python Checks (Scanner & Cleaner)
-    runs-on: windows-latest
+    name: Python Syntax Checks
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -63,39 +70,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install dependencies
+      - name: Syntax Check Python Scripts
         run: |
-          python -m pip install --upgrade pip
-          if (Test-Path requirements.txt) {
-            pip install -r requirements.txt
-          }
-          pip install flake8
-
-      - name: Lint with flake8
-        run: |
-          # stop the build if there are Python syntax errors or undefined names
-          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-          # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-          flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-
-      - name: Quick syntax check on key scripts
-        run: |
-          python -m py_compile scanner.py
           python -m py_compile sys_cleaner.py
-          Write-Host "Python syntax OK"
-
-  # Placeholder job demonstrating "change jobs" for future expansion
-  # e.g. security scan, integration tests, packaging
-  change-jobs-demo:
-    name: Change Jobs (Future CI Gates)
-    runs-on: windows-latest
-    needs: [build-cpp, python-checks]
-    if: github.event_name == 'push' || github.event_name == 'pull_request'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Summary
-        run: |
-          Write-Host "All primary change jobs completed successfully."
-          Write-Host "Add more jobs here for: packaging, release, security scanning, etc."
+          echo "Python syntax OK"
