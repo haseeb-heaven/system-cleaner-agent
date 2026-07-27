@@ -171,20 +171,34 @@ class Cleaner {
             fixedTargets.push_back({"D:\\npm-cache", false, "D: npm Cache", "Developer"});
         }
 #else
+        // POSIX / Linux & macOS Cache Targets
         fixedTargets.push_back({"/tmp", false, "System Temp (/tmp)", "System"});
         fixedTargets.push_back({"/var/tmp", false, "System Temp (/var/tmp)", "System"});
+        fixedTargets.push_back({"/var/log", false, "System Logs (/var/log)", "System"});
 
         if (!userProfile.empty()) {
             fixedTargets.push_back({userProfile / ".cache", false, "User ~/.cache", "System"});
-            fixedTargets.push_back({userProfile / ".local/share/Trash", false, "User Trash Bin", "System"});
-            fixedTargets.push_back({userProfile / ".npm", false, "User ~/.npm", "Developer"});
+            fixedTargets.push_back({userProfile / ".local/share/Trash/files", false, "Linux Trash Files", "System"});
+            fixedTargets.push_back({userProfile / ".local/share/Trash/info", false, "Linux Trash Info", "System"});
+            fixedTargets.push_back({userProfile / ".npm", false, "User ~/.npm Cache", "Developer"});
             fixedTargets.push_back({userProfile / ".cache/pip", false, "User pip Cache", "Developer"});
-            fixedTargets.push_back({userProfile / ".cargo/registry/cache", false, "Cargo Cache", "Developer"});
-            fixedTargets.push_back({userProfile / ".gradle/caches", false, "Gradle Cache", "Developer"});
+            fixedTargets.push_back({userProfile / ".cargo/registry/cache", false, "Cargo Registry Cache", "Developer"});
+            fixedTargets.push_back({userProfile / ".gradle/caches", false, "Gradle Build Cache", "Developer"});
+            fixedTargets.push_back({userProfile / ".config/google-chrome/Default/Cache", false, "Chrome Web Cache", "Browser"});
+            fixedTargets.push_back({userProfile / ".config/microsoft-edge/Default/Cache", false, "Edge Web Cache", "Browser"});
+            fixedTargets.push_back({userProfile / ".mozilla/firefox", false, "Firefox Profiles Cache", "Browser"});
+            fixedTargets.push_back({userProfile / ".config/Code/Cache", false, "VS Code Cache", "Developer"});
+            fixedTargets.push_back({userProfile / ".config/Cursor/Cache", false, "Cursor IDE Cache", "Developer"});
+
 #ifdef __APPLE__
+            // macOS Specific Caches
             fixedTargets.push_back({userProfile / "Library/Caches", false, "macOS User Caches", "System"});
             fixedTargets.push_back({userProfile / "Library/Logs", false, "macOS User Logs", "System"});
-            fixedTargets.push_back({userProfile / ".Trash", false, "macOS Trash", "System"});
+            fixedTargets.push_back({userProfile / "Library/Application Support/CrashReporter", false, "macOS Crash Dumps", "System"});
+            fixedTargets.push_back({userProfile / ".Trash", false, "macOS Trash Bin", "System"});
+            fixedTargets.push_back({userProfile / "Library/Caches/Google/Chrome", false, "macOS Chrome Cache", "Browser"});
+            fixedTargets.push_back({userProfile / "Library/Caches/Firefox", false, "macOS Firefox Cache", "Browser"});
+            fixedTargets.push_back({userProfile / "Library/Caches/com.apple.Safari", false, "macOS Safari Cache", "Browser"});
 #endif
         }
 #endif
@@ -300,18 +314,37 @@ public:
     }
 
     void EmptyWindowsRecycleBin() {
+        if (!emptyRecycleBin) return;
+
 #ifdef _WIN32
-        if (emptyRecycleBin) {
-            Logger::Instance().Info("Emptying Windows Recycle Bin via Shell API...");
-            if (!dryRun) {
-                HRESULT hr = SHEmptyRecycleBinW(NULL, NULL, SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI | SHERB_NOSOUND);
-                if (SUCCEEDED(hr)) {
-                    Logger::Instance().Info("Windows Recycle Bin cleared successfully.");
-                } else {
-                    Logger::Instance().Info("Recycle Bin was already empty or skipping.");
-                }
+        Logger::Instance().Info("Emptying Windows Recycle Bin via Shell API...");
+        if (!dryRun) {
+            HRESULT hr = SHEmptyRecycleBinW(NULL, NULL, SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI | SHERB_NOSOUND);
+            if (SUCCEEDED(hr)) {
+                Logger::Instance().Info("Windows Recycle Bin cleared successfully.");
             } else {
-                Logger::Instance().Info("[DRY-RUN] Would empty Windows Recycle Bin.");
+                Logger::Instance().Info("Recycle Bin was already empty or skipping.");
+            }
+        } else {
+            Logger::Instance().Info("[DRY-RUN] Would empty Windows Recycle Bin.");
+        }
+#else
+        fs::path userProfile = GetUserProfile();
+        std::vector<fs::path> trashPaths = {
+            userProfile / ".local/share/Trash/files",
+            userProfile / ".local/share/Trash/info"
+        };
+#ifdef __APPLE__
+        trashPaths.push_back(userProfile / ".Trash");
+#endif
+        Logger::Instance().Info("Purging POSIX Trash Bins...");
+        for (const auto& tp : trashPaths) {
+            if (fs::exists(tp)) {
+                if (!dryRun) {
+                    SmartDeleteContentsFast(tp);
+                } else {
+                    Logger::Instance().Info("[DRY-RUN] Would purge trash directory: " + tp.string());
+                }
             }
         }
 #endif
@@ -320,7 +353,7 @@ public:
     std::vector<TargetReport> Scan() {
         ProcessManager::StopLockingProcesses(killLockingProcesses);
 
-        Logger::Instance().Info("Starting Enterprise Multi-Threaded Scan (Threads: " + std::to_string(maxThreads) + ")...");
+        Logger::Instance().Info("Starting Multi-Platform Parallel Scan (Threads: " + std::to_string(maxThreads) + ")...");
         uintmax_t grandTotal = 0;
         size_t itemsCount = 0;
 
@@ -372,7 +405,7 @@ public:
         ProcessManager::StopLockingProcesses(killLockingProcesses);
 
         std::string modeHeader = dryRun ? "[DRY-RUN PREVIEW]" : (mode == CleanMode::Shred ? "[SECURE SHREDDING]" : "[EXECUTING CLEANUP]");
-        Logger::Instance().Info("Starting Enterprise Parallel Cleanup " + modeHeader + "...");
+        Logger::Instance().Info("Starting Multi-Platform Parallel Cleanup " + modeHeader + "...");
         
         std::atomic<uintmax_t> totalFreed{0};
         std::atomic<size_t> cleanedCount{0};
@@ -420,7 +453,6 @@ public:
         Logger::Instance().Info("Cleanup Completed! Cleaned " + std::to_string(cleanedCount) + " targets. " + verb + ": " + FormatSize(totalFreed));
     }
 
-    // Ultra-Fast O(N) Linear Non-Blocking Deletion Algorithm
     uintmax_t SmartDeleteContentsFast(const fs::path& dir) {
         if (IsSystemProtectedRoot(dir)) {
             Logger::Instance().Warn("SAFETY GUARD BLOCKED: Refusing to delete system root path: " + dir.string());
@@ -461,7 +493,6 @@ public:
                 if (ec) ec.clear();
             }
 
-            // Remove empty subdirectories bottom-up (reverse order)
             std::sort(dirsToRemove.begin(), dirsToRemove.end(), [](const fs::path& a, const fs::path& b) {
                 return a.string().length() > b.string().length();
             });
