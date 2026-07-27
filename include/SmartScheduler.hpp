@@ -115,6 +115,52 @@ public:
         return 0;
     }
 
+    struct DriveStat {
+        std::string driveName;
+        double usedPercent = 0.0;
+        uintmax_t freeBytes = 0;
+        uintmax_t capacityBytes = 0;
+    };
+
+    static std::vector<DriveStat> GetAllDriveStats() {
+        std::vector<DriveStat> stats;
+#ifdef _WIN32
+        DWORD drives = GetLogicalDrives();
+        for (char letter = 'A'; letter <= 'Z'; ++letter) {
+            if (drives & (1 << (letter - 'A'))) {
+                std::string drivePath = std::string(1, letter) + ":\\";
+                UINT driveType = GetDriveTypeA(drivePath.c_str());
+                if (driveType == DRIVE_FIXED || driveType == DRIVE_REMOVABLE) {
+                    std::error_code ec;
+                    fs::space_info si = fs::space(drivePath, ec);
+                    if (!ec && si.capacity > 0) {
+                        DriveStat ds;
+                        ds.driveName = drivePath;
+                        ds.capacityBytes = si.capacity;
+                        ds.freeBytes = si.available;
+                        uintmax_t used = si.capacity - si.available;
+                        ds.usedPercent = (static_cast<double>(used) / static_cast<double>(si.capacity)) * 100.0;
+                        stats.push_back(ds);
+                    }
+                }
+            }
+        }
+#else
+        std::error_code ec;
+        fs::space_info si = fs::space("/", ec);
+        if (!ec && si.capacity > 0) {
+            DriveStat ds;
+            ds.driveName = "/";
+            ds.capacityBytes = si.capacity;
+            ds.freeBytes = si.available;
+            uintmax_t used = si.capacity - si.available;
+            ds.usedPercent = (static_cast<double>(used) / static_cast<double>(si.capacity)) * 100.0;
+            stats.push_back(ds);
+        }
+#endif
+        return stats;
+    }
+
     // ----------------------------------------------------------------
     // Parse rule: "C:/Temp:15m:disk-free<500mb:C:\"
     //   field 0 = target folder to clean

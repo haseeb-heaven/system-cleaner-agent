@@ -252,18 +252,65 @@ public:
         return width;
     }
 
+    static std::string TruncateVisibleText(const std::string& str, int maxVisible) {
+        int curWidth = GetVisibleDisplayWidth(str);
+        if (curWidth <= maxVisible) return str;
+
+        std::string res;
+        int width = 0;
+        size_t i = 0;
+        while (i < str.length() && width < maxVisible - 3) {
+            if (str[i] == '\033') {
+                while (i < str.length() && str[i] != 'm') {
+                    res += str[i++];
+                }
+                if (i < str.length()) res += str[i++];
+            } else {
+                unsigned char c1 = static_cast<unsigned char>(str[i]);
+                int charWidth = 1;
+                size_t charBytes = 1;
+                if (c1 < 0x80) {
+                    charWidth = 1; charBytes = 1;
+                } else if ((c1 & 0xE0) == 0xC0) {
+                    charWidth = 1; charBytes = 2;
+                } else if ((c1 & 0xF0) == 0xE0) {
+                    if (i + 2 < str.length()) {
+                        unsigned char c2 = static_cast<unsigned char>(str[i+1]);
+                        unsigned char c3 = static_cast<unsigned char>(str[i+2]);
+                        uint32_t codepoint = ((c1 & 0x0F) << 12) | ((c2 & 0x3F) << 6) | (c3 & 0x3F);
+                        if (codepoint == 0x26AA || codepoint == 0x26AB || (codepoint >= 0x2600 && codepoint <= 0x26FF)) {
+                            charWidth = 2;
+                        }
+                    }
+                    charBytes = 3;
+                } else if ((c1 & 0xF8) == 0xF0) {
+                    charWidth = 2; charBytes = 4;
+                }
+
+                if (width + charWidth > maxVisible - 3) break;
+                for (size_t b = 0; b < charBytes && i < str.length(); ++b) {
+                    res += str[i++];
+                }
+                width += charWidth;
+            }
+        }
+        res += "...";
+        return res;
+    }
+
     static std::string DrawLine(int width, const std::string& text, bool highlight = false) {
         std::ostringstream ss;
         ss << Color::BrightCyan << "║ " << Color::Reset;
-        int visibleWidth = GetVisibleDisplayWidth(text);
+        std::string safeText = TruncateVisibleText(text, width - 7);
+        int visibleWidth = GetVisibleDisplayWidth(safeText);
         if (highlight) {
-            ss << Color::BgBlue << Color::BrightWhite << Color::Bold << " ► " << text;
+            ss << Color::BgBlue << Color::BrightWhite << Color::Bold << " ► " << safeText;
             int padding = width - visibleWidth - 7;
             int fill = (std::max)(0, padding);
             for (int i = 0; i < fill; ++i) ss << " ";
             ss << Color::Reset;
         } else {
-            ss << "   " << text;
+            ss << "   " << safeText;
             int padding = width - visibleWidth - 7;
             int fill = (std::max)(0, padding);
             for (int i = 0; i < fill; ++i) ss << " ";
@@ -296,6 +343,7 @@ class Menu {
     std::vector<std::string> options;
     int selectedIndex = 0;
     std::string statusLine;
+    std::vector<std::string> headerLines;
     SpinnerAnimation spinner;
 
 public:
@@ -303,6 +351,7 @@ public:
         : title(t), options(opts) {}
 
     void SetStatusLine(const std::string& status) { statusLine = status; }
+    void SetHeaderLines(const std::vector<std::string>& headers) { headerLines = headers; }
     int GetSelectedIndex() const { return selectedIndex; }
 
     int Show() {
@@ -312,6 +361,13 @@ public:
         while (true) {
             TerminalEngine::ClearScreen();
             std::cout << Box::DrawBorder(80, title);
+
+            if (!headerLines.empty()) {
+                for (const auto& h : headerLines) {
+                    std::cout << Box::DrawLine(80, h, false);
+                }
+                std::cout << Box::DrawDivider(80);
+            }
 
             for (size_t i = 0; i < options.size(); ++i) {
                 bool isSelected = (static_cast<int>(i) == selectedIndex);

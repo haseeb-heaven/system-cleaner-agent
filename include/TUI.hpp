@@ -13,6 +13,7 @@
 #include <atomic>
 #include <mutex>
 #include <sstream>
+#include <iomanip>
 
 #ifdef _WIN32
 #include <conio.h>
@@ -24,6 +25,7 @@ struct TUISettings {
     bool pathProtection = true;     // ON by default
     bool dryRun = false;            // OFF allows real deletion as requested!
     bool killLocks = true;          // ON by default
+    int monitorIntervalSec = 5;     // 5 seconds refresh interval
     std::string customPathsStr = "C:\\Users\\hasee\\AppData\\Local\\Temp";
 };
 
@@ -83,6 +85,62 @@ public:
 #endif
     }
 
+    static std::vector<std::string> GetLiveResourceHeaders() {
+        std::vector<std::string> headers;
+        double memPercent = SmartScheduler::GetMemoryUsagePercent();
+        std::string ramBar = OpenTUI::ProgressBar::Render(memPercent, 18);
+        headers.push_back("RAM:  " + ramBar);
+
+        auto driveStats = SmartScheduler::GetAllDriveStats();
+        for (const auto& ds : driveStats) {
+            std::string diskBar = OpenTUI::ProgressBar::Render(ds.usedPercent, 18);
+            std::ostringstream ss;
+            ss << ds.driveName << " " << diskBar << " Free: " << Cleaner::FormatSize(ds.freeBytes) << " / " << Cleaner::FormatSize(ds.capacityBytes);
+            headers.push_back(ss.str());
+        }
+        return headers;
+    }
+
+    static void ShowSystemResourceMonitor() {
+        while (true) {
+            OpenTUI::TerminalEngine::ClearScreen();
+            PrintBanner();
+            std::cout << "\033[1;36m================================================================================\033[0m\n";
+            std::cout << "\033[1;97m                 SYSTEM RESOURCE & DRIVE MONITOR (LIVE MONITOR)                \033[0m\n";
+            std::cout << "\033[1;36m================================================================================\033[0m\n\n";
+
+            double memPercent = SmartScheduler::GetMemoryUsagePercent();
+            std::cout << "  System Memory (RAM): " << OpenTUI::ProgressBar::Render(memPercent, 35) << "\n\n";
+
+            std::cout << "  Storage Drives:\n";
+            auto driveStats = SmartScheduler::GetAllDriveStats();
+            for (const auto& ds : driveStats) {
+                std::cout << "  - Drive " << ds.driveName << "  Used: " << OpenTUI::ProgressBar::Render(ds.usedPercent, 25)
+                          << "  Free: " << Cleaner::FormatSize(ds.freeBytes)
+                          << " / Total: " << Cleaner::FormatSize(ds.capacityBytes) << "\n";
+            }
+
+            std::cout << "\n\033[90mRefreshing every " << g_tuiSettings.monitorIntervalSec << "s... Press ESC or 'q' to return to dashboard...\033[0m\n";
+
+            // Sleep in 100ms intervals to allow ESC/q responsiveness
+            int checkCycles = g_tuiSettings.monitorIntervalSec * 10;
+            bool returnToMenu = false;
+            for (int i = 0; i < checkCycles; ++i) {
+#ifdef _WIN32
+                if (_kbhit()) {
+                    int c = _getch();
+                    if (c == 27 || c == 'q' || c == 'Q') {
+                        returnToMenu = true;
+                        break;
+                    }
+                }
+#endif
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            }
+            if (returnToMenu) break;
+        }
+    }
+
     static void ShowSettingsMenu(Cleaner& cleaner) {
         while (true) {
             std::vector<std::string> settingsOptions = {
@@ -90,14 +148,15 @@ public:
                 std::string("Path Protection:  [") + (g_tuiSettings.pathProtection ? "ON  - System Dir Guard" : "OFF - Disabled") + "]",
                 std::string("Dry-Run Mode:     [") + (g_tuiSettings.dryRun ? "ON  - Preview Only" : "OFF - REAL CLEAN") + "]",
                 std::string("Kill Locks:       [") + (g_tuiSettings.killLocks ? "ON" : "OFF") + "]",
+                std::string("Monitor Interval: [") + std::to_string(g_tuiSettings.monitorIntervalSec) + " seconds]",
                 std::string("Target Folders:   [") + g_tuiSettings.customPathsStr + "]",
                 "Save & Return to Dashboard"
             };
 
-            OpenTUI::Menu settingsMenu("TUI SETTINGS & SECURITY TOGGLES", settingsOptions);
+            OpenTUI::Menu settingsMenu("SETTINGS", settingsOptions);
             int sel = settingsMenu.Show();
 
-            if (sel == -1 || sel == 5) {
+            if (sel == -1 || sel == 6) {
                 cleaner.SetSandbox(g_tuiSettings.sandboxMode);
                 cleaner.SetDangerousPathProtection(g_tuiSettings.pathProtection);
                 cleaner.SetDryRun(g_tuiSettings.dryRun);
@@ -123,6 +182,11 @@ public:
                 case 2: g_tuiSettings.dryRun = !g_tuiSettings.dryRun; break;
                 case 3: g_tuiSettings.killLocks = !g_tuiSettings.killLocks; break;
                 case 4: {
+                    g_tuiSettings.monitorIntervalSec += 5;
+                    if (g_tuiSettings.monitorIntervalSec > 30) g_tuiSettings.monitorIntervalSec = 3;
+                    break;
+                }
+                case 5: {
                     OpenTUI::TerminalEngine::ClearScreen();
                     PrintBanner();
                     std::string newPath = OpenTUI::TextInput::ReadLine("Enter target PATH folders (comma-separated): ", g_tuiSettings.customPathsStr);
@@ -171,19 +235,19 @@ public:
             "Empty Recycle Bin",
             "Agent & AQL Query",
             "Daemon Monitor",
-            "Settings & Security Toggles",
-            "Export JSON Report",
-            "Engine Unit Tests",
+            "System Resource Monitor",
+            "Settings",
             "Exit Agent"
         };
 
         OpenTUI::Menu menu("SYSTEM-CLEANER-AGENT", options);
 
         while (true) {
+            menu.SetHeaderLines(GetLiveResourceHeaders());
             menu.SetStatusLine(g_tuiStatus.GetStatusLine());
             int selected = menu.Show();
 
-            if (selected == -1 || selected == 9) {
+            if (selected == -1 || selected == 8) {
                 std::cout << "\n\033[32mExiting system-cleaner-agent OpenTUI Suite. Goodbye!\033[0m\n";
                 break;
             }
@@ -258,28 +322,20 @@ public:
                 case 5: {
                     std::cout << "\033[1;36mLaunching background Smart Daemon Service...\033[0m\n";
                     bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
-                    std::thread worker([&cleaner, currentDryRun]() {
+                    int interval = g_tuiSettings.monitorIntervalSec;
+                    std::thread worker([&cleaner, currentDryRun, interval]() {
                         g_tuiStatus.SetActive("Smart Daemon (RAM > 80% / Free Disk < 500MB)");
-                        SmartScheduler::RunDaemonService(cleaner, {}, 80.0, 0.0, 15, currentDryRun, 500ULL * 1024 * 1024, "C:\\");
+                        SmartScheduler::RunDaemonService(cleaner, {}, 80.0, 0.0, interval, currentDryRun, 500ULL * 1024 * 1024, "C:\\");
                     });
                     worker.detach();
                     break;
                 }
                 case 6: {
-                    ShowSettingsMenu(cleaner);
+                    ShowSystemResourceMonitor();
                     break;
                 }
                 case 7: {
-                    cleaner.SetDryRun(true);
-                    auto reports = cleaner.Scan();
-                    std::cout << "\nReport complete. Total targets scanned: " << reports.size() << "\n";
-                    break;
-                }
-                case 8: {
-                    std::cout << "\033[1;32mRunning OpenTUI & Smart Scheduler Diagnostics...\033[0m\n";
-                    std::cout << "System RAM Usage: " << SmartScheduler::GetMemoryUsagePercent() << "%\n";
-                    std::cout << "OpenTUI Progress Bar Test: " << OpenTUI::ProgressBar::Render(SmartScheduler::GetMemoryUsagePercent()) << "\n";
-                    Logger::Instance().Info("All OpenTUI and SmartScheduler components operational.");
+                    ShowSettingsMenu(cleaner);
                     break;
                 }
             }
