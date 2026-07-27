@@ -207,18 +207,50 @@ public:
         return ss.str();
     }
 
+    static int GetVisibleDisplayWidth(const std::string& str) {
+        int width = 0;
+        size_t i = 0;
+        while (i < str.length()) {
+            if (str[i] == '\033') { // Skip ANSI escape sequences
+                while (i < str.length() && str[i] != 'm') {
+                    i++;
+                }
+                if (i < str.length()) i++; // skip 'm'
+            } else {
+                unsigned char c = static_cast<unsigned char>(str[i]);
+                if (c < 0x80) {
+                    width += 1;
+                    i += 1;
+                } else if ((c & 0xE0) == 0xC0) {
+                    width += 1;
+                    i += 2;
+                } else if ((c & 0xF0) == 0xE0) {
+                    width += 1; // 1 visual column for 3-byte UTF-8 (Braille ⠋, ⚪)
+                    i += 3;
+                } else if ((c & 0xF8) == 0xF0) {
+                    width += 1;
+                    i += 4;
+                } else {
+                    i += 1;
+                }
+            }
+        }
+        return width;
+    }
+
     static std::string DrawLine(int width, const std::string& text, bool highlight = false) {
         std::ostringstream ss;
         ss << Color::BrightCyan << "║ " << Color::Reset;
+        int visibleWidth = GetVisibleDisplayWidth(text);
         if (highlight) {
             ss << Color::BgBlue << Color::BrightWhite << Color::Bold << " ► " << text;
-            int padding = width - static_cast<int>(text.length()) - 7;
+            int padding = width - visibleWidth - 7;
             int fill = (std::max)(0, padding);
             for (int i = 0; i < fill; ++i) ss << " ";
             ss << Color::Reset;
         } else {
             ss << "   " << text;
-            int padding = width - static_cast<int>(text.length()) - 7;
+            int padding = width - visibleWidth - 7;
             int fill = (std::max)(0, padding);
             for (int i = 0; i < fill; ++i) ss << " ";
         }
