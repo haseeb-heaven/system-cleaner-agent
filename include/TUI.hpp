@@ -5,6 +5,7 @@
 #include "SmartScheduler.hpp"
 #include "AgentEngine.hpp"
 #include "AgentQueryLanguage.hpp"
+#include "ConfigManager.hpp"
 
 #include <iostream>
 #include <vector>
@@ -26,10 +27,45 @@ struct TUISettings {
     bool dryRun = false;            // OFF allows real deletion as requested!
     bool killLocks = true;          // ON by default
     int monitorIntervalSec = 5;     // 5 seconds refresh interval
+    size_t ramThresholdMB = 200;    // 200 MB high RAM process cutoff
     std::string customPathsStr = "C:\\Users\\hasee\\AppData\\Local\\Temp";
+    std::vector<std::string> customProtectedProcesses;
+
+    void SyncFromAppConfig(const AppConfig& cfg) {
+        sandboxMode = cfg.sandboxMode;
+        pathProtection = cfg.pathProtection;
+        dryRun = cfg.dryRun;
+        killLocks = cfg.killLocks;
+        monitorIntervalSec = cfg.monitorIntervalSec;
+        ramThresholdMB = cfg.ramThresholdMB;
+        customPathsStr = cfg.customPathsStr;
+        customProtectedProcesses = cfg.customProtectedProcesses;
+    }
+
+    AppConfig ToAppConfig() const {
+        AppConfig cfg;
+        cfg.sandboxMode = sandboxMode;
+        cfg.pathProtection = pathProtection;
+        cfg.dryRun = dryRun;
+        cfg.killLocks = killLocks;
+        cfg.monitorIntervalSec = monitorIntervalSec;
+        cfg.ramThresholdMB = ramThresholdMB;
+        cfg.customPathsStr = customPathsStr;
+        cfg.customProtectedProcesses = customProtectedProcesses;
+        return cfg;
+    }
 };
 
 static TUISettings g_tuiSettings;
+
+inline void SaveTUISettings() {
+    ConfigManager::Save(g_tuiSettings.ToAppConfig());
+}
+
+inline void LoadTUISettings() {
+    AppConfig cfg = ConfigManager::Load();
+    g_tuiSettings.SyncFromAppConfig(cfg);
+}
 
 // Background Task State for Non-Blocking TUI Interface
 struct TUITaskStatus {
@@ -201,6 +237,7 @@ public:
                     break;
                 }
             }
+            SaveTUISettings();
         }
     }
 
@@ -248,6 +285,8 @@ public:
     }
 
     static void RunInteractiveMenu(Cleaner& cleaner) {
+        LoadTUISettings();
+
         std::vector<std::string> options = {
             "Storage Scan",
             "Smart Deep Clean",
@@ -420,7 +459,9 @@ public:
                             std::string procName = OpenTUI::TextInput::ReadLine("Enter Process Name to Add to Protection Whitelist (e.g. myapp.exe): ", "");
                             if (!procName.empty()) {
                                 GTLIBC::GTLibc::AddCustomProtectedProcess(procName);
-                                std::cout << "\033[1;32mProcess '" << procName << "' added to protection whitelist!\033[0m\n";
+                                g_tuiSettings.customProtectedProcesses.push_back(procName);
+                                SaveTUISettings();
+                                std::cout << "\033[1;32mProcess '" << procName << "' added to protection whitelist & saved to cleaner_config.json!\033[0m\n";
                                 std::this_thread::sleep_for(std::chrono::seconds(2));
                             }
                         } else if (ramChoice == 2) {

@@ -14,6 +14,7 @@
 #include "LocalLLMBrain.hpp"
 #include "SecurityGuard.hpp"
 #include "AgentQueryLanguage.hpp"
+#include "ConfigManager.hpp"
 #include "gtlibc.hpp"
 
 #include <iostream>
@@ -702,14 +703,47 @@ void TestGTLibcSubsystem() {
     PASS("GTLibcSubsystem", 10);
 }
 
+void TestConfigManager() {
+    std::cout << "[TEST 22] ConfigManager Persistent Settings... ";
+
+    AppConfig testCfg;
+    testCfg.sandboxMode = true;
+    testCfg.pathProtection = true;
+    testCfg.dryRun = true;
+    testCfg.killLocks = false;
+    testCfg.monitorIntervalSec = 15;
+    testCfg.ramThresholdMB = 250;
+    testCfg.customPathsStr = "D:\\TempFolder";
+    testCfg.customProtectedProcesses = {"test_game.exe", "test_app.exe"};
+
+    std::string testPath = "test_cleaner_config.json";
+    bool saved = ConfigManager::Save(testCfg, testPath);
+    assert(saved == true);
+    assert(fs::exists(testPath) == true);
+
+    AppConfig loaded = ConfigManager::Load(testPath);
+    assert(loaded.sandboxMode == true);
+    assert(loaded.dryRun == true);
+    assert(loaded.killLocks == false);
+    assert(loaded.monitorIntervalSec == 15);
+    assert(loaded.ramThresholdMB == 250);
+    assert(loaded.customPathsStr == "D:\\TempFolder");
+    assert(loaded.customProtectedProcesses.size() == 2);
+    assert(loaded.customProtectedProcesses[0] == "test_game.exe");
+
+    fs::remove(testPath);
+
+    PASS("ConfigManager", 9);
+}
+
 // ===========================================================================
-// MAIN — Run all 21 test suites
+// MAIN — Run all 22 test suites
 // ===========================================================================
 int main() {
     std::cout << "\033[1;36m"
               << "=====================================================================\n"
-              << "  system-cleaner-agent v5.0 — Comprehensive Unit Test Suite          \n"
-              << "  21 Test Functions | 198+ Assertions                                \n"
+              << "  system-cleaner-agent v5.2 — Comprehensive Unit Test Suite          \n"
+              << "  22 Test Functions | 200+ Assertions                                \n"
               << "=====================================================================\n"
               << "\033[0m\n";
 
@@ -734,6 +768,7 @@ int main() {
     TestDiskFreeBelowThreshold();
     TestAgentQueryLanguage();
     TestGTLibcSubsystem();
+    TestConfigManager();
 
     std::cout << "\n\033[1;33m"
               << "---------------------------------------------------------------------\n"

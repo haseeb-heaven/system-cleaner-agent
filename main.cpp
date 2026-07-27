@@ -2,6 +2,7 @@
 #include "include/Logger.hpp"
 #include "include/ProcessManager.hpp"
 #include "include/ContentInspector.hpp"
+#include "include/ConfigManager.hpp"
 #include "include/TUI.hpp"
 #include "include/AgentEngine.hpp"
 #include "include/SmartScheduler.hpp"
@@ -195,6 +196,7 @@ int main(int argc, char* argv[]) {
     }
 
     Logger::Instance().Init("gemini-sys-cleaner.log", verbose);
+    LoadTUISettings();
 
     Cleaner cleaner;
 

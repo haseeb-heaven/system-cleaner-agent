@@ -2,6 +2,17 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.3.0] - 2026-07-27
+
+### Added / Features
+- **Persistent Configuration Engine (`include/ConfigManager.hpp`)**:
+  - Implemented `ConfigManager` to load and save persistent application settings to `cleaner_config.json`.
+  - Automatically loads and persists all TUI settings (`sandboxMode`, `pathProtection`, `dryRun`, `killLocks`, `monitorIntervalSec`, `ramThresholdMB`, `customPathsStr`, `customProtectedProcesses`).
+  - Restores custom process protection whitelist entries across application launches.
+  - Automatically saves settings whenever configured via TUI Settings or RAM Cleaner whitelist option.
+- **Unit Test Suite Expansion (`tests/test_main.cpp`)**:
+  - Added Test 22 (`TestConfigManager`) covering JSON configuration persistence and validation (22 test functions, 207 assertions, 100% pass rate).
+
 ## [5.2.0] - 2026-07-27
 
 ### Added / Features
