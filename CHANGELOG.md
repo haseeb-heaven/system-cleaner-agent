@@ -2,6 +2,31 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.5.0] - 2026-07-27
+
+### Fixed
+- **AQL Help Intercept (`include/TUI.hpp`)**:
+  - Typing `help`, `?`, or `h` in the query input box no longer launches an `AgentEngine` task with the literal string "help".
+  - Help screen is now re-shown and the user is re-prompted until a real query is entered or ESC is pressed.
+  - Added safety guard in `case 5` dispatch to skip empty or help-only queries before launching background thread.
+
+### Added / Features
+- **Boxed AQL Help Screen (`include/TUI.hpp`)**:
+  - Replaced plain-text AQL help with a rich, boxed, color-coded reference panel showing:
+    - COMMANDS section: CLEAN, SCAN, SHRED, KILL, MONITOR, PURGE with descriptions.
+    - CONDITIONS section: FREE_DISK, RAM, SIZE, AGE, EXT IN with examples.
+    - EXAMPLES section: 6 ready-to-use example queries.
+    - NATURAL LANGUAGE section: Freeform task descriptions for the ReAct agent.
+    - Footer tip: TAB autocomplete · ESC cancel · 'help' re-shows help.
+- **Task Library Live Dashboard Overhaul (`include/TUI.hpp`)**:
+  - Complete visual rewrite of `ShowTaskListView`:
+    - Boxed `╔╠╚` frame with header showing current filter label.
+    - Stats bar: `● N done  ⠋ N running  ✗ N failed  freed: X  total: N`.
+    - Animated Braille spinner (`⠋⠙⠹⠸⠼`) for running tasks — spins on each 2s refresh.
+    - Inline `█░` progress bar for tasks with percent tracking.
+    - `↓ freed` / `N files` / `N procs` inline suffixes for completed tasks.
+    - Color-coded status badges, dim category, bold task name, cyan detail columns.
+
 ## [5.4.0] - 2026-07-27
 
 ### Fixed

@@ -242,93 +242,132 @@ public:
     }
 
     static void ShowTaskListView(bool liveAutoRefresh, int statusFilter) {
+        static int spinIdx = 0;
+        static const char* spinChars[] = {"|","/","-","\\","|","/","-","\\","|","/"};
+
         auto renderOnce = [statusFilter]() {
             OpenTUI::TerminalEngine::ClearScreen();
             PrintBanner();
-            std::cout << "\033[1;36m================================================================================\033[0m" << std::endl;
+
             std::string filterLabel = "ALL TASKS";
-            if (statusFilter == (int)TaskStatus::Running)   filterLabel = "RUNNING TASKS";
+            if (statusFilter == (int)TaskStatus::Running)    filterLabel = "RUNNING TASKS";
             else if (statusFilter == (int)TaskStatus::Completed) filterLabel = "COMPLETED TASKS";
             else if (statusFilter == (int)TaskStatus::Failed)    filterLabel = "FAILED TASKS";
             else if (statusFilter == (int)TaskStatus::Cancelled) filterLabel = "CANCELLED TASKS";
-            std::cout << "\033[1;97m              TASK LIBRARY  -  " << filterLabel << "\033[0m" << std::endl;
-            std::cout << "\033[1;36m================================================================================\033[0m" << std::endl;
-            std::cout << TaskHistory::Instance().HeaderSummary() << std::endl << std::endl;
 
+            std::cout << "\033[1;36m╔══════════════════════════════════════════════════════════════════════════════════════════╗\033[0m\n";
+            std::cout << "\033[1;36m║\033[1;97m   ◈  TASK LIBRARY  ─  " << std::left << std::setw(66) << filterLabel << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m╠══════════════════════════════════════════════════════════════════════════════════════════╣\033[0m\n";
+
+            // Summary stats row
             auto tasks = TaskHistory::Instance().Snapshot();
+            int nRunning = 0, nDone = 0, nFailed = 0;
+            uintmax_t totalFreed = 0;
+            for (auto& t : tasks) {
+                if (t.status == TaskStatus::Running || t.status == TaskStatus::Queued) ++nRunning;
+                else if (t.status == TaskStatus::Completed) { ++nDone; totalFreed += t.bytesFreed; }
+                else if (t.status == TaskStatus::Failed || t.status == TaskStatus::Cancelled) ++nFailed;
+            }
+            const char* spin = spinChars[spinIdx % 10];
+            spinIdx = (spinIdx + 1) % 10;
+            std::cout << "\033[1;36m║  \033[0m";
+            std::cout << "\033[1;32m● " << nDone << " done\033[0m  ";
+            std::cout << "\033[1;33m" << spin << " " << nRunning << " running\033[0m  ";
+            std::cout << "\033[1;31m✗ " << nFailed << " failed\033[0m  ";
+            std::cout << "\033[90m│  freed: \033[1;36m" << Cleaner::FormatSize(totalFreed) << "\033[0m  ";
+            std::cout << "\033[90m│  total: " << tasks.size() << "\033[0m";
+            std::cout << "\033[1;36m\033[0m\n";
+            std::cout << "\033[1;36m╠══════════════════════════════════════════════════════════════════════════════════════════╣\033[0m\n";
+
             if (tasks.empty()) {
-                std::cout << "\033[1;33m  No tasks recorded yet.\033[0m" << std::endl;
-                std::cout << "\033[90m  Run any clean / scan / shred / AQL / agent / daemon operation to populate.\033[0m" << std::endl << std::endl;
+                std::cout << "\033[1;36m║\033[0m\n";
+                std::cout << "\033[1;36m║  \033[1;33m⚠  No tasks recorded yet.\033[0m\n";
+                std::cout << "\033[1;36m║  \033[90m   Run any clean / scan / shred / AQL / agent / daemon operation to populate.\033[0m\n";
+                std::cout << "\033[1;36m║\033[0m\n";
+                std::cout << "\033[1;36m╚══════════════════════════════════════════════════════════════════════════════════════════╝\033[0m\n";
                 return;
             }
             std::reverse(tasks.begin(), tasks.end());
 
-            std::cout << "\033[1;37m"
-                      << std::left
-                      << std::setw(6)  << "ID"
-                      << std::setw(11) << "STATUS"
-                      << std::setw(10) << "CATEGORY"
-                      << std::setw(11) << "TIME"
-                      << std::setw(9)  << "DUR"
-                      << std::setw(26) << "NAME"
-                      << std::setw(40) << "DETAIL / RESULT"
-                      << "\033[0m" << std::endl;
-            std::cout << "\033[90m" << std::string(113, '-') << "\033[0m" << std::endl;
+            // Header row
+            std::cout << "\033[1;37m  ";
+            std::cout << std::left << std::setw(5)  << "ID";
+            std::cout << std::setw(11) << "STATUS";
+            std::cout << std::setw(9)  << "CAT";
+            std::cout << std::setw(11) << "TIME";
+            std::cout << std::setw(8)  << "DUR";
+            std::cout << std::setw(25) << "NAME";
+            std::cout << std::setw(30) << "DETAIL / RESULT";
+            std::cout << "PROGRESS\033[0m\n";
+            std::cout << "\033[90m  " << std::string(95, '-') << "\033[0m\n";
 
             size_t shown = 0;
             for (auto& t : tasks) {
                 if (statusFilter >= 0 && (int)t.status != statusFilter) continue;
 
-                auto now    = std::chrono::system_clock::now();
-                auto elapsed= std::chrono::duration_cast<std::chrono::milliseconds>(now - t.startedAt);
-                bool isLive = (t.status == TaskStatus::Running || t.status == TaskStatus::Queued);
+                auto now     = std::chrono::system_clock::now();
+                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - t.startedAt);
+                bool isLive  = (t.status == TaskStatus::Running || t.status == TaskStatus::Queued);
 
                 std::string timeStr = TaskHistoryNS::FormatTimestamp(isLive ? t.startedAt : t.finishedAt);
                 std::string durStr  = TaskHistoryNS::FormatDuration(elapsed);
 
                 std::string name = t.name;
-                if (name.size() > 24) name = name.substr(0, 21) + "...";
+                if (name.size() > 23) name = name.substr(0, 20) + "...";
 
                 std::string detail = isLive
                     ? (t.progressMsg.empty() ? TaskHistoryNS::StatusLabel(t.status) : t.progressMsg)
                     : (t.resultSummary.empty() ? TaskHistoryNS::StatusLabel(t.status) : t.resultSummary);
-                if (detail.size() > 38) detail = detail.substr(0, 35) + "...";
+                if (detail.size() > 28) detail = detail.substr(0, 25) + "...";
 
-                std::cout << "\033[90m"
-                          << "[" << std::setw(3) << std::setfill('0') << t.id << "]\033[0m "
-                          << TaskHistoryNS::StatusColor(t.status) << std::left
-                          << std::setw(10) << TaskHistoryNS::StatusLabel(t.status) << std::right
-                          << "\033[0m "
-                          << std::left
-                          << std::setw(10) << t.category << std::right
-                          << " "
-                          << "\033[1;33m" << std::left << std::setw(10) << timeStr << std::right << "\033[0m "
-                          << "\033[90m" << std::left << std::setw(8)  << durStr << std::right << "\033[0m "
-                          << "\033[1;97m" << std::left << std::setw(25) << name << std::right << "\033[0m "
-                          << "\033[1;36m" << std::left << std::setw(38) << detail << std::right << "\033[0m";
+                // Row prefix with live spinner for running tasks
+                std::cout << "  ";
+                std::cout << "\033[90m[" << std::setfill('0') << std::setw(3) << t.id << "]\033[0m ";
+                std::setfill(' ');
 
+                // Status badge
+                std::string statusBadge;
+                if (isLive) {
+                    const char* sp = spinChars[(spinIdx + t.id) % 10];
+                    statusBadge = std::string("\033[1;33m") + sp + " RUNNING  \033[0m";
+                } else {
+                    std::string lbl = TaskHistoryNS::StatusLabel(t.status);
+                    // Pad label to 10 chars
+                    while (lbl.size() < 10) lbl += ' ';
+                    statusBadge = std::string(TaskHistoryNS::StatusColor(t.status)) + lbl + "\033[0m";
+                }
+                std::cout << statusBadge << " ";
+
+                std::cout << "\033[90m" << std::left << std::setw(8) << t.category << "\033[0m ";
+                std::cout << "\033[1;33m" << std::setw(10) << timeStr << "\033[0m ";
+                std::cout << "\033[90m" << std::setw(7) << durStr << "\033[0m ";
+                std::cout << "\033[1;97m" << std::setw(24) << name << "\033[0m ";
+                std::cout << "\033[1;36m" << std::setw(29) << detail << "\033[0m";
+
+                // Inline progress bar for running, freed amount for done
                 if (isLive && t.percent > 0.0 && t.percent < 100.0) {
-                    int barWidth = 14;
-                    int filled = static_cast<int>((t.percent / 100.0) * barWidth);
-                    std::cout << "  \033[1;32m";
-                    for (int i = 0; i < filled; ++i) std::cout << "#";
+                    int barW = 10;
+                    int filled = static_cast<int>((t.percent / 100.0) * barW);
+                    std::cout << " \033[1;32m";
+                    for (int i = 0; i < filled; ++i) std::cout << "█";
                     std::cout << "\033[90m";
-                    for (int i = filled; i < barWidth; ++i) std::cout << "-";
+                    for (int i = filled; i < barW; ++i) std::cout << "░";
                     std::cout << "\033[0m \033[1;33m" << static_cast<int>(t.percent) << "%\033[0m";
                 } else if (t.bytesFreed > 0) {
-                    std::cout << "  \033[1;32mfreed " << Cleaner::FormatSize(t.bytesFreed) << "\033[0m";
+                    std::cout << " \033[1;32m↓ " << Cleaner::FormatSize(t.bytesFreed) << "\033[0m";
                 } else if (t.filesProcessed > 0) {
-                    std::cout << "  \033[1;36m" << t.filesProcessed << " files\033[0m";
+                    std::cout << " \033[1;36m" << t.filesProcessed << " files\033[0m";
                 } else if (t.processesHandled > 0) {
-                    std::cout << "  \033[1;36m" << t.processesHandled << " procs\033[0m";
+                    std::cout << " \033[1;36m" << t.processesHandled << " procs\033[0m";
                 }
-                std::cout << std::endl;
+                std::cout << std::right << "\n";
                 ++shown;
             }
+
             if (shown == 0) {
-                std::cout << "\033[1;33m  (no tasks match this filter)\033[0m" << std::endl;
+                std::cout << "\033[1;36m║  \033[1;33m(no tasks match this filter)\033[0m\n";
             }
-            std::cout << std::endl;
+            std::cout << "\033[1;36m╚══════════════════════════════════════════════════════════════════════════════════════════╝\033[0m\n";
         };
 
         if (liveAutoRefresh) {
@@ -454,36 +493,69 @@ public:
             "SCAN 'C:\\' WHERE AGE > 24H"
         };
 
-        if (choice <= 0) {
+        auto showHelp = []() {
             OpenTUI::TerminalEngine::ClearScreen();
             PrintBanner();
-            std::cout << "\033[1;36m=== Agent Query Language (AQL) Help ===\033[0m" << std::endl;
-            std::cout << "\033[90m" << std::endl;
-            std::cout << "  COMMANDS:" << std::endl;
-            std::cout << "    CLEAN  <path> WHERE <condition>     Clean files in path matching condition" << std::endl;
-            std::cout << "    SCAN   <path> WHERE <condition>     Preview cleanable items" << std::endl;
-            std::cout << "    SHRED  <path> WHERE <condition>     Secure-wipe with zero-overwrite before delete" << std::endl;
-            std::cout << "    KILL   PROCESS WHERE <condition>    Terminate processes matching condition" << std::endl;
-            std::cout << "    MONITOR <condition> EVERY <dur>     Watch thresholds & auto-clean" << std::endl;
-            std::cout << "    PURGE  RECYCLE_BIN                  Empty OS Recycle Bin / Trash" << std::endl;
-            std::cout << std::endl;
-            std::cout << "  CONDITIONS:" << std::endl;
-            std::cout << "    FREE_DISK < 500MB | 2GB              Free space below threshold" << std::endl;
-            std::cout << "    RAM > 80%                            Memory usage percentage" << std::endl;
-            std::cout << "    SIZE > 10MB | 1GB                    Minimum file size" << std::endl;
-            std::cout << "    AGE  > 24H | 7D | 30D                File age threshold" << std::endl;
-            std::cout << "    EXT IN ('.log', '.tmp')              Match extension list" << std::endl;
-            std::cout << std::endl;
-            std::cout << "  EXAMPLES:" << std::endl;
-            std::cout << "    CLEAN  'D:/Temp' WHERE FREE_DISK < 1GB" << std::endl;
-            std::cout << "    SCAN   'C:/Windows/Temp' WHERE AGE > 1H" << std::endl;
-            std::cout << "    SHRED  'D:/Temp' WHERE SIZE > 10MB" << std::endl;
-            std::cout << "    KILL   PROCESS WHERE RAM > 200MB" << std::endl;
-            std::cout << "    MONITOR WHERE RAM > 80% EVERY 15S" << std::endl;
-            std::cout << "    PURGE  RECYCLE_BIN" << std::endl;
-            std::cout << "\033[0m" << std::endl;
-            std::cout << "\033[90m(Type your query - TAB auto-completes, ESC keeps default, ENTER to run)\033[0m" << std::endl << std::endl;
-            return OpenTUI::TextInput::ReadLine("Query: ", "CLEAN 'C:/Users/hasee/AppData/Local/Temp' WHERE FREE_DISK < 500MB", suggestions);
+            std::cout << "\033[1;36m╔══════════════════════════════════════════════════════════════════════════════╗\033[0m\n";
+            std::cout << "\033[1;36m║\033[1;97m          AGENT QUERY LANGUAGE (AQL)  —  Command Reference                  \033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m╠══════════════════════════════════════════════════════════════════════════════╣\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m║\033[1;33m  COMMANDS\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;32mCLEAN\033[0m   <path> WHERE <condition>   \033[90mDelete matching cache/temp files\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;32mSCAN\033[0m    <path> WHERE <condition>   \033[90mDry-run preview of cleanable items\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;32mSHRED\033[0m   <path> WHERE <condition>   \033[90mSecure zero-overwrite wipe before delete\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;32mKILL\033[0m    PROCESS WHERE <condition>  \033[90mTerminate high-RAM / matching processes\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;32mMONITOR\033[0m <condition> EVERY <dur>    \033[90mWatch thresholds & auto-clean on trigger\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;32mPURGE\033[0m   RECYCLE_BIN                \033[90mEmpty OS Recycle Bin / Linux Trash\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m╠══════════════════════════════════════════════════════════════════════════════╣\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m║\033[1;33m  CONDITIONS\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;35mFREE_DISK < 500MB\033[0m | \033[1;35m2GB\033[0m       \033[90mTrigger when free disk space below threshold\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;35mRAM > 80%\033[0m | \033[1;35mRAM > 200MB\033[0m      \033[90mTrigger when RAM usage exceeds threshold\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;35mSIZE > 10MB\033[0m | \033[1;35m1GB\033[0m            \033[90mOnly match files larger than given size\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;35mAGE > 24H\033[0m | \033[1;35m7D\033[0m | \033[1;35m30D\033[0m         \033[90mOnly match files older than given age\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;35mEXT IN ('.log','.tmp')\033[0m         \033[90mFilter by file extension list\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m╠══════════════════════════════════════════════════════════════════════════════╣\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m║\033[1;33m  EXAMPLES\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;97mCLEAN 'C:/Users/hasee/AppData/Local/Temp' WHERE FREE_DISK < 1GB\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;97mSCAN 'C:/Windows/Temp' WHERE AGE > 1H\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;97mSHRED 'D:/Temp' WHERE SIZE > 10MB\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;97mKILL PROCESS WHERE RAM > 200MB\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;97mMONITOR WHERE RAM > 80% EVERY 15S\033[0m\n";
+            std::cout << "\033[1;36m║  \033[1;97mPURGE RECYCLE_BIN\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m╠══════════════════════════════════════════════════════════════════════════════╣\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m║\033[1;33m  NATURAL LANGUAGE TASKS (ReAct Agent)\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m║  \033[90m\"Clean temp files older than 7 days\"\033[0m\n";
+            std::cout << "\033[1;36m║  \033[90m\"Kill all processes using more than 300MB of RAM\"\033[0m\n";
+            std::cout << "\033[1;36m║  \033[90m\"Free up disk space on C: drive\"\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m╠══════════════════════════════════════════════════════════════════════════════╣\033[0m\n";
+            std::cout << "\033[1;36m║  \033[90mTIP: TAB auto-completes · ESC cancels · Enter runs · 'help' shows this\033[0m\n";
+            std::cout << "\033[1;36m╚══════════════════════════════════════════════════════════════════════════════╝\033[0m\n\n";
+        };
+
+        if (choice <= 0) {
+            // Custom query input loop — intercept 'help'/'?' before launching
+            while (true) {
+                showHelp();
+                std::string q = OpenTUI::TextInput::ReadLine("Query: ", "CLEAN 'C:/Users/hasee/AppData/Local/Temp' WHERE FREE_DISK < 500MB", suggestions);
+                std::string qLower = q;
+                std::transform(qLower.begin(), qLower.end(), qLower.begin(), ::tolower);
+                if (qLower == "help" || qLower == "?" || qLower == "h") {
+                    // Re-show help on next iteration
+                    continue;
+                }
+                return q;
+            }
         }
 
         static const std::vector<std::string> preMadeQueries = {
@@ -714,6 +786,12 @@ public:
                 }
                 case 5: {
                     std::string selectedQuery = SelectAgentQuery();
+                    // Guard: skip if empty or the user just typed 'help'
+                    if (selectedQuery.empty()) break;
+                    std::string sqLower = selectedQuery;
+                    std::transform(sqLower.begin(), sqLower.end(), sqLower.begin(), ::tolower);
+                    if (sqLower == "help" || sqLower == "?" || sqLower == "h") break;
+
                     std::cout << "\033[1;33mLaunching background Agent Task: " << selectedQuery << "\033[0m\n";
                     {
                         uint64_t tid = TaskHistory::Instance().Register("AGENT", "Agent: " + selectedQuery, selectedQuery, "OpenTUI Menu");
