@@ -54,6 +54,7 @@ public:
     static bool IsProcessRunning(const std::string& processName);
     static std::vector<ProcessInfo> EnumerateAllProcesses();
     static bool IsProtectedProcess(const std::string& processName);
+    static bool IsOSCoreProcess(const std::string& processName);
     static void AddCustomProtectedProcess(const std::string& processName);
     static std::vector<ProcessInfo> GetHighMemoryCandidateProcesses(size_t minRamBytes);
     static std::vector<AggregatedProcessGroup> GetAggregatedProcessGroups(size_t minGroupRamBytes = 5ULL * 1024 * 1024);

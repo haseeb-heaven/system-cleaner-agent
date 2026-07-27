@@ -78,6 +78,21 @@ public:
                 "EVALUATE_DISK_FREE_THRESHOLD()",
                 "EXECUTE_TARGETED_CLEANUP()"
             };
+        } else if (lowerGoal.find("kill") != std::string::npos ||
+                   lowerGoal.find("proc") != std::string::npos ||
+                   lowerGoal.find("process") != std::string::npos ||
+                   lowerGoal.find("chrome") != std::string::npos) {
+            result.intent = "PROCESS_KILL_ACTION";
+            result.thoughts = {
+                "User requested process termination action for target application/process...",
+                "Querying active process table via GTLibc Subsystem and auditing process protection status...",
+                "Executing targeted process termination with explicit user authorization and releasing allocated RAM..."
+            };
+            result.actions = {
+                "INSPECT_SYSTEM_RESOURCES()",
+                "AUDIT_TARGET_PROCESS_SECURITY()",
+                "KILL_TARGET_PROCESSES(permission=granted)"
+            };
         } else if (lowerGoal.find("mem") != std::string::npos ||
                    lowerGoal.find("ram") != std::string::npos ||
                    lowerGoal.find("threshold") != std::string::npos) {

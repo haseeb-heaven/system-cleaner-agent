@@ -274,13 +274,32 @@ std::vector<AggregatedProcessGroup> GTLibc::GetAggregatedProcessGroups(size_t mi
     return groups;
 }
 
+bool GTLibc::IsOSCoreProcess(const std::string& processName) {
+    std::string procLower = processName;
+    std::transform(procLower.begin(), procLower.end(), procLower.begin(), ::tolower);
+    if (procLower.length() >= 4 && procLower.substr(procLower.length() - 4) == ".exe") {
+        procLower = procLower.substr(0, procLower.length() - 4);
+    }
+    static const std::set<std::string> osCoreSet = {
+        "csrss", "lsass", "explorer", "svchost", "system", "smss", "services",
+        "winlogon", "system-cleaner-agent", "agy", "antigravity", "dwm", "taskhostw",
+        "sihost", "ctfmon", "fontdrvhost", "runtimebroker", "spoolsv", "taskmgr", "audiodg",
+        "smartscreen", "registry"
+    };
+    return osCoreSet.count(procLower) > 0;
+}
+
 size_t GTLibc::KillProcessByName(const std::string& processName, bool enablePermission, bool userPermissionGranted) {
     if (!enablePermission) {
         Logger::Instance().Warn("RAM Cleaner: Killing process by name '" + processName + "' skipped (Permission disabled).");
         return 0;
     }
+    if (IsOSCoreProcess(processName)) {
+        Logger::Instance().Warn("SAFETY GUARD: Cannot kill OS core system service: " + processName);
+        return 0;
+    }
     if (IsProtectedProcess(processName) && !userPermissionGranted) {
-        Logger::Instance().Info("RAM Cleaner: Cannot kill protected process without explicit user permission: " + processName);
+        Logger::Instance().Info("RAM Cleaner: Cannot kill protected application without explicit user permission: " + processName);
         return 0;
     }
 

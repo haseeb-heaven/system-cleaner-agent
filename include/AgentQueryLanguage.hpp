@@ -267,27 +267,43 @@ public:
             cleaner.SetEmptyRecycleBin(true);
             cleaner.EmptyWindowsRecycleBin();
         } else if (q.command == "KILL") {
-            uintmax_t ramCutoff = 0;
-            if (q.ramThresholdPercent > 0) {
-                uintmax_t totalRam = SmartScheduler::GetTotalMemoryBytes();
-                ramCutoff = static_cast<uintmax_t>((q.ramThresholdPercent / 100.0) * totalRam);
-                std::cout << "\033[1;32m[AQL] Evaluating RAM % threshold: " << static_cast<int>(q.ramThresholdPercent)
-                          << "% of " << Cleaner::FormatSize(totalRam) << " = " << Cleaner::FormatSize(ramCutoff) << "\033[0m\n";
-            } else if (q.minSizeBytes > 0) {
-                ramCutoff = q.minSizeBytes;
+            if (!q.targetPaths.empty()) {
+                for (const auto& tp : q.targetPaths) {
+                    std::string targetProc = tp.string();
+                    std::cout << "\033[1;36m[AQL PROCESS KILL] Terminating target process: " << targetProc << "...\033[0m\n";
+                    size_t kCount = GTLIBC::GTLibc::KillProcessByName(targetProc, !dryRun, true);
+                    if (kCount > 0) {
+                        std::cout << "\033[1;32m[AQL SUCCESS] Terminated " << kCount << " instance(s) of " << targetProc << "\033[0m\n";
+                        TaskHistory::Instance().MarkCompleted(taskId, "Terminated " + std::to_string(kCount) + " instance(s) of " + targetProc, 0, 0, 0, kCount);
+                    } else {
+                        std::cout << "\033[1;33m[AQL NOTICE] No running processes matched target: " << targetProc << "\033[0m\n";
+                        TaskHistory::Instance().MarkCompleted(taskId, "No active processes matched " + targetProc, 0, 0, 0, 0);
+                    }
+                }
+                return;
             } else {
-                ramCutoff = 200ULL * 1024 * 1024;
-            }
+                uintmax_t ramCutoff = 0;
+                if (q.ramThresholdPercent > 0) {
+                    uintmax_t totalRam = SmartScheduler::GetTotalMemoryBytes();
+                    ramCutoff = static_cast<uintmax_t>((q.ramThresholdPercent / 100.0) * totalRam);
+                    std::cout << "\033[1;32m[AQL] Evaluating RAM % threshold: " << static_cast<int>(q.ramThresholdPercent)
+                              << "% of " << Cleaner::FormatSize(totalRam) << " = " << Cleaner::FormatSize(ramCutoff) << "\033[0m\n";
+                } else if (q.minSizeBytes > 0) {
+                    ramCutoff = q.minSizeBytes;
+                } else {
+                    ramCutoff = 200ULL * 1024 * 1024;
+                }
 
-            auto candidates = ProcessManager::GetHighMemoryCandidates(ramCutoff);
-            std::cout << "\033[1;36m[AQL PROCESS SCAN] Found " << candidates.size() << " process(es) matching RAM threshold.\033[0m\n";
-            for (const auto& proc : candidates) {
-                std::string statusStr = proc.isProtected ? "\033[1;32m[PROTECTED APP - PRESERVED]\033[0m" : "\033[1;33m[PERMISSION REQUIRED]\033[0m";
-                std::cout << "  - " << proc.processName << " (PID: " << proc.pid << ", RAM: " << Cleaner::FormatSize(proc.memoryUsageBytes) << ") -> " << statusStr << "\n";
-            }
+                auto candidates = ProcessManager::GetHighMemoryCandidates(ramCutoff);
+                std::cout << "\033[1;36m[AQL PROCESS SCAN] Found " << candidates.size() << " process(es) matching RAM threshold.\033[0m\n";
+                for (const auto& proc : candidates) {
+                    std::string statusStr = proc.isProtected ? "\033[1;32m[PROTECTED APP - PRESERVED]\033[0m" : "\033[1;33m[PERMISSION REQUIRED]\033[0m";
+                    std::cout << "  - " << proc.processName << " (PID: " << proc.pid << ", RAM: " << Cleaner::FormatSize(proc.memoryUsageBytes) << ") -> " << statusStr << "\n";
+                }
 
-            bool allowKill = false; // Require explicit permission / interactive selection
-            ProcessManager::KillHighMemoryProcesses(ramCutoff, !dryRun, allowKill);
+                bool allowKill = false; // Require explicit permission / interactive selection
+                ProcessManager::KillHighMemoryProcesses(ramCutoff, !dryRun, allowKill);
+            }
         } else if (q.command == "MONITOR") {
             SmartScheduler::RunDaemonService(cleaner, {}, q.ramThresholdPercent, q.diskThresholdPercent, q.intervalSeconds, dryRun, q.diskFreeBelowBytes, q.drive);
         }
