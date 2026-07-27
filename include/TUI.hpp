@@ -3,6 +3,7 @@
 #include "Logger.hpp"
 #include "OpenTUI.hpp"
 #include "SmartScheduler.hpp"
+#include "AgentEngine.hpp"
 
 #include <iostream>
 #include <vector>
@@ -20,6 +21,42 @@ public:
                   << "  \\____/  \\_/\\____/  \\_/ \\____/\\_|  |_/ \\____/\\____/\\____\\_| |_/\\_| \\_/\\____/\\____/\\_| \\_/ \\_/  \n"
                   << "\033[0m"
                   << "\033[1;32m   [ system-cleaner-agent v5.0 - 100% Pure C++17 OpenTUI Suite ]\033[0m\n\n";
+    }
+
+    static std::string SelectAgentQuery() {
+        std::vector<std::string> queryMenuOptions = {
+            "[Custom Query] Enter your own custom natural language goal",
+            "Clean C: drive temp & cache if free disk space < 500 MB",
+            "Monitor RAM usage and auto-clean if memory > 80%",
+            "Execute Secure Shred Cleanup (Zero-Overwrite Wipe)",
+            "Purge Windows Recycle Bin / OS Trash Bin",
+            "Perform full multi-threaded system storage optimization"
+        };
+
+        OpenTUI::Menu agentMenu("CLEANER AGENT - SELECT PRE-MADE QUERY OR TYPE CUSTOM GOAL", queryMenuOptions);
+        int choice = agentMenu.Show();
+
+        if (choice <= 0) {
+            OpenTUI::TerminalEngine::ClearScreen();
+            PrintBanner();
+            std::cout << "\033[1;36mCleaner Agent > Enter your custom query:\033[0m ";
+            std::string userQuery;
+            std::getline(std::cin, userQuery);
+            if (userQuery.empty()) {
+                userQuery = "Perform autonomous system storage optimization";
+            }
+            return userQuery;
+        }
+
+        static const std::vector<std::string> preMadeQueries = {
+            "Clean C: drive temp & cache if free disk space < 500 MB",
+            "Monitor RAM usage and auto-clean if memory > 80%",
+            "Execute Secure Shred Cleanup on temp directory (Zero-Overwrite Wipe)",
+            "Purge Windows Recycle Bin / OS Trash Bin",
+            "Perform full multi-threaded system storage optimization"
+        };
+
+        return preMadeQueries[choice - 1];
     }
 
     static void RunInteractiveMenu(Cleaner& cleaner) {
@@ -87,9 +124,12 @@ public:
                     break;
                 }
                 case 4: {
-                    std::cout << "Starting ReAct Autonomous Agent Loop...\n";
-                    cleaner.SetDryRun(true);
-                    cleaner.Scan();
+                    std::string selectedQuery = SelectAgentQuery();
+                    OpenTUI::TerminalEngine::ClearScreen();
+                    PrintBanner();
+                    std::cout << "\033[1;33mExecuting Agent Goal: " << selectedQuery << "\033[0m\n\n";
+                    AgentEngine agent(selectedQuery);
+                    agent.RunReActLoop(true);
                     break;
                 }
                 case 5: {

@@ -61,6 +61,23 @@ public:
                 "INSPECT_RECYCLE_BIN_USAGE()",
                 "EMPTY_OS_RECYCLE_BIN()"
             };
+        } else if (lowerGoal.find("disk") != std::string::npos ||
+                   lowerGoal.find("free") != std::string::npos ||
+                   lowerGoal.find("less than") != std::string::npos ||
+                   lowerGoal.find("below") != std::string::npos ||
+                   lowerGoal.find("space") != std::string::npos ||
+                   lowerGoal.find("500") != std::string::npos) {
+            result.intent = "DISK_FREE_THRESHOLD_MONITOR";
+            result.thoughts = {
+                "User goal specifies drive free space threshold rule (e.g. clean cache if free space < 500 MB)...",
+                "Querying OS filesystem storage status structures for drive capacity and available free bytes...",
+                "Evaluating current free space against requested trigger threshold and preparing targeted cleanup..."
+            };
+            result.actions = {
+                "INSPECT_SYSTEM_RESOURCES()",
+                "EVALUATE_DISK_FREE_THRESHOLD()",
+                "EXECUTE_TARGETED_CLEANUP()"
+            };
         } else if (lowerGoal.find("mem") != std::string::npos ||
                    lowerGoal.find("ram") != std::string::npos ||
                    lowerGoal.find("threshold") != std::string::npos) {

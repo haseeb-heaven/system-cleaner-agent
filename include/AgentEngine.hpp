@@ -34,6 +34,7 @@ class AgentEngine {
     std::vector<ReActStep> trajectory;
     double memThreshold = 0.0;
     double diskThreshold = 0.0;
+    uintmax_t diskFreeBelowBytes = 0;
     bool verbose = true;
     bool streamTokenOutput = true;
 
@@ -75,6 +76,14 @@ class AgentEngine {
     void ParseGoalForTargetPaths() {
         std::stringstream ss(userGoal);
         std::string token;
+        std::string lowerGoal = userGoal;
+        std::transform(lowerGoal.begin(), lowerGoal.end(), lowerGoal.begin(), ::tolower);
+
+        // Check natural language for disk free threshold (e.g. 500 MB, less than 500 MB, < 500 MB)
+        if (lowerGoal.find("500") != std::string::npos || lowerGoal.find("less than") != std::string::npos || lowerGoal.find("free") != std::string::npos) {
+            diskFreeBelowBytes = ContentInspector::ParseSizeToBytes("500mb");
+        }
+
         while (ss >> token) {
             while (!token.empty() && (token.back() == '.' || token.back() == ',' || token.back() == '"' || token.back() == '\'' || token.back() == ')')) {
                 token.pop_back();
@@ -94,6 +103,10 @@ class AgentEngine {
                 std::string val = token.substr(pos + 1);
                 if (val.back() == '%') val.pop_back();
                 try { memThreshold = std::stod(val); } catch (...) {}
+            } else if (token.find("disk-free<") != std::string::npos || token.find("free<") != std::string::npos) {
+                size_t pos = token.find('<');
+                std::string val = token.substr(pos + 1);
+                diskFreeBelowBytes = ContentInspector::ParseSizeToBytes(val);
             }
         }
     }
@@ -109,6 +122,7 @@ public:
     void SetCustomTargetPaths(const std::vector<fs::path>& paths) { targetCustomPaths = paths; }
     void SetMemThreshold(double t) { memThreshold = t; }
     void SetDiskThreshold(double t) { diskThreshold = t; }
+    void SetDiskFreeBelowBytes(uintmax_t bytes) { diskFreeBelowBytes = bytes; }
 
     const std::vector<ReActStep>& GetTrajectory() const { return trajectory; }
 
@@ -135,12 +149,20 @@ public:
 
         GeneratedThought llmBrain = LocalLLMBrain::ReasonOnGoal(userGoal);
 
-        // STEP 0: System Resource & Memory Threshold Inspection
+        // STEP 0: System Resource, RAM & Disk Free Threshold Inspection
         double curMem = SmartScheduler::GetMemoryUsagePercent();
         double curDisk = SmartScheduler::GetDiskUsagePercent();
-        AddStep(AgentStepType::Thought, "Evaluating system memory (RAM: " + std::to_string(curMem) + "%) and disk storage (" + std::to_string(curDisk) + "%)...");
+        uintmax_t curFree = SmartScheduler::GetDiskFreeBytes("C:\\");
+
+        AddStep(AgentStepType::Thought, "Evaluating system memory (RAM: " + std::to_string(curMem) + "%), disk used (" + std::to_string(curDisk) + "%), and free space (C:\\ free: " + Cleaner::FormatSize(curFree) + ")...");
         AddStep(AgentStepType::Action, "INSPECT_SYSTEM_RESOURCES()");
-        AddStep(AgentStepType::Observation, "System metrics observed: Memory=" + std::to_string(curMem) + "%, Disk=" + std::to_string(curDisk) + "%");
+        AddStep(AgentStepType::Observation, "System metrics observed: Memory=" + std::to_string(curMem) + "%, DiskUsed=" + std::to_string(curDisk) + "%, DiskFree(C:\\)=" + Cleaner::FormatSize(curFree));
+
+        if (diskFreeBelowBytes > 0 && curFree <= diskFreeBelowBytes) {
+            AddStep(AgentStepType::Thought, "Drive C:\\ available free space (" + Cleaner::FormatSize(curFree) + ") is below trigger threshold (" + Cleaner::FormatSize(diskFreeBelowBytes) + "). Triggering immediate storage cleanup...");
+            AddStep(AgentStepType::Action, "TRIGGER_FREE_SPACE_CLEANUP(threshold=" + Cleaner::FormatSize(diskFreeBelowBytes) + ")");
+            AddStep(AgentStepType::Observation, "Disk free space trigger matched! Preparing targeted cache cleanup...");
+        }
 
         // STEP 1: Reason about system state & target paths
         std::string targetDesc = targetCustomPaths.empty() ? "system target drives and cache locations" : "specified target path(s)";

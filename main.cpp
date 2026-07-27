@@ -86,18 +86,23 @@ std::vector<std::string> SplitString(const std::string& str, char delim) {
 
 void RunInteractiveChatShell() {
     PrintHeader();
-    std::cout << "\033[1;36m[Local LLM ReAct Prompt Shell Active - Type your instructions or 'exit']\033[0m\n\n";
+    std::cout << "\033[1;36m[Cleaner Agent Prompt Shell Active - Enter query, type 'menu' for pre-made queries, or 'exit']\033[0m\n\n";
 
     while (true) {
-        std::cout << "\033[1;33muser> \033[0m";
+        std::cout << "\033[1;33mCleaner Agent > \033[0m";
         std::string input;
-        if (!std::getline(std::cin, input) || input.empty()) continue;
+        if (!std::getline(std::cin, input)) break;
 
         std::string lowerInput = input;
         std::transform(lowerInput.begin(), lowerInput.end(), lowerInput.begin(), ::tolower);
         if (lowerInput == "exit" || lowerInput == "quit" || lowerInput == "q") {
-            std::cout << "\033[32mExiting Local LLM Prompt Shell. Goodbye!\033[0m\n";
+            std::cout << "\033[32mExiting Cleaner Agent Shell. Goodbye!\033[0m\n";
             break;
+        }
+
+        if (lowerInput == "menu" || lowerInput == "queries" || lowerInput == "select" || input.empty()) {
+            input = TUI::SelectAgentQuery();
+            std::cout << "\033[1;33mExecuting Selected Goal: " << input << "\033[0m\n\n";
         }
 
         AgentEngine agent(input);
