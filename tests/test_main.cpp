@@ -936,8 +936,8 @@ int main() {
                   << "  " << g_failedTests << " / " << g_totalTests
                   << " TEST SUITES FAILED\n"
                   << "\033[0m";
-        std::exit(1);
+        return 1;
     }
 
-    std::exit(0);
+    return 0;
 }

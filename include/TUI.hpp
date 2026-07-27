@@ -416,7 +416,7 @@ public:
                 } else if (c == 'r') {
                     TaskHistory::Instance().ResumeTask(targetId);
                 } else if (c == 'd') {
-                    TaskInfo detailsTask;
+                    TaskEntry detailsTask;
                     if (TaskHistory::Instance().GetTask(targetId, detailsTask)) {
                         std::string resInfo = detailsTask.resultSummary.empty() ? detailsTask.progressMsg : detailsTask.resultSummary;
                         g_tuiStatus.SetActive("Task #" + std::to_string(targetId) + " (" + detailsTask.name + "): " + resInfo);
@@ -736,12 +736,9 @@ public:
                 TaskHistory::Instance().MarkRunning(tid);
                 g_tuiStatus.SetActive(currentDryRun ? "Smart Deep Clean (DRY-RUN)" : "Smart Deep Clean (REAL DELETE)");
                 cleaner.SetDryRun(currentDryRun);
-                auto reports = cleaner.Clean();
-                uintmax_t freed = 0;
-                size_t files = 0;
-                for (const auto& r : reports) { freed += r.sizeBytes; files += r.deletedFiles; }
-                g_tuiStatus.SetCompleted("Clean finished. Freed: " + Cleaner::FormatSize(freed));
-                TaskHistory::Instance().MarkCompleted(tid, "Cleaned " + std::to_string(files) + " files, freed " + Cleaner::FormatSize(freed), freed, files, 0, 0);
+                cleaner.Clean();
+                g_tuiStatus.SetCompleted("Smart Deep Clean finished.");
+                TaskHistory::Instance().MarkCompleted(tid, "Smart Deep Clean finished.", 0, 0, 0, 0);
             });
             worker.detach();
         } else if (sel == 2) {
@@ -752,11 +749,9 @@ public:
                 g_tuiStatus.SetActive("Secure Shred Wipe");
                 cleaner.SetDryRun(currentDryRun);
                 cleaner.SetMode(CleanMode::Shred);
-                auto reports = cleaner.Clean();
-                uintmax_t freed = 0;
-                for (const auto& r : reports) freed += r.sizeBytes;
-                g_tuiStatus.SetCompleted("Shred finished. Shredded: " + Cleaner::FormatSize(freed));
-                TaskHistory::Instance().MarkCompleted(tid, "Shredded " + Cleaner::FormatSize(freed), freed, 0, 0, 0);
+                cleaner.Clean();
+                g_tuiStatus.SetCompleted("Secure Shred Wipe finished.");
+                TaskHistory::Instance().MarkCompleted(tid, "Secure Shred Wipe finished.", 0, 0, 0, 0);
             });
             worker.detach();
         } else if (sel == 3) {
@@ -785,7 +780,7 @@ public:
         if (sel == 0) {
             uint64_t tid = TaskHistory::Instance().Register("TUI", "RAM Cleaner", "ram-clean --cutoff 200MB", "RAM Cleaner");
             bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
-            bool enableKill = g_tuiSettings.enablePermission;
+            bool enableKill = !currentDryRun;
             std::thread worker([currentDryRun, enableKill, tid]() {
                 TaskHistory::Instance().MarkRunning(tid);
                 g_tuiStatus.SetActive("RAM Cleaner");

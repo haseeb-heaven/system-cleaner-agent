@@ -343,9 +343,10 @@ public:
             TaskHistory::Instance().UpdateProgress(taskId, "Cron Daemon Watching: " + q.rawQuery);
             Logger::Instance().Info("[AQL Cron Daemon] Activated future trigger for: " + q.rawQuery);
 
-            std::thread cronThread([q, cleanerCopy = cleaner, dryRun, taskId]() mutable {
+            Cleaner* cleanerPtr = &cleaner;
+            auto cronTask = [q, cleanerPtr, dryRun, taskId]() {
                 while (true) {
-                    TaskInfo currentTask;
+                    TaskEntry currentTask;
                     if (!TaskHistory::Instance().GetTask(taskId, currentTask) ||
                         currentTask.status == TaskStatus::Cancelled ||
                         currentTask.status == TaskStatus::Failed) {
@@ -371,9 +372,9 @@ public:
                                 }
                             }
                         } else if (q.command == "CLEAN") {
-                            cleanerCopy.Clean();
+                            if (cleanerPtr) cleanerPtr->Clean();
                         } else if (q.command == "PURGE" || q.command == "EMPTY") {
-                            cleanerCopy.EmptyWindowsRecycleBin();
+                            if (cleanerPtr) cleanerPtr->EmptyWindowsRecycleBin();
                         }
                         TaskHistory::Instance().MarkCompleted(taskId, "Cron trigger executed for: " + q.rawQuery);
                         break;
@@ -381,7 +382,8 @@ public:
 
                     std::this_thread::sleep_for(std::chrono::seconds(q.intervalSeconds > 0 ? q.intervalSeconds : 3));
                 }
-            });
+            };
+            std::thread cronThread(cronTask);
             cronThread.detach();
             return;
         }
