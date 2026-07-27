@@ -1,3 +1,0 @@
-D:/Software/gemini-sys-cleaner/build/CMakeFiles/gemini-sys-cleaner.dir
-D:/Software/gemini-sys-cleaner/build/CMakeFiles/ALL_BUILD.dir
-D:/Software/gemini-sys-cleaner/build/CMakeFiles/ZERO_CHECK.dir

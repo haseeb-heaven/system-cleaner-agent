@@ -1,7 +1,11 @@
-# Build artifacts & executables
+# Build directories and outputs
 build/
+build/*
 Release/
 Debug/
+bin/
+
+# Executables
 *.exe
 *.obj
 *.o
@@ -10,7 +14,7 @@ Debug/
 *.idb
 *.tlog
 
-# Python cache & env
+# Python artifacts
 __pycache__/
 *.pyc
 .env
