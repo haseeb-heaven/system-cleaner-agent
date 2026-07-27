@@ -14,7 +14,6 @@ if command -v cmake &> /dev/null; then
     cmake .. -DCMAKE_BUILD_TYPE=Release
     cmake --build . --config Release -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
     cp system-cleaner-agent ../system-cleaner-agent 2>/dev/null || true
-    cp SystemCleanerAgent ../SystemCleanerAgent 2>/dev/null || true
     cd ..
     echo "[SUCCESS] Build complete! Executable: ./system-cleaner-agent"
     exit 0

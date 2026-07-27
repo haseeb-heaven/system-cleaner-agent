@@ -11,9 +11,8 @@ if %ERRORLEVEL% EQU 0 (
     cmake --build . --config Release
     if %ERRORLEVEL% EQU 0 (
         echo.
-        echo Build successful! Executables built.
+        echo Build successful! Executable built.
         copy Release\system-cleaner-agent.exe ..\system-cleaner-agent.exe /Y 2>nul
-        copy Release\SystemCleanerAgent.exe ..\SystemCleanerAgent.exe /Y 2>nul
     ) else (
         echo Build failed.
     )
