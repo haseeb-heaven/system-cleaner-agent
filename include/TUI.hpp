@@ -88,14 +88,14 @@ public:
     static std::vector<std::string> GetLiveResourceHeaders() {
         std::vector<std::string> headers;
         double memPercent = SmartScheduler::GetMemoryUsagePercent();
-        std::string ramBar = OpenTUI::ProgressBar::Render(memPercent, 18);
+        std::string ramBar = OpenTUI::ProgressBar::Render(memPercent, 16, "% used");
         headers.push_back("RAM:  " + ramBar);
 
         auto driveStats = SmartScheduler::GetAllDriveStats();
         for (const auto& ds : driveStats) {
-            std::string diskBar = OpenTUI::ProgressBar::Render(ds.usedPercent, 18);
+            std::string diskBar = OpenTUI::ProgressBar::Render(ds.usedPercent, 14, "% used");
             std::ostringstream ss;
-            ss << ds.driveName << " " << diskBar << " Free: " << Cleaner::FormatSize(ds.freeBytes) << " / " << Cleaner::FormatSize(ds.capacityBytes);
+            ss << ds.driveName << " " << diskBar << " (Free: " << Cleaner::FormatSize(ds.freeBytes) << " / " << Cleaner::FormatSize(ds.capacityBytes) << ")";
             headers.push_back(ss.str());
         }
         return headers;
@@ -110,14 +110,14 @@ public:
             std::cout << "\033[1;36m================================================================================\033[0m\n\n";
 
             double memPercent = SmartScheduler::GetMemoryUsagePercent();
-            std::cout << "  System Memory (RAM): " << OpenTUI::ProgressBar::Render(memPercent, 35) << "\n\n";
+            std::cout << "  System Memory (RAM): " << OpenTUI::ProgressBar::Render(memPercent, 35, "% used") << "\n\n";
 
             std::cout << "  Storage Drives:\n";
             auto driveStats = SmartScheduler::GetAllDriveStats();
             for (const auto& ds : driveStats) {
-                std::cout << "  - Drive " << ds.driveName << "  Used: " << OpenTUI::ProgressBar::Render(ds.usedPercent, 25)
-                          << "  Free: " << Cleaner::FormatSize(ds.freeBytes)
-                          << " / Total: " << Cleaner::FormatSize(ds.capacityBytes) << "\n";
+                double freePercent = 100.0 - ds.usedPercent;
+                std::cout << "  - Drive " << ds.driveName << "  " << OpenTUI::ProgressBar::Render(ds.usedPercent, 25, "% used")
+                          << "  (Free: " << Cleaner::FormatSize(ds.freeBytes) << " [" << std::fixed << std::setprecision(1) << freePercent << "% free] / Total: " << Cleaner::FormatSize(ds.capacityBytes) << ")\n";
             }
 
             std::cout << "\n\033[90mRefreshing every " << g_tuiSettings.monitorIntervalSec << "s... Press ESC or 'q' to return to dashboard...\033[0m\n";

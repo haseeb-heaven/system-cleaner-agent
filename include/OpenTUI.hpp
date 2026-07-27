@@ -323,7 +323,7 @@ public:
 // Professional Extended ASCII Block Loading Bar
 class ProgressBar {
 public:
-    static std::string Render(double percentage, int width = 30) {
+    static std::string Render(double percentage, int width = 30, const std::string& unitLabel = "%") {
         percentage = (std::min)((std::max)(percentage, 0.0), 100.0);
         int filled = static_cast<int>((percentage / 100.0) * width);
         
@@ -333,7 +333,7 @@ public:
         ss << Color::Dim;
         for (int i = filled; i < width; ++i) ss << "░"; // Light shade block
         ss << Color::Reset << Color::BrightCyan << "▏ " << Color::BrightWhite << Color::Bold
-           << std::fixed << std::setprecision(1) << percentage << "%" << Color::Reset;
+           << std::fixed << std::setprecision(1) << percentage << unitLabel << Color::Reset;
         return ss.str();
     }
 };
