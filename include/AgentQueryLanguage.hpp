@@ -166,7 +166,54 @@ public:
         return query;
     }
 
+    struct ValidationResult {
+        bool isValid = true;
+        std::string errorMessage;
+        std::string suggestedHint;
+    };
+
+    static ValidationResult Validate(const std::string& queryStr) {
+        ValidationResult result;
+        if (queryStr.empty()) {
+            result.isValid = false;
+            result.errorMessage = "Empty AQL query string.";
+            result.suggestedHint = "CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB";
+            return result;
+        }
+
+        std::string upper = queryStr;
+        std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
+
+        static const std::vector<std::string> validCmds = {
+            "CLEAN", "SCAN", "SHRED", "MONITOR", "PURGE", "KILL", "SELECT", "WIPE", "WATCH", "EMPTY"
+        };
+
+        bool cmdFound = false;
+        for (const auto& cmd : validCmds) {
+            if (upper.find(cmd) != std::string::npos) {
+                cmdFound = true;
+                break;
+            }
+        }
+
+        if (!cmdFound) {
+            result.isValid = false;
+            result.errorMessage = "Unrecognized AQL command in query: '" + queryStr + "'";
+            result.suggestedHint = "Valid AQL format: KILL PROCESS WHERE RAM > 70%  |  CLEAN WHERE FREE_DISK < 500MB";
+            return result;
+        }
+
+        return result;
+    }
+
     static void Execute(const AQLQuery& q, Cleaner& cleaner, bool dryRun = true) {
+        ValidationResult valRes = Validate(q.rawQuery);
+        if (!valRes.isValid) {
+            std::cout << "\033[1;31m[AQL SYNTAX ERROR] " << valRes.errorMessage << "\033[0m\n";
+            std::cout << "\033[1;33m[AQL HINT] " << valRes.suggestedHint << "\033[0m\n\n";
+            return;
+        }
+
         cleaner.SetDryRun(dryRun);
 
         std::cout << "\033[1;33m+--[ Agent Query Language (AQL) Execution ]-------------------------+\033[0m\n";
@@ -209,7 +256,17 @@ public:
             cleaner.SetEmptyRecycleBin(true);
             cleaner.EmptyWindowsRecycleBin();
         } else if (q.command == "KILL") {
-            uintmax_t ramCutoff = (q.minSizeBytes > 0) ? q.minSizeBytes : (200ULL * 1024 * 1024);
+            uintmax_t ramCutoff = 0;
+            if (q.ramThresholdPercent > 0) {
+                uintmax_t totalRam = SmartScheduler::GetTotalMemoryBytes();
+                ramCutoff = static_cast<uintmax_t>((q.ramThresholdPercent / 100.0) * totalRam);
+                std::cout << "\033[1;32m[AQL] Evaluating RAM % threshold: " << static_cast<int>(q.ramThresholdPercent)
+                          << "% of " << Cleaner::FormatSize(totalRam) << " = " << Cleaner::FormatSize(ramCutoff) << "\033[0m\n";
+            } else if (q.minSizeBytes > 0) {
+                ramCutoff = q.minSizeBytes;
+            } else {
+                ramCutoff = 200ULL * 1024 * 1024;
+            }
             ProcessManager::KillHighMemoryProcesses(ramCutoff, !dryRun);
         } else if (q.command == "MONITOR") {
             SmartScheduler::RunDaemonService(cleaner, {}, q.ramThresholdPercent, q.diskThresholdPercent, q.intervalSeconds, dryRun, q.diskFreeBelowBytes, q.drive);

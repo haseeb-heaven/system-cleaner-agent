@@ -413,12 +413,35 @@ public:
 
 class TextInput {
 public:
-    static std::string ReadLine(const std::string& promptStr, const std::string& defaultVal = "") {
+    static std::string ReadLine(const std::string& promptStr, const std::string& defaultVal = "", const std::vector<std::string>& suggestions = {}) {
         TerminalEngine::EnableVirtualTerminal();
         TerminalEngine::ShowCursor();
 
         std::string input = "";
-        std::cout << Color::BrightCyan << Color::Bold << promptStr << Color::Reset;
+        std::string ghost = "";
+
+        auto updateDisplay = [&](const std::string& newInput) {
+            std::cout << "\r\033[K" << Color::BrightCyan << Color::Bold << promptStr << Color::Reset << newInput;
+
+            ghost = "";
+            if (!newInput.empty() && !suggestions.empty()) {
+                std::string inputLower = newInput;
+                std::transform(inputLower.begin(), inputLower.end(), inputLower.begin(), ::tolower);
+                for (const auto& sug : suggestions) {
+                    std::string sugLower = sug;
+                    std::transform(sugLower.begin(), sugLower.end(), sugLower.begin(), ::tolower);
+                    if (sugLower.find(inputLower) == 0 && sug.length() > newInput.length()) {
+                        ghost = sug.substr(newInput.length());
+                        std::cout << Color::Dim << ghost << Color::Reset;
+                        for (size_t g = 0; g < ghost.length(); ++g) std::cout << "\b";
+                        break;
+                    }
+                }
+            }
+            std::cout << std::flush;
+        };
+
+        std::cout << Color::BrightCyan << Color::Bold << promptStr << Color::Reset << std::flush;
 
         while (true) {
             KeyEvent ev = TerminalEngine::ReadKey();
@@ -430,14 +453,19 @@ public:
                 std::cout << "\n";
                 return defaultVal;
             } else if (ev.key == Key::Char) {
-                if (ev.ch == 8 || ev.ch == 127) { // Backspace
+                if (ev.ch == 9) { // TAB key autocompletes ghost text!
+                    if (!ghost.empty()) {
+                        input += ghost;
+                        updateDisplay(input);
+                    }
+                } else if (ev.ch == 8 || ev.ch == 127) { // Backspace
                     if (!input.empty()) {
                         input.pop_back();
-                        std::cout << "\b \b" << std::flush;
+                        updateDisplay(input);
                     }
                 } else if (ev.ch >= 32 && ev.ch <= 126) { // Printable characters
                     input.push_back(ev.ch);
-                    std::cout << ev.ch << std::flush;
+                    updateDisplay(input);
                 }
             }
         }

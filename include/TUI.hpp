@@ -218,10 +218,21 @@ public:
         OpenTUI::Menu agentMenu("AGENT QUERY", queryMenuOptions);
         int choice = agentMenu.Show();
 
+        static const std::vector<std::string> suggestions = {
+            "KILL PROCESS WHERE RAM > 70%",
+            "KILL PROCESS WHERE RAM > 200MB",
+            "CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB",
+            "MONITOR WHERE RAM > 80% EVERY 15S",
+            "SHRED 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE SIZE > 10MB",
+            "PURGE RECYCLE_BIN",
+            "SCAN 'C:\\' WHERE AGE > 24H"
+        };
+
         if (choice <= 0) {
             OpenTUI::TerminalEngine::ClearScreen();
             PrintBanner();
-            return OpenTUI::TextInput::ReadLine("Query: ", "CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB");
+            std::cout << "\033[90m(Type query or press TAB to autocomplete suggestion)\033[0m\n\n";
+            return OpenTUI::TextInput::ReadLine("Query: ", "CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB", suggestions);
         }
 
         static const std::vector<std::string> preMadeQueries = {

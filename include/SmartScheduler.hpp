@@ -41,6 +41,17 @@ struct ScheduleRule {
 
 class SmartScheduler {
 public:
+    static uintmax_t GetTotalMemoryBytes() {
+#ifdef _WIN32
+        MEMORYSTATUSEX statex;
+        statex.dwLength = sizeof(statex);
+        if (GlobalMemoryStatusEx(&statex)) {
+            return statex.ullTotalPhys;
+        }
+#endif
+        return 16ULL * 1024 * 1024 * 1024;
+    }
+
     // ----------------------------------------------------------------
     // RAM usage %
     // ----------------------------------------------------------------
