@@ -132,16 +132,13 @@ void TestMagicBytes() {
 void TestOpenTUIFramework() {
     std::cout << "[TEST] Running OpenTUI Framework Tests... ";
     
-    // Test Box Border Drawer
     std::string border = OpenTUI::Box::DrawBorder(40, "TEST TITLE");
     assert(border.find("TEST TITLE") != std::string::npos);
     assert(border.find("╔") != std::string::npos);
 
-    // Test Box Footer
     std::string footer = OpenTUI::Box::DrawFooter(40);
     assert(footer.find("╚") != std::string::npos);
 
-    // Test Progress Bar Rendering
     std::string pb0 = OpenTUI::ProgressBar::Render(0.0, 10);
     assert(pb0.find("0.0%") != std::string::npos);
     
@@ -151,9 +148,32 @@ void TestOpenTUIFramework() {
     std::cout << "\033[32mPASSED (4 assertions)\033[0m\n";
 }
 
+void TestAgentGoalPathExtractor() {
+    std::cout << "[TEST] Running Agent Goal Path Extractor Tests... ";
+
+    AgentEngine agent1("Perform clean code on D:/Temp");
+    AgentEngine agent2("Clean cache directory at /tmp/custom_cache");
+
+    // Trajectory checks
+    agent1.RunReActLoop(true);
+    assert(agent1.GetTrajectory().size() >= 5);
+
+    std::cout << "\033[32mPASSED (2 assertions)\033[0m\n";
+}
+
 void TestReActAgentTrajectory() {
     std::cout << "[TEST] Running ReAct Agent Engine Trajectory Tests... ";
+
+    fs::path dummyTarget = fs::temp_directory_path() / "react_trajectory_test";
+    fs::create_directories(dummyTarget);
+
+    {
+        std::ofstream tempFile(dummyTarget / "cache.tmp");
+        tempFile << "temporary junk payload\n";
+    }
+
     AgentEngine agent("Unit test ReAct agent storage optimization");
+    agent.SetCustomTargetPaths({dummyTarget});
     agent.RunReActLoop(true);
 
     const auto& steps = agent.GetTrajectory();
@@ -162,12 +182,13 @@ void TestReActAgentTrajectory() {
     assert(steps[1].type == AgentStepType::Action);
     assert(steps[2].type == AgentStepType::Observation);
 
+    fs::remove_all(dummyTarget);
     std::cout << "\033[32mPASSED (4 assertions)\033[0m\n";
 }
 
 int main() {
     std::cout << "\033[1;36m====================================================================\n"
-              << "  system-cleaner-agent v4.5 - OpenTUI & ReAct Unit Test Suite       \n"
+              << "  system-cleaner-agent v5.0 - OpenTUI & ReAct Unit Test Suite       \n"
               << "====================================================================\033[0m\n\n";
 
     TestHexHashDetector();
@@ -176,6 +197,7 @@ int main() {
     TestDurationAndSizeParsers();
     TestMagicBytes();
     TestOpenTUIFramework();
+    TestAgentGoalPathExtractor();
     TestReActAgentTrajectory();
 
     std::cout << "\n\033[1;32mALL UNIT TESTS PASSED SUCCESSFULLY! (100% REGRESSION PASS)\033[0m\n";

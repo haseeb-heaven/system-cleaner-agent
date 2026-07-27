@@ -58,7 +58,7 @@ void PrintHelp() {
               << "  \033[33m--cron <duration>\033[0m      Run daemon service on recurring schedule (e.g. 10m, 1h).\n"
               << "  \033[33m--verbose\033[0m              Enable detailed trace logging.\n\n"
               << "\033[1mPRODUCTION EXAMPLES:\033[0m\n"
-              << "  system-cleaner-agent agent --task \"Perform full autonomous disk cleanup\"\n"
+              << "  system-cleaner-agent agent --task \"Perform clean code on D:/Temp\"\n"
               << "  system-cleaner-agent agent --dry-run\n"
               << "  system-cleaner-agent tui\n"
               << "  system-cleaner-agent scan --dry-run\n"
@@ -81,7 +81,7 @@ void ExportJsonReport(const std::string& jsonPath, const std::vector<TargetRepor
         if (!jsonFile.is_open()) return;
 
         jsonFile << "{\n";
-        jsonFile << "  \"engine\": \"system-cleaner-agent v4.0 (C++17 ReAct Agentic Engine)\",\n";
+        jsonFile << "  \"engine\": \"system-cleaner-agent v5.0 (C++17 ReAct Agentic Engine)\",\n";
         jsonFile << "  \"targets\": [\n";
 
         uintmax_t grandTotal = 0;
@@ -145,7 +145,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (cmd == "version" || cmd == "--version" || cmd == "-v") {
-        std::cout << "system-cleaner-agent v4.0.0 (C++17 Autonomous ReAct Agentic Engine - 64-bit Architecture)\n";
+        std::cout << "system-cleaner-agent v5.0.0 (C++17 Autonomous ReAct Agentic Engine - 64-bit Architecture)\n";
         return 0;
     }
 
@@ -258,6 +258,9 @@ int main(int argc, char* argv[]) {
 
     if (runAgentLoop) {
         AgentEngine agent(agentTaskGoal);
+        if (!customPaths.empty()) {
+            agent.SetCustomTargetPaths(customPaths);
+        }
         agent.RunReActLoop(dryRun);
         return 0;
     }

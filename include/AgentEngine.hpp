@@ -10,6 +10,8 @@
 #include <chrono>
 #include <thread>
 #include <sstream>
+#include <cctype>
+#include <filesystem>
 
 enum class AgentStepType {
     Thought,
@@ -26,6 +28,7 @@ struct ReActStep {
 class AgentEngine {
     Cleaner cleaner;
     std::string userGoal;
+    std::vector<fs::path> targetCustomPaths;
     std::vector<ReActStep> trajectory;
     bool verbose = true;
 
@@ -58,26 +61,62 @@ class AgentEngine {
         Logger::Instance().Info("[" + label + "] " + text);
     }
 
+    void ParseGoalForTargetPaths() {
+        std::stringstream ss(userGoal);
+        std::string token;
+        while (ss >> token) {
+            while (!token.empty() && (token.back() == '.' || token.back() == ',' || token.back() == '"' || token.back() == '\'' || token.back() == ')')) {
+                token.pop_back();
+            }
+            while (!token.empty() && (token.front() == '"' || token.front() == '\'' || token.front() == '(')) {
+                token.erase(token.begin());
+            }
+
+            if (token.size() >= 3 && std::isalpha(static_cast<unsigned char>(token[0])) && token[1] == ':' && (token[2] == '/' || token[2] == '\\')) {
+                fs::path p(token);
+                targetCustomPaths.push_back(p);
+            } else if (token.size() >= 2 && token[0] == '/' && std::isalnum(static_cast<unsigned char>(token[1]))) {
+                fs::path p(token);
+                targetCustomPaths.push_back(p);
+            }
+        }
+    }
+
 public:
     AgentEngine(const std::string& goal = "Perform autonomous system optimization and storage cleanup")
-        : userGoal(goal) {}
+        : userGoal(goal) {
+        ParseGoalForTargetPaths();
+    }
 
     void SetVerbose(bool v) { verbose = v; }
+    void SetCustomTargetPaths(const std::vector<fs::path>& paths) { targetCustomPaths = paths; }
 
     const std::vector<ReActStep>& GetTrajectory() const { return trajectory; }
 
     void RunReActLoop(bool dryRun = false) {
         cleaner.SetDryRun(dryRun);
 
+        if (!targetCustomPaths.empty()) {
+            cleaner.SetCustomPaths(targetCustomPaths);
+        }
+
         std::cout << "\033[1;33m"
                   << "================================================================================\n"
                   << "   system-cleaner-agent - Autonomous ReAct Execution Loop Initialized          \n"
-                  << "   Goal: " << userGoal << "\n"
-                  << "================================================================================\n"
+                  << "   Goal: " << userGoal << "\n";
+        if (!targetCustomPaths.empty()) {
+            std::cout << "   Target Path(s) Extracted: ";
+            for (size_t i = 0; i < targetCustomPaths.size(); ++i) {
+                std::cout << targetCustomPaths[i].string() << (i + 1 < targetCustomPaths.size() ? ", " : "");
+            }
+            std::cout << "\n";
+        }
+        std::cout << "================================================================================\n"
                   << "\033[0m\n";
 
         // STEP 1: Reason about system state & target paths
-        AddStep(AgentStepType::Thought, "Analyzing target drives and cache locations for cleanable storage junk...");
+        std::string targetDesc = targetCustomPaths.empty() ? "system target drives and cache locations" : "specified target path(s)";
+        AddStep(AgentStepType::Thought, "Analyzing " + targetDesc + " for cleanable storage junk...");
         AddStep(AgentStepType::Action, "SCAN_SYSTEM_TARGETS(mode=multi_threaded)");
         
         auto reports = cleaner.Scan();
@@ -86,7 +125,7 @@ public:
         for (const auto& r : reports) totalJunkBytes += r.sizeBytes;
 
         AddStep(AgentStepType::Observation, "Scan completed. Identified " + std::to_string(reports.size()) + 
-                " junk target locations containing " + Cleaner::FormatSize(totalJunkBytes) + " cleanable space.");
+                " junk target location(s) containing " + Cleaner::FormatSize(totalJunkBytes) + " cleanable space.");
 
         // STEP 2: Process Handle Lock Release
         AddStep(AgentStepType::Thought, "Checking for background process handles locking target temporary directories...");
