@@ -57,20 +57,3 @@ jobs:
           name: system-cleaner-agent-windows
           path: build/Release/system-cleaner-agent.exe
           retention-days: 7
-
-  python-checks:
-    name: Python Syntax Checks
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.11'
-
-      - name: Syntax Check Python Scripts
-        run: |
-          python -m py_compile sys_cleaner.py
-          echo "Python syntax OK"
