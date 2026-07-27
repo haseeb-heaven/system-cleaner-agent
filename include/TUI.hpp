@@ -86,14 +86,7 @@ public:
         if (choice <= 0) {
             OpenTUI::TerminalEngine::ClearScreen();
             PrintBanner();
-            FlushInputBuffer();
-            std::cout << "\033[1;36mQuery: \033[0m";
-            std::string userQuery;
-            std::getline(std::cin, userQuery);
-            if (userQuery.empty()) {
-                userQuery = "CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB";
-            }
-            return userQuery;
+            return OpenTUI::TextInput::ReadLine("Query: ", "CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB");
         }
 
         static const std::vector<std::string> preMadeQueries = {

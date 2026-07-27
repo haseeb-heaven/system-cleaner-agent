@@ -343,4 +343,37 @@ public:
     }
 };
 
+class TextInput {
+public:
+    static std::string ReadLine(const std::string& promptStr, const std::string& defaultVal = "") {
+        TerminalEngine::EnableVirtualTerminal();
+        TerminalEngine::ShowCursor();
+
+        std::string input = "";
+        std::cout << Color::BrightCyan << Color::Bold << promptStr << Color::Reset;
+
+        while (true) {
+            KeyEvent ev = TerminalEngine::ReadKey();
+            if (ev.key == Key::Enter) {
+                std::cout << "\n";
+                if (input.empty()) return defaultVal;
+                return input;
+            } else if (ev.key == Key::Escape) {
+                std::cout << "\n";
+                return defaultVal;
+            } else if (ev.key == Key::Char) {
+                if (ev.ch == 8 || ev.ch == 127) { // Backspace
+                    if (!input.empty()) {
+                        input.pop_back();
+                        std::cout << "\b \b" << std::flush;
+                    }
+                } else if (ev.ch >= 32 && ev.ch <= 126) { // Printable characters
+                    input.push_back(ev.ch);
+                    std::cout << ev.ch << std::flush;
+                }
+            }
+        }
+    }
+};
+
 } // namespace OpenTUI
