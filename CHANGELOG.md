@@ -2,6 +2,16 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.3.1] - 2026-07-27
+
+### Added / Features
+- **Compact ASCII Diagram Shield Logo (`include/TUI.hpp`)**:
+  - Replaced oversized ASCII text with a high-tech compact ASCII Diagram Shield Emblem (`_/_\_`) & emblem header (`SYSTEM-CLEANER-AGENT v5.3`).
+  - Fits perfectly on standard 80-column terminal screens without line wrapping.
+- **Cross-Platform Operating System Support (`include/gtlibc.cpp`)**:
+  - Enhanced POSIX process enumeration and memory tracking via `/proc` filesystem (`/proc/[pid]/comm` and `/proc/[pid]/statm`) for Linux and macOS.
+  - Ensures full cross-platform compatibility across Windows, Linux, and macOS.
+
 ## [5.3.0] - 2026-07-27
 
 ### Added / Features

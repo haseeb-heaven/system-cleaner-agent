@@ -92,6 +92,27 @@ std::vector<ProcessInfo> GTLibc::EnumerateAllProcesses() {
         }
         CloseHandle(hSnap);
     }
+#else
+    DIR* dir = opendir("/proc");
+    if (dir) {
+        struct dirent* entry;
+        while ((entry = readdir(dir)) != nullptr) {
+            std::string name(entry->d_name);
+            if (std::all_of(name.begin(), name.end(), ::isdigit)) {
+                DWORD pid = static_cast<DWORD>(std::stoul(name));
+                std::ifstream statusFile("/proc/" + name + "/comm");
+                std::string procName;
+                if (statusFile >> procName) {
+                    ProcessInfo info;
+                    info.pid = pid;
+                    info.processName = procName;
+                    info.memoryUsageBytes = GetProcessMemoryUsage(pid);
+                    list.push_back(info);
+                }
+            }
+        }
+        closedir(dir);
+    }
 #endif
     return list;
 }
@@ -110,6 +131,13 @@ size_t GTLibc::GetProcessMemoryUsage(DWORD pid) {
             return pmc.WorkingSetSize;
         }
         CloseHandle(hProc);
+    }
+#else
+    std::ifstream statm("/proc/" + std::to_string(pid) + "/statm");
+    size_t size = 0, resident = 0;
+    if (statm >> size >> resident) {
+        long pageSize = sysconf(_SC_PAGESIZE);
+        if (pageSize > 0) return resident * static_cast<size_t>(pageSize);
     }
 #endif
     return 0;
