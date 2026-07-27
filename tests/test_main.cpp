@@ -774,14 +774,64 @@ void TestTUIThemesAndTaskActions() {
     PASS("TUIThemesAndTaskActions", 8);
 }
 
+void TestAQLStrictGrammarAndValidation() {
+    std::cout << "[TEST 24] AQL Strict Grammar & Syntax Validation... ";
+
+    // 1. Valid AQL Queries
+    std::vector<std::string> validQueries = {
+        "SELECT chrome.exe FROM PROCESS",
+        "KILL notepad.exe FROM PROCESS WHERE RAM > 200MB",
+        "KILL chrome.exe WHERE RAM > 80%",
+        "CLEAN TEMP_C WHERE DISK_C < 500MB",
+        "CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB",
+        "SHRED 'D:\\Temp' WHERE SIZE > 10MB",
+        "PURGE RECYCLE_BIN",
+        "MONITOR WHERE RAM > 80% EVERY 15S"
+    };
+
+    for (const auto& q : validQueries) {
+        auto val = AQLEngine::Validate(q);
+        assert(val.isValid == true);
+    }
+
+    // 2. Invalid / Malformed AQL Queries (Must FAIL validation)
+    std::vector<std::string> invalidQueries = {
+        "FOOBAR INVALID QUERY STATEMENT",
+        "KILL",
+        "SELECT",
+        "CLEAN",
+        "",
+        "RANDOM TEXT NOT AN AQL STATEMENT"
+    };
+
+    for (const auto& q : invalidQueries) {
+        auto val = AQLEngine::Validate(q);
+        assert(val.isValid == false);
+        assert(!val.errorMessage.empty());
+        assert(!val.suggestedHint.empty());
+    }
+
+    // 3. Verify Execution Prevention on Invalid Query
+    Cleaner cleaner;
+    size_t countBefore = TaskHistory::Instance().Snapshot().size();
+    AQLQuery badParsed = AQLEngine::Parse("FOOBAR INVALID QUERY STATEMENT");
+    AQLEngine::Execute(badParsed, cleaner, true);
+    size_t countAfter = TaskHistory::Instance().Snapshot().size();
+
+    // Verify NO task was registered or executed for invalid query!
+    assert(countBefore == countAfter);
+
+    PASS("AQLStrictGrammarAndValidation", 16);
+}
+
 // ===========================================================================
-// MAIN — Run all 23 test suites
+// MAIN — Run all 24 test suites
 // ===========================================================================
 int main() {
     std::cout << "\033[1;36m"
               << "=====================================================================\n"
               << "  system-cleaner-agent v5.5 — Comprehensive Unit Test Suite          \n"
-              << "  23 Test Functions | 215+ Assertions                                \n"
+              << "  24 Test Functions | 235+ Assertions                                \n"
               << "=====================================================================\n"
               << "\033[0m\n";
 
@@ -808,6 +858,7 @@ int main() {
     TestGTLibcSubsystem();
     TestConfigManager();
     TestTUIThemesAndTaskActions();
+    TestAQLStrictGrammarAndValidation();
 
     std::cout << "\n\033[1;33m"
               << "---------------------------------------------------------------------\n"
