@@ -253,6 +253,7 @@ public:
             "Smart Deep Clean",
             "Secure Shred Wipe",
             "Empty Recycle Bin",
+            "RAM Cleaner",
             "Agent & AQL Query",
             "Daemon Monitor",
             "System Resource Monitor",
@@ -267,7 +268,7 @@ public:
             menu.SetStatusLine(g_tuiStatus.GetStatusLine());
             int selected = menu.Show();
 
-            if (selected == -1 || selected == 8) {
+            if (selected == -1 || selected == 9) {
                 std::cout << "\n\033[32mExiting system-cleaner-agent OpenTUI Suite. Goodbye!\033[0m\n";
                 break;
             }
@@ -327,6 +328,19 @@ public:
                     break;
                 }
                 case 4: {
+                    std::cout << "\033[1;36mLaunching background RAM Cleaner (GTLibc Subsystem)...\033[0m\n";
+                    bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
+                    std::thread worker([currentDryRun]() {
+                        g_tuiStatus.SetActive("RAM Cleaner (GTLibc Engine)");
+                        size_t releasedLocks = ProcessManager::StopLockingProcesses(!currentDryRun);
+                        size_t killedProcs = GTLIBC::GTLibc::KillHighMemoryProcesses(150ULL * 1024 * 1024, !currentDryRun);
+                        std::string summary = "RAM Cleaned. Freed " + std::to_string(killedProcs) + " high-RAM proc(s), " + std::to_string(releasedLocks) + " released lock(s).";
+                        g_tuiStatus.SetCompleted(summary);
+                    });
+                    worker.detach();
+                    break;
+                }
+                case 5: {
                     std::string selectedQuery = SelectAgentQuery();
                     std::cout << "\033[1;33mLaunching background Agent Task: " << selectedQuery << "\033[0m\n";
                     bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
@@ -339,7 +353,7 @@ public:
                     worker.detach();
                     break;
                 }
-                case 5: {
+                case 6: {
                     std::cout << "\033[1;36mLaunching background Smart Daemon Service...\033[0m\n";
                     bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
                     int interval = g_tuiSettings.monitorIntervalSec;
@@ -350,11 +364,11 @@ public:
                     worker.detach();
                     break;
                 }
-                case 6: {
+                case 7: {
                     ShowSystemResourceMonitor();
                     break;
                 }
-                case 7: {
+                case 8: {
                     ShowSettingsMenu(cleaner);
                     break;
                 }

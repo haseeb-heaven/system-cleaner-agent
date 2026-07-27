@@ -17,6 +17,7 @@ All notable changes to the system-cleaner-agent project will be documented in th
   - Implemented Extended ASCII block loading bars (`█ ░`).
   - Added live animated braille spinners (`⠋ ⠙ ⠹`) for background task feedback.
   - Added live System Resource Header Panel showing real-time RAM usage and storage capacity across all system drives (`C:\`, `D:\`, etc.).
+  - Added dedicated **RAM Cleaner** menu option in OpenTUI Dashboard to release process locks and terminate dead background processes using `GTLibc`.
   - Added dedicated **System Resource Monitor** screen with configurable refresh intervals (3s - 60s).
   - Added non-blocking background thread task execution: OpenTUI Dashboard remains 100% active, visible, and selectable during operations.
   - Added `OpenTUI::TextInput` with TAB key ghost text autocomplete and backspace support.
