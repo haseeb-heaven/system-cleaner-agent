@@ -675,7 +675,7 @@ void TestAgentQueryLanguage() {
 // 21. GTLibc Process & Memory Management Subsystem Suite
 // ===========================================================================
 void TestGTLibcSubsystem() {
-    std::cout << "[TEST 21] GTLibc Process & Memory Subsystem Engine... ";
+    std::cout << "[TEST 21] GTLibc Process Management Subsystem Engine... ";
 
     // Test process enumeration
     auto procs = GTLIBC::GTLibc::EnumerateAllProcesses();
@@ -683,18 +683,11 @@ void TestGTLibcSubsystem() {
 
     // Test elevation status
     bool elevated = GTLIBC::GTLibc::IsElevatedProcess();
-    (void)elevated; // sanity check no crash
+    (void)elevated;
 
-    // Test finding current running process (system-cleaner-agent or unit_tests)
+    // Test finding current running process
     bool isSelfRunning = GTLIBC::GTLibc::IsProcessRunning("unit_tests.exe") || GTLIBC::GTLibc::IsProcessRunning("unit_tests");
     assert(isSelfRunning || !procs.empty());
-
-    // Test GTLibc instance creation & method calls
-    GTLIBC::GTLibc gtEngine;
-    HANDLE currentProc = GetCurrentProcess();
-    DWORD currentPid = GetCurrentProcessId();
-    assert(currentPid > 0);
-    assert(currentProc != NULL);
 
     // Test High RAM process scanning via GTLibc
     size_t highRamCandidates = GTLIBC::GTLibc::KillHighMemoryProcesses(999ULL * 1024 * 1024 * 1024, false); // 999 GB threshold

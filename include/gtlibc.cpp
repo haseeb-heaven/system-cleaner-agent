@@ -1,6 +1,6 @@
 /*
- * GTLibc (Windows Process & Memory Management Subsystem for system-cleaner-agent)
- * Ported & Enhanced from haseeb-heaven/GTLibCpp
+ * GTLibc (Windows Process Management Subsystem for system-cleaner-agent)
+ * Focused subset ported from haseeb-heaven/GTLibCpp for process management
  * License: MIT
  */
 
@@ -8,30 +8,6 @@
 #include "Logger.hpp"
 
 namespace GTLIBC {
-
-GTLibc::GTLibc() : GTLibc("", false) {}
-
-GTLibc::GTLibc(const std::string& processName, bool enableLogs)
-    : targetProcessName(processName), enableLogs(enableLogs) {
-    if (!processName.empty()) {
-        FindProcess(processName);
-    }
-}
-
-GTLibc::~GTLibc() {
-#ifdef _WIN32
-    if (targetHandle != nullptr && targetHandle != INVALID_HANDLE_VALUE) {
-        CloseHandle(targetHandle);
-        targetHandle = nullptr;
-    }
-#endif
-}
-
-void GTLibc::AddLog(const std::string& method, const std::string& message) {
-    if (enableLogs) {
-        Logger::Instance().Info("[GTLibc::" + method + "] " + message);
-    }
-}
 
 std::string GTLibc::GetLastErrorAsString() {
 #ifdef _WIN32
@@ -49,10 +25,8 @@ std::string GTLibc::GetLastErrorAsString() {
 #endif
 }
 
-HANDLE GTLibc::FindProcess(const std::string& processName) {
-    AddLog("FindProcess", "Searching for process: " + processName);
-    targetProcessName = processName;
-
+HANDLE GTLibc::FindProcess(const std::string& processName, DWORD& outPid) {
+    outPid = 0;
     std::string exeName = processName;
     if (exeName.length() < 4 || exeName.substr(exeName.length() - 4) != ".exe") {
         exeName += ".exe";
@@ -60,10 +34,7 @@ HANDLE GTLibc::FindProcess(const std::string& processName) {
 
 #ifdef _WIN32
     HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (hSnap == INVALID_HANDLE_VALUE) {
-        AddLog("FindProcess", "CreateToolhelp32Snapshot failed");
-        return nullptr;
-    }
+    if (hSnap == INVALID_HANDLE_VALUE) return nullptr;
 
     PROCESSENTRY32W pe32;
     pe32.dwSize = sizeof(PROCESSENTRY32W);
@@ -79,119 +50,26 @@ HANDLE GTLibc::FindProcess(const std::string& processName) {
             std::transform(targetLower.begin(), targetLower.end(), targetLower.begin(), ::tolower);
 
             if (curLower == targetLower) {
-                targetPid = pe32.th32ProcessID;
-                targetHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, targetPid);
-                if (!targetHandle) {
-                    targetHandle = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_TERMINATE, FALSE, targetPid);
-                }
-                targetHwnd = FindWindowByName(processName);
-                targetBaseAddress = GetModuleBaseAddress(targetPid, exeName);
+                outPid = pe32.th32ProcessID;
+                HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_TERMINATE, FALSE, outPid);
                 CloseHandle(hSnap);
-                AddLog("FindProcess", "Found process PID: " + std::to_string(targetPid));
-                return targetHandle;
+                return hProc;
             }
         } while (Process32NextW(hSnap, &pe32));
     }
     CloseHandle(hSnap);
 #endif
-    AddLog("FindProcess", "Process not found: " + processName);
     return nullptr;
-}
-
-HWND GTLibc::FindWindowByName(const std::string& windowName) {
-#ifdef _WIN32
-    return FindWindowA(NULL, windowName.c_str());
-#else
-    return nullptr;
-#endif
-}
-
-DWORD GTLibc::GetProcessIDFromHWND(HWND hwnd) {
-#ifdef _WIN32
-    DWORD pid = 0;
-    GetWindowThreadProcessId(hwnd, &pid);
-    return pid;
-#else
-    return 0;
-#endif
-}
-
-HANDLE GTLibc::GetHandleFromHWND(HWND hwnd) {
-#ifdef _WIN32
-    DWORD pid = GetProcessIDFromHWND(hwnd);
-    if (pid != 0) {
-        return OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
-    }
-#endif
-    return nullptr;
-}
-
-uintptr_t GTLibc::GetModuleBaseAddress(DWORD pid, const std::string& moduleName) {
-#ifdef _WIN32
-    HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pid);
-    if (hSnap != INVALID_HANDLE_VALUE) {
-        MODULEENTRY32W me32;
-        me32.dwSize = sizeof(MODULEENTRY32W);
-        if (Module32FirstW(hSnap, &me32)) {
-            do {
-                std::wstring wMod(me32.szModule);
-                std::string curMod;
-                for (wchar_t c : wMod) curMod += (c < 128) ? static_cast<char>(c) : '?';
-
-                std::string curLower = curMod;
-                std::string targetLower = moduleName;
-                std::transform(curLower.begin(), curLower.end(), curLower.begin(), ::tolower);
-                std::transform(targetLower.begin(), targetLower.end(), targetLower.begin(), ::tolower);
-
-                if (curLower == targetLower) {
-                    CloseHandle(hSnap);
-                    return reinterpret_cast<uintptr_t>(me32.modBaseAddr);
-                }
-            } while (Module32NextW(hSnap, &me32));
-        }
-        CloseHandle(hSnap);
-    }
-#endif
-    return 0;
-}
-
-uintptr_t GTLibc::GetProcessBaseAddress() {
-    if (targetBaseAddress != 0) return targetBaseAddress;
-    if (targetPid != 0) {
-        targetBaseAddress = GetModuleBaseAddress(targetPid, targetProcessName);
-    }
-    return targetBaseAddress;
 }
 
 bool GTLibc::IsProcessRunning(const std::string& processName) {
-#ifdef _WIN32
-    HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (hSnap == INVALID_HANDLE_VALUE) return false;
-    PROCESSENTRY32W pe32;
-    pe32.dwSize = sizeof(PROCESSENTRY32W);
-    if (Process32FirstW(hSnap, &pe32)) {
-        std::string targetLower = processName;
-        if (targetLower.length() < 4 || targetLower.substr(targetLower.length() - 4) != ".exe") {
-            targetLower += ".exe";
-        }
-        std::transform(targetLower.begin(), targetLower.end(), targetLower.begin(), ::tolower);
-
-        do {
-            std::wstring wExe(pe32.szExeFile);
-            std::string curName;
-            for (wchar_t c : wExe) curName += (c < 128) ? static_cast<char>(c) : '?';
-            std::string curLower = curName;
-            std::transform(curLower.begin(), curLower.end(), curLower.begin(), ::tolower);
-
-            if (curLower == targetLower) {
-                CloseHandle(hSnap);
-                return true;
-            }
-        } while (Process32NextW(hSnap, &pe32));
+    DWORD pid = 0;
+    HANDLE hProc = FindProcess(processName, pid);
+    if (hProc) {
+        CloseHandle(hProc);
+        return true;
     }
-    CloseHandle(hSnap);
-#endif
-    return false;
+    return pid > 0;
 }
 
 std::vector<ProcessInfo> GTLibc::EnumerateAllProcesses() {
@@ -328,67 +206,6 @@ size_t GTLibc::KillHighMemoryProcesses(size_t minRamBytes, bool enableTerminatio
         }
     }
     return count;
-}
-
-bool GTLibc::ReadMemoryBuffer(uintptr_t address, void* buffer, size_t size) {
-#ifdef _WIN32
-    if (!targetHandle || address == 0 || !buffer) return false;
-    SIZE_T bytesRead = 0;
-    return ReadProcessMemory(targetHandle, reinterpret_cast<LPCVOID>(address), buffer, size, &bytesRead) && bytesRead == size;
-#else
-    return false;
-#endif
-}
-
-bool GTLibc::WriteMemoryBuffer(uintptr_t address, const void* buffer, size_t size) {
-#ifdef _WIN32
-    if (!targetHandle || address == 0 || !buffer) return false;
-    SIZE_T bytesWritten = 0;
-    return WriteProcessMemory(targetHandle, reinterpret_cast<LPVOID>(address), buffer, size, &bytesWritten) && bytesWritten == size;
-#else
-    return false;
-#endif
-}
-
-std::string GTLibc::ReadString(uintptr_t address, size_t maxLen) {
-    if (maxLen == 0) return "";
-    std::vector<char> buf(maxLen + 1, 0);
-    if (ReadMemoryBuffer(address, buf.data(), maxLen)) {
-        return std::string(buf.data());
-    }
-    return "";
-}
-
-bool GTLibc::WriteString(uintptr_t address, const std::string& str) {
-    return WriteMemoryBuffer(address, str.c_str(), str.length() + 1);
-}
-
-std::string GTLibc::ShellExec(const std::string& cmdArgs, bool runAsAdmin, bool waitForExit) {
-#ifdef _WIN32
-    SHELLEXECUTEINFOA ShExecInfo = { 0 };
-    ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
-    ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
-    ShExecInfo.hwnd = NULL;
-    ShExecInfo.lpVerb = runAsAdmin ? "runas" : "open";
-    ShExecInfo.lpFile = "cmd.exe";
-    std::string params = "/c " + cmdArgs;
-    ShExecInfo.lpParameters = params.c_str();
-    ShExecInfo.lpDirectory = NULL;
-    ShExecInfo.nShow = SW_HIDE;
-    ShExecInfo.hInstApp = NULL;
-
-    if (ShellExecuteExA(&ShExecInfo)) {
-        if (waitForExit && ShExecInfo.hProcess != NULL) {
-            WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
-            CloseHandle(ShExecInfo.hProcess);
-        }
-        return "Command executed successfully.";
-    }
-    return "ShellExecuteEx failed: " + GetLastErrorAsString();
-#else
-    int res = system(cmdArgs.c_str());
-    return "Exit code: " + std::to_string(res);
-#endif
 }
 
 } // namespace GTLIBC
