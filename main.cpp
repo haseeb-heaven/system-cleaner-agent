@@ -20,7 +20,8 @@ void PrintHeader() {
 void PrintHelp() {
     PrintHeader();
     std::cout << "\033[1mUSAGE:\033[0m\n"
-              << "  gemini-sys-cleaner <COMMAND> [FLAGS]\n\n"
+              << "  gemini-sys-cleaner-pro <COMMAND> [FLAGS]\n"
+              << "  gemini-pro-cleaner     <COMMAND> [FLAGS]\n\n"
               << "\033[1mCOMMANDS:\033[0m\n"
               << "  \033[36mscan\033[0m         Analyze system/drive targets and report cleanable storage.\n"
               << "  \033[36mclean\033[0m        Execute multi-threaded cleanup using active policy rules.\n"
@@ -52,11 +53,11 @@ void PrintHelp() {
               << "  \033[33m--cron <duration>\033[0m      Run daemon service on recurring schedule (e.g. 10m, 1h).\n"
               << "  \033[33m--verbose\033[0m              Enable detailed trace logging.\n\n"
               << "\033[1mPRODUCTION EXAMPLES:\033[0m\n"
-              << "  gemini-sys-cleaner tui\n"
-              << "  gemini-sys-cleaner scan --dry-run\n"
-              << "  gemini-sys-cleaner deep-clean --recycle-bin\n"
-              << "  gemini-sys-cleaner clean --path \"D:\\tmp\" --older-than 24h\n"
-              << "  gemini-sys-cleaner scan --drive all --json-report report.json\n\n";
+              << "  gemini-sys-cleaner-pro tui\n"
+              << "  gemini-sys-cleaner-pro scan --dry-run\n"
+              << "  gemini-sys-cleaner-pro deep-clean --recycle-bin\n"
+              << "  gemini-sys-cleaner-pro clean --path \"D:\\tmp\" --older-than 24h\n"
+              << "  gemini-sys-cleaner-pro scan --drive all --json-report report.json\n\n";
 }
 
 std::vector<std::string> SplitString(const std::string& str, char delim) {
@@ -75,7 +76,7 @@ void ExportJsonReport(const std::string& jsonPath, const std::vector<TargetRepor
         if (!jsonFile.is_open()) return;
 
         jsonFile << "{\n";
-        jsonFile << "  \"engine\": \"Gemini Enterprise System Cleaner v3.5 (C++17)\",\n";
+        jsonFile << "  \"engine\": \"Gemini System Cleaner Professional Edition v3.5 (C++17)\",\n";
         jsonFile << "  \"targets\": [\n";
 
         uintmax_t grandTotal = 0;
@@ -139,7 +140,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (cmd == "version" || cmd == "--version" || cmd == "-v") {
-        std::cout << "Gemini System Cleaner v3.5.0 (C++17 Enterprise Engine - 64-bit Architecture)\n";
+        std::cout << "Gemini System Cleaner Professional Edition v3.5.0 (C++17 Enterprise Engine - 64-bit Architecture)\n";
         return 0;
     }
 

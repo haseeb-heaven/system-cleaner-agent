@@ -17,7 +17,7 @@ public:
                   << "\\____/\\___/_/ /_/_/ /_/_/     /_/|_/_/  |_|\\___/\\____/   /____/_/_/ .___/\\__,_/ .___/\\___/_/     \n"
                   << "                                                                 /_/         /_/                \n"
                   << "\033[0m"
-                  << "\033[1;32m   [ Gemini System Cleaner v3.5 - Enterprise C++17 Multi-Platform Suite ]\033[0m\n\n";
+                  << "\033[1;32m   [ Gemini System Cleaner Professional Edition v3.5 - C++17 Enterprise Suite ]\033[0m\n\n";
     }
 
     static void RunInteractiveMenu(Cleaner& cleaner) {
@@ -47,7 +47,7 @@ public:
             }
 
             if (choice == 0) {
-                std::cout << "\n\033[32mExiting Gemini System Cleaner Suite. Goodbye!\033[0m\n";
+                std::cout << "\n\033[32mExiting Gemini System Cleaner Professional Suite. Goodbye!\033[0m\n";
                 break;
             }
 
