@@ -135,10 +135,10 @@ void TestOpenTUIFramework() {
     
     std::string border = OpenTUI::Box::DrawBorder(40, "TEST TITLE");
     assert(border.find("TEST TITLE") != std::string::npos);
-    assert(border.find("╔") != std::string::npos);
+    assert(border.find("+") != std::string::npos);
 
     std::string footer = OpenTUI::Box::DrawFooter(40);
-    assert(footer.find("╚") != std::string::npos);
+    assert(footer.find("+") != std::string::npos);
 
     std::string pb0 = OpenTUI::ProgressBar::Render(0.0, 10);
     assert(pb0.find("0.0%") != std::string::npos);

@@ -73,6 +73,9 @@ class TerminalEngine {
 public:
     static void EnableVirtualTerminal() {
 #ifdef _WIN32
+        SetConsoleOutputCP(CP_UTF8);
+        SetConsoleCP(CP_UTF8);
+
         HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
         if (hOut != INVALID_HANDLE_VALUE) {
             DWORD dwMode = 0;
@@ -160,32 +163,32 @@ class Box {
 public:
     static std::string DrawBorder(int width, const std::string& title = "") {
         std::ostringstream ss;
-        ss << Color::Cyan << "╔";
+        ss << Color::Cyan << "+";
         int titleLen = static_cast<int>(title.length());
         int lineLen = width - 2;
         if (titleLen > 0 && titleLen < lineLen - 4) {
-            ss << "═[ " << Color::BrightWhite << title << Color::Cyan << " ]";
-            for (int i = 0; i < lineLen - titleLen - 5; ++i) ss << "═";
+            ss << "---[ " << Color::BrightWhite << title << Color::Cyan << " ]";
+            for (int i = 0; i < lineLen - titleLen - 7; ++i) ss << "-";
         } else {
-            for (int i = 0; i < lineLen; ++i) ss << "═";
+            for (int i = 0; i < lineLen; ++i) ss << "-";
         }
-        ss << "╗" << Color::Reset << "\n";
+        ss << "+" << Color::Reset << "\n";
         return ss.str();
     }
 
     static std::string DrawFooter(int width) {
         std::ostringstream ss;
-        ss << Color::Cyan << "╚";
-        for (int i = 0; i < width - 2; ++i) ss << "═";
-        ss << "╝" << Color::Reset << "\n";
+        ss << Color::Cyan << "+";
+        for (int i = 0; i < width - 2; ++i) ss << "-";
+        ss << "+" << Color::Reset << "\n";
         return ss.str();
     }
 
     static std::string DrawLine(int width, const std::string& text, bool highlight = false) {
         std::ostringstream ss;
-        ss << Color::Cyan << "║ " << Color::Reset;
+        ss << Color::Cyan << "| " << Color::Reset;
         if (highlight) {
-            ss << Color::BgBlue << Color::BrightWhite << " ► " << text;
+            ss << Color::BgBlue << Color::BrightWhite << " > " << text;
             int padding = width - static_cast<int>(text.length()) - 7;
             int fill = (std::max)(0, padding);
             for (int i = 0; i < fill; ++i) ss << " ";
@@ -196,7 +199,7 @@ public:
             int fill = (std::max)(0, padding);
             for (int i = 0; i < fill; ++i) ss << " ";
         }
-        ss << Color::Cyan << " ║" << Color::Reset << "\n";
+        ss << Color::Cyan << " |" << Color::Reset << "\n";
         return ss.str();
     }
 };
@@ -209,9 +212,9 @@ public:
         
         std::ostringstream ss;
         ss << Color::Cyan << "[" << Color::BrightGreen;
-        for (int i = 0; i < filled; ++i) ss << "█";
+        for (int i = 0; i < filled; ++i) ss << "#";
         ss << Color::Dim;
-        for (int i = filled; i < width; ++i) ss << "░";
+        for (int i = filled; i < width; ++i) ss << "-";
         ss << Color::Reset << Color::Cyan << "] " << Color::BrightWhite 
            << std::fixed << std::setprecision(1) << percentage << "%" << Color::Reset;
         return ss.str();
@@ -243,7 +246,7 @@ public:
             }
 
             std::cout << Box::DrawFooter(80);
-            std::cout << "\033[90m Use ↑/↓ Arrow Keys to navigate, Enter to select, ESC or 'q' to exit.\033[0m\n";
+            std::cout << "\033[90m Use UP/DOWN Arrow Keys to navigate, Enter to select, ESC or 'q' to exit.\033[0m\n";
 
             KeyEvent ev = TerminalEngine::ReadKey();
             if (ev.key == Key::Up) {
