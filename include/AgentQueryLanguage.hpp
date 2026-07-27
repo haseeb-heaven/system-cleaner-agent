@@ -251,9 +251,18 @@ public:
         std::string firstWord;
         ss >> firstWord;
 
+        std::string cleanWord = "";
+        for (char ch : firstWord) {
+            if (std::isalpha(static_cast<unsigned char>(ch))) cleanWord += ch;
+        }
+
         static const std::set<std::string> validCmds = {
             "CLEAN", "SCAN", "SHRED", "MONITOR", "PURGE", "KILL", "SELECT", "WIPE", "WATCH", "EMPTY"
         };
+
+        if (validCmds.count(cleanWord) > 0) {
+            firstWord = cleanWord;
+        }
 
         if (validCmds.count(firstWord) == 0) {
             result.isValid = false;

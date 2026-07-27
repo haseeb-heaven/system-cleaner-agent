@@ -232,14 +232,14 @@ public:
             }
 
             ss << OpenTUI::Box::DrawDivider(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-            std::string hint = "Refreshing every " + std::to_string(g_tuiSettings.monitorIntervalSec) + "s... Press ESC or 'q' to return to dashboard.";
+            std::string hint = "Press 'A'/Enter to run AQL Query │ ESC/'q' to return (Refreshing every " + std::to_string(g_tuiSettings.monitorIntervalSec) + "s)";
             ss << OpenTUI::Box::DrawLine(80, hint, false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             ss << OpenTUI::Box::DrawFooter(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
 
             OpenTUI::TerminalEngine::MoveCursorToHome();
             std::cout << style.panelBg << ss.str() << style.panelBg << "\033[J" << std::flush;
 
-            // Sleep in 100ms intervals to allow ESC/q responsiveness
+            // Sleep in 100ms intervals to allow ESC/q/A responsiveness
             int checkCycles = g_tuiSettings.monitorIntervalSec * 10;
             bool returnToMenu = false;
             for (int i = 0; i < checkCycles; ++i) {
@@ -249,6 +249,13 @@ public:
                     if (c == 27 || c == 'q' || c == 'Q') {
                         returnToMenu = true;
                         break;
+                    } else if (c == 'a' || c == 'A' || c == 13) { // Enter or 'A' key
+                        std::string q = SelectAgentQuery();
+                        if (!q.empty()) {
+                            Cleaner localCleaner;
+                            AQLEngine::Execute(AQLEngine::Parse(q), localCleaner, g_tuiSettings.dryRun);
+                            std::this_thread::sleep_for(std::chrono::seconds(2));
+                        }
                     }
                 }
 #endif
