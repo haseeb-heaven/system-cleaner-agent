@@ -159,36 +159,59 @@ public:
     }
 };
 
+// Animated Spinner for Background Task Feedback
+class SpinnerAnimation {
+    size_t frameIndex = 0;
+    std::vector<std::string> frames = {
+        "⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"
+    };
+public:
+    std::string GetNextFrame() {
+        std::string f = frames[frameIndex % frames.size()];
+        frameIndex++;
+        return Color::BrightCyan + f + Color::Reset;
+    }
+};
+
+// Extended ASCII / Unicode Double-Line Box Renderer
 class Box {
 public:
     static std::string DrawBorder(int width, const std::string& title = "") {
         std::ostringstream ss;
-        ss << Color::Cyan << "+";
+        ss << Color::BrightCyan << "╔"; // Upper-left double box
         int titleLen = static_cast<int>(title.length());
         int lineLen = width - 2;
         if (titleLen > 0 && titleLen < lineLen - 4) {
-            ss << "---[ " << Color::BrightWhite << title << Color::Cyan << " ]";
-            for (int i = 0; i < lineLen - titleLen - 7; ++i) ss << "-";
+            ss << "═══[ " << Color::BrightWhite << Color::Bold << title << Color::Reset << Color::BrightCyan << " ]";
+            for (int i = 0; i < lineLen - titleLen - 7; ++i) ss << "═";
         } else {
-            for (int i = 0; i < lineLen; ++i) ss << "-";
+            for (int i = 0; i < lineLen; ++i) ss << "═";
         }
-        ss << "+" << Color::Reset << "\n";
+        ss << "╗" << Color::Reset << "\n"; // Upper-right double box
+        return ss.str();
+    }
+
+    static std::string DrawDivider(int width) {
+        std::ostringstream ss;
+        ss << Color::BrightCyan << "╠";
+        for (int i = 0; i < width - 2; ++i) ss << "═";
+        ss << "╣" << Color::Reset << "\n";
         return ss.str();
     }
 
     static std::string DrawFooter(int width) {
         std::ostringstream ss;
-        ss << Color::Cyan << "+";
-        for (int i = 0; i < width - 2; ++i) ss << "-";
-        ss << "+" << Color::Reset << "\n";
+        ss << Color::BrightCyan << "╚";
+        for (int i = 0; i < width - 2; ++i) ss << "═";
+        ss << "╝" << Color::Reset << "\n";
         return ss.str();
     }
 
     static std::string DrawLine(int width, const std::string& text, bool highlight = false) {
         std::ostringstream ss;
-        ss << Color::Cyan << "| " << Color::Reset;
+        ss << Color::BrightCyan << "║ " << Color::Reset;
         if (highlight) {
-            ss << Color::BgBlue << Color::BrightWhite << " > " << text;
+            ss << Color::BgBlue << Color::BrightWhite << Color::Bold << " ► " << text;
             int padding = width - static_cast<int>(text.length()) - 7;
             int fill = (std::max)(0, padding);
             for (int i = 0; i < fill; ++i) ss << " ";
@@ -199,11 +222,12 @@ public:
             int fill = (std::max)(0, padding);
             for (int i = 0; i < fill; ++i) ss << " ";
         }
-        ss << Color::Cyan << " |" << Color::Reset << "\n";
+        ss << Color::BrightCyan << " ║" << Color::Reset << "\n";
         return ss.str();
     }
 };
 
+// Professional Extended ASCII Block Loading Bar
 class ProgressBar {
 public:
     static std::string Render(double percentage, int width = 30) {
@@ -211,11 +235,11 @@ public:
         int filled = static_cast<int>((percentage / 100.0) * width);
         
         std::ostringstream ss;
-        ss << Color::Cyan << "[" << Color::BrightGreen;
-        for (int i = 0; i < filled; ++i) ss << "#";
+        ss << Color::BrightCyan << "▕" << Color::BrightGreen;
+        for (int i = 0; i < filled; ++i) ss << "█"; // Full block
         ss << Color::Dim;
-        for (int i = filled; i < width; ++i) ss << "-";
-        ss << Color::Reset << Color::Cyan << "] " << Color::BrightWhite 
+        for (int i = filled; i < width; ++i) ss << "░"; // Light shade block
+        ss << Color::Reset << Color::BrightCyan << "▏ " << Color::BrightWhite << Color::Bold
            << std::fixed << std::setprecision(1) << percentage << "%" << Color::Reset;
         return ss.str();
     }
@@ -225,11 +249,14 @@ class Menu {
     std::string title;
     std::vector<std::string> options;
     int selectedIndex = 0;
+    std::string statusLine;
+    SpinnerAnimation spinner;
 
 public:
     Menu(const std::string& t, const std::vector<std::string>& opts)
         : title(t), options(opts) {}
 
+    void SetStatusLine(const std::string& status) { statusLine = status; }
     int GetSelectedIndex() const { return selectedIndex; }
 
     int Show() {
@@ -245,8 +272,14 @@ public:
                 std::cout << Box::DrawLine(80, options[i], isSelected);
             }
 
+            if (!statusLine.empty()) {
+                std::cout << Box::DrawDivider(80);
+                std::string animatedStatus = spinner.GetNextFrame() + " " + statusLine;
+                std::cout << Box::DrawLine(80, animatedStatus, false);
+            }
+
             std::cout << Box::DrawFooter(80);
-            std::cout << "\033[90m Use UP/DOWN Arrow Keys to navigate, Enter to select, ESC or 'q' to exit.\033[0m\n";
+            std::cout << "\033[90m Use UP/DOWN to navigate, Enter to select, ESC or 'q' to exit.\033[0m\n";
 
             KeyEvent ev = TerminalEngine::ReadKey();
             if (ev.key == Key::Up) {

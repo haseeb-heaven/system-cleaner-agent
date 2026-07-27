@@ -9,6 +9,45 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <thread>
+#include <atomic>
+#include <mutex>
+
+#ifdef _WIN32
+#include <conio.h>
+#endif
+
+// Background Task State for Non-Blocking TUI Interface
+struct TUITaskStatus {
+    std::atomic<bool> isRunning{false};
+    std::string taskName = "Idle";
+    std::string lastMessage = "Ready";
+    std::mutex mtx;
+
+    void SetActive(const std::string& name) {
+        std::lock_guard<std::mutex> lock(mtx);
+        isRunning = true;
+        taskName = name;
+        lastMessage = "Running: " + name;
+    }
+
+    void SetCompleted(const std::string& msg) {
+        std::lock_guard<std::mutex> lock(mtx);
+        isRunning = false;
+        lastMessage = msg;
+    }
+
+    std::string GetStatusLine() {
+        std::lock_guard<std::mutex> lock(mtx);
+        if (isRunning) {
+            return "[STATUS] 🟢 ACTIVE: " + taskName;
+        } else {
+            return "[STATUS] ⚪ READY | " + lastMessage;
+        }
+    }
+};
+
+static TUITaskStatus g_tuiStatus;
 
 class TUI {
 public:
@@ -24,27 +63,35 @@ public:
                   << "\033[1;32m   [ system-cleaner-agent v5.0 - 100% Pure C++17 OpenTUI Suite ]\033[0m\n\n";
     }
 
+    static void FlushInputBuffer() {
+        std::cin.clear();
+#ifdef _WIN32
+        while (_kbhit()) { (void)_getch(); }
+#endif
+    }
+
     static std::string SelectAgentQuery() {
         std::vector<std::string> queryMenuOptions = {
-            "[Custom Query] Enter natural language or AQL query (e.g. CLEAN WHERE FREE_DISK < 500MB)",
-            "AQL: CLEAN 'C:\\Temp' WHERE FREE_DISK < 500MB",
-            "AQL: MONITOR WHERE RAM > 80% EVERY 15S",
-            "AQL: SHRED 'C:\\Temp' WHERE SIZE > 10MB",
-            "AQL: PURGE RECYCLE_BIN",
-            "AQL: SCAN 'C:\\' WHERE AGE > 24H"
+            "[Custom Query]",
+            "CLEAN WHERE FREE_DISK < 500MB",
+            "MONITOR WHERE RAM > 80%",
+            "SHRED WHERE SIZE > 10MB",
+            "PURGE RECYCLE_BIN",
+            "SCAN WHERE AGE > 24H"
         };
 
-        OpenTUI::Menu agentMenu("AGENT QUERY LANGUAGE (AQL) - SELECT OR TYPE QUERY", queryMenuOptions);
+        OpenTUI::Menu agentMenu("AGENT QUERY", queryMenuOptions);
         int choice = agentMenu.Show();
 
         if (choice <= 0) {
             OpenTUI::TerminalEngine::ClearScreen();
             PrintBanner();
-            std::cout << "\033[1;36mCleaner Agent > Enter AQL Query or Natural Goal:\033[0m ";
+            FlushInputBuffer();
+            std::cout << "\033[1;36mQuery: \033[0m";
             std::string userQuery;
             std::getline(std::cin, userQuery);
             if (userQuery.empty()) {
-                userQuery = "CLEAN 'C:\\Temp' WHERE FREE_DISK < 500MB";
+                userQuery = "CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB";
             }
             return userQuery;
         }
@@ -62,21 +109,23 @@ public:
 
     static void RunInteractiveMenu(Cleaner& cleaner) {
         std::vector<std::string> options = {
-            "Storage Scan (Dry-Run)",
+            "Storage Scan",
             "Smart Deep Clean",
             "Secure Shred Wipe",
-            "Empty Recycle Bin / Trash",
-            "Autonomous ReAct Agent & AQL",
-            "Smart Daemon & Monitor",
+            "Empty Recycle Bin",
+            "Agent & AQL Query",
+            "Daemon Monitor",
             "Export JSON Report",
             "Engine Unit Tests",
             "Exit Agent"
         };
 
-        OpenTUI::Menu menu("SYSTEM-CLEANER-AGENT DASHBOARD", options);
+        OpenTUI::Menu menu("SYSTEM-CLEANER-AGENT", options);
 
         while (true) {
+            menu.SetStatusLine(g_tuiStatus.GetStatusLine());
             int selected = menu.Show();
+
             if (selected == -1 || selected == 8) {
                 std::cout << "\n\033[32mExiting system-cleaner-agent OpenTUI Suite. Goodbye!\033[0m\n";
                 break;
@@ -88,67 +137,71 @@ public:
 
             switch (selected) {
                 case 0: {
-                    cleaner.SetDryRun(true);
-                    cleaner.Scan();
+                    std::cout << "\033[1;36mLaunching background Storage Scan...\033[0m\n";
+                    std::thread worker([&cleaner]() {
+                        g_tuiStatus.SetActive("Storage Scan");
+                        cleaner.SetDryRun(true);
+                        auto reports = cleaner.Scan();
+                        uintmax_t freed = 0;
+                        for (const auto& r : reports) freed += r.sizeBytes;
+                        g_tuiStatus.SetCompleted("Scan completed. Cleanable: " + Cleaner::FormatSize(freed));
+                    });
+                    worker.detach();
                     break;
                 }
                 case 1: {
-                    std::cout << "\033[1;31mWARNING: This will delete temporary junk files across your system.\033[0m\n"
-                              << "Proceed with cleanup? (y/n): ";
-                    char confirm;
-                    std::cin >> confirm;
-                    if (confirm == 'y' || confirm == 'Y') {
+                    std::cout << "\033[1;36mLaunching background Smart Deep Clean...\033[0m\n";
+                    std::thread worker([&cleaner]() {
+                        g_tuiStatus.SetActive("Smart Deep Clean");
                         cleaner.SetDryRun(false);
                         cleaner.Clean();
-                    } else {
-                        std::cout << "Cleanup operation cancelled.\n";
-                    }
+                        g_tuiStatus.SetCompleted("Deep Clean finished.");
+                    });
+                    worker.detach();
                     break;
                 }
                 case 2: {
-                    std::cout << "\033[1;31mWARNING: Secure shredding will zero-overwrite matching junk files before deletion.\033[0m\n"
-                              << "Proceed with shredding? (y/n): ";
-                    char confirm;
-                    std::cin >> confirm;
-                    if (confirm == 'y' || confirm == 'Y') {
+                    std::cout << "\033[1;36mLaunching background Secure Shred Wipe...\033[0m\n";
+                    std::thread worker([&cleaner]() {
+                        g_tuiStatus.SetActive("Secure Shred Wipe");
                         cleaner.SetMode(CleanMode::Shred);
                         cleaner.SetDryRun(false);
                         cleaner.Clean();
-                    } else {
-                        std::cout << "Shred operation cancelled.\n";
-                    }
+                        g_tuiStatus.SetCompleted("Shred Wipe finished.");
+                    });
+                    worker.detach();
                     break;
                 }
                 case 3: {
-                    cleaner.SetEmptyRecycleBin(true);
-                    cleaner.EmptyWindowsRecycleBin();
+                    std::cout << "\033[1;36mLaunching background Empty Recycle Bin...\033[0m\n";
+                    std::thread worker([&cleaner]() {
+                        g_tuiStatus.SetActive("Empty Recycle Bin");
+                        cleaner.SetEmptyRecycleBin(true);
+                        cleaner.EmptyWindowsRecycleBin();
+                        g_tuiStatus.SetCompleted("Recycle Bin emptied.");
+                    });
+                    worker.detach();
                     break;
                 }
                 case 4: {
                     std::string selectedQuery = SelectAgentQuery();
-                    OpenTUI::TerminalEngine::ClearScreen();
-                    PrintBanner();
-                    std::cout << "\033[1;33mExecuting Agent Goal: " << selectedQuery << "\033[0m\n\n";
-                    AgentEngine agent(selectedQuery);
-                    agent.RunReActLoop(true);
+                    std::cout << "\033[1;33mLaunching background Agent Task: " << selectedQuery << "\033[0m\n";
+                    std::thread worker([selectedQuery]() {
+                        g_tuiStatus.SetActive("Agent Task: " + selectedQuery);
+                        AgentEngine agent(selectedQuery);
+                        agent.RunReActLoop(true);
+                        g_tuiStatus.SetCompleted("Agent Task finished: " + selectedQuery);
+                    });
+                    worker.detach();
                     break;
                 }
                 case 5: {
-                    double currentMem = SmartScheduler::GetMemoryUsagePercent();
-                    double currentDisk = SmartScheduler::GetDiskUsagePercent();
-                    std::cout << "Current System RAM Usage: " << currentMem << "%\n";
-                    std::cout << "Current Disk Storage Usage: " << currentDisk << "%\n\n";
-
-                    std::cout << "Enter Memory RAM Threshold Percentage to trigger Auto-Clean (e.g. 80 for 80%): ";
-                    double memThresh = 80.0;
-                    std::cin >> memThresh;
-
-                    std::cout << "Enter Check Interval in seconds (e.g. 15): ";
-                    long long sec = 15;
-                    std::cin >> sec;
-
-                    std::cout << "Starting Smart Daemon Service... Press Ctrl+C to stop.\n";
-                    SmartScheduler::RunDaemonService(cleaner, {}, memThresh, 0.0, sec, true);
+                    std::cout << "\033[1;36mLaunching background Smart Daemon Service...\033[0m\n";
+                    std::thread worker([&cleaner]() {
+                        g_tuiStatus.SetActive("Smart Daemon (RAM > 80% / Free Disk < 500MB)");
+                        SmartScheduler::RunDaemonService(cleaner, {}, 80.0, 0.0, 15, true, 500ULL * 1024 * 1024, "C:\\");
+                    });
+                    worker.detach();
                     break;
                 }
                 case 6: {
@@ -166,8 +219,8 @@ public:
                 }
             }
 
-            std::cout << "\n\033[90mPress Enter to return to OpenTUI menu...\033[0m";
-            std::cin.ignore();
+            std::cout << "\n\033[90mTask running in background! Press Enter to return to main OpenTUI menu...\033[0m";
+            FlushInputBuffer();
             std::cin.get();
         }
     }
