@@ -2,6 +2,26 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.4.0] - 2026-07-27
+
+### Fixed
+- **Security Guard False Block (`include/SecurityGuard.hpp`)**:
+  - `AppData\Local\Temp` and other standard temp/cache paths were incorrectly classified as `CRITICAL SYSTEM PATH BLOCKED`.
+  - Added `GetSafeCleanPaths()` allowlist that is evaluated **before** any critical path check, permanently whitelisting known-safe temp/cache/junk directories.
+
+### Added / Features
+- **OS-Aware Safe Default Clean Paths (`include/SecurityGuard.hpp`)**:
+  - **Windows**: `%USERPROFILE%\AppData\Local\Temp`, `%WINDIR%\Temp`, `%WINDIR%\Prefetch`, `%WINDIR%\SoftwareDistribution\Download`, Chrome/Edge/Firefox caches, npm/pip/nuget caches, WER dumps, INetCache, CrashDumps, Packages.
+  - **macOS**: `~/Library/Caches`, `~/Library/Logs`, `~/Library/Saved Application State`, `~/.Trash`, `/private/tmp`, `/private/var/folders`, Spotlight cache, pip/npm caches.
+  - **Linux**: `~/.cache`, `~/.local/share/Trash`, `~/.thumbnails`, `/tmp`, `/var/tmp`, `/var/cache/apt`, `/var/cache/yum`, `/var/cache/dnf`, `/var/cache/pacman/pkg`, Gradle/Maven/Cargo/Docker/Yarn caches.
+- **TUI Settings: "Reset to OS Defaults" Option (`include/TUI.hpp`)**:
+  - New Settings menu item: `Reset to OS Defaults (Windows|macOS|Linux safe temp/cache paths)`.
+  - One-press resets Target Folders to the full OS-aware safe path list and saves to `cleaner_config.json`.
+  - Target Folders display now truncated to 60 chars to avoid wrapping.
+- **Auto-Init on First Launch (`include/TUI.hpp`)**:
+  - If `cleaner_config.json` is missing or has an empty/legacy path, the app automatically populates the full OS-aware safe clean path list and saves it.
+  - Custom protected processes from config are restored into the GTLibc runtime list on startup.
+
 ## [5.3.1] - 2026-07-27
 
 ### Added / Features

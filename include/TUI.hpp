@@ -6,6 +6,7 @@
 #include "AgentEngine.hpp"
 #include "AgentQueryLanguage.hpp"
 #include "ConfigManager.hpp"
+#include "SecurityGuard.hpp"
 
 #include <iostream>
 #include <vector>
@@ -64,7 +65,18 @@ inline void SaveTUISettings() {
 
 inline void LoadTUISettings() {
     AppConfig cfg = ConfigManager::Load();
+    // On first launch or if customPathsStr is still the old Windows-only default,
+    // populate it with the full OS-aware safe temp/cache path list
+    if (cfg.customPathsStr.empty() ||
+        cfg.customPathsStr == "C:\\Users\\hasee\\AppData\\Local\\Temp") {
+        cfg.customPathsStr = SecurityGuard::GetDefaultCleanPathsStr();
+        ConfigManager::Save(cfg);
+    }
     g_tuiSettings.SyncFromAppConfig(cfg);
+    // Restore custom protected processes into the GTLibc runtime list
+    for (const auto& proc : g_tuiSettings.customProtectedProcesses) {
+        GTLIBC::GTLibc::AddCustomProtectedProcess(proc);
+    }
 }
 
 // Background Task State for Non-Blocking TUI Interface
@@ -177,20 +189,28 @@ public:
 
     static void ShowSettingsMenu(Cleaner& cleaner) {
         while (true) {
+#ifdef _WIN32
+            static const std::string osName = "Windows";
+#elif defined(__APPLE__)
+            static const std::string osName = "macOS";
+#else
+            static const std::string osName = "Linux";
+#endif
             std::vector<std::string> settingsOptions = {
                 std::string("Sandbox Mode:     [") + (g_tuiSettings.sandboxMode ? "ON  - Preview Only" : "OFF - REAL DELETION ALLOWED") + "]",
                 std::string("Path Protection:  [") + (g_tuiSettings.pathProtection ? "ON  - System Dir Guard" : "OFF - Disabled") + "]",
                 std::string("Dry-Run Mode:     [") + (g_tuiSettings.dryRun ? "ON  - Preview Only" : "OFF - REAL CLEAN") + "]",
                 std::string("Kill Locks:       [") + (g_tuiSettings.killLocks ? "ON" : "OFF") + "]",
                 std::string("Monitor Interval: [") + std::to_string(g_tuiSettings.monitorIntervalSec) + " seconds]",
-                std::string("Target Folders:   [") + g_tuiSettings.customPathsStr + "]",
+                std::string("Target Folders:   [") + g_tuiSettings.customPathsStr.substr(0, 60) + (g_tuiSettings.customPathsStr.size() > 60 ? "..." : "") + "]",
+                std::string("Reset to OS Defaults (" + osName + " safe temp/cache paths)"),
                 "Save & Return to Dashboard"
             };
 
             OpenTUI::Menu settingsMenu("SETTINGS", settingsOptions);
             OpenTUI::MenuSelection sel = settingsMenu.ShowExtended();
 
-            if (sel.index == -1 || sel.index == 6) {
+            if (sel.index == -1 || sel.index == 7) {
                 cleaner.SetSandbox(g_tuiSettings.sandboxMode);
                 cleaner.SetDangerousPathProtection(g_tuiSettings.pathProtection);
                 cleaner.SetDryRun(g_tuiSettings.dryRun);
@@ -232,6 +252,13 @@ public:
                     PrintBanner();
                     std::string newPath = OpenTUI::TextInput::ReadLine("Enter target PATH folders (comma-separated): ", g_tuiSettings.customPathsStr);
                     if (!newPath.empty()) g_tuiSettings.customPathsStr = newPath;
+                    break;
+                }
+                case 6: {
+                    // Reset to OS-aware safe default temp/cache paths
+                    g_tuiSettings.customPathsStr = SecurityGuard::GetDefaultCleanPathsStr();
+                    std::cout << "\033[1;32m[OK] Target folders reset to OS-default safe temp/cache paths.\033[0m\n";
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
                     break;
                 }
             }

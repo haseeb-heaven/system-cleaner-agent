@@ -57,6 +57,20 @@ public:
             return static_cast<char>(std::tolower(c));
         });
 
+        // --- ALLOWLIST: Explicitly safe temp/cache/junk paths — NEVER blocked ---
+        for (const auto& safe : GetSafeCleanPaths()) {
+            std::string sl = safe;
+            std::transform(sl.begin(), sl.end(), sl.begin(), [](unsigned char c) {
+                return static_cast<char>(std::tolower(c));
+            });
+            if (pathLower == sl || pathLower.find(sl + "\\") == 0 || pathLower.find(sl + "/") == 0) {
+                // This is an explicitly safe temp/cache path — allow it
+                report.level = ThreatLevel::Safe;
+                report.blocked = false;
+                return report;
+            }
+        }
+
         // --- CRITICAL: Always blocked system roots ---
         for (const auto& blocked : GetCriticalBlockedPaths()) {
             std::string bl = blocked;
@@ -154,7 +168,112 @@ public:
         std::cout << color << label << report.reason << "\033[0m\n";
     }
 
+    // Public helper: Get comma-joined default safe paths for the current OS
+    static std::string GetDefaultCleanPathsStr() {
+        auto paths = GetSafeCleanPaths();
+        std::string result;
+        for (size_t i = 0; i < paths.size(); ++i) {
+            if (i > 0) result += ",";
+            result += paths[i];
+        }
+        return result;
+    }
+
 private:
+    // ----------------------------------------------------------------
+    // Explicitly safe temp/cache/junk paths — always allowed to clean
+    // These override the critical blocked list checks
+    // ----------------------------------------------------------------
+    static std::vector<std::string> GetSafeCleanPaths() {
+        std::vector<std::string> paths;
+
+#ifdef _WIN32
+        // Resolve %USERPROFILE% and %TEMP% dynamically
+        char userProfile[MAX_PATH] = {};
+        char localAppData[MAX_PATH] = {};
+        char winDir[MAX_PATH] = {};
+        ExpandEnvironmentStringsA("%USERPROFILE%", userProfile, MAX_PATH);
+        ExpandEnvironmentStringsA("%LOCALAPPDATA%", localAppData, MAX_PATH);
+        ExpandEnvironmentStringsA("%WINDIR%", winDir, MAX_PATH);
+
+        std::string up(userProfile);
+        std::string la(localAppData);
+        std::string wd(winDir);
+
+        // Primary user temp / cache folders
+        paths.push_back(up + "\\AppData\\Local\\Temp");
+        paths.push_back(la + "\\Temp");
+        paths.push_back(la + "\\Microsoft\\Windows\\INetCache");
+        paths.push_back(la + "\\Microsoft\\Windows\\Explorer");
+        paths.push_back(la + "\\Microsoft\\Windows\\WER");          // Windows Error Reporting
+        paths.push_back(la + "\\Microsoft\\Windows\\WebCache");
+        paths.push_back(la + "\\CrashDumps");
+        paths.push_back(la + "\\Microsoft\\Edge\\User Data\\Default\\Cache");
+        paths.push_back(la + "\\Google\\Chrome\\User Data\\Default\\Cache");
+        paths.push_back(la + "\\Google\\Chrome\\User Data\\Default\\Code Cache");
+        paths.push_back(la + "\\Mozilla\\Firefox\\Profiles");       // browser cache subfolders
+        paths.push_back(la + "\\Packages");                         // UWP package caches
+        paths.push_back(up + "\\AppData\\Local\\pip\\cache");
+        paths.push_back(up + "\\AppData\\Local\\npm-cache");
+        paths.push_back(up + "\\AppData\\Local\\nuget\\cache");
+        paths.push_back(up + "\\AppData\\Local\\SquirrelTemp");
+        paths.push_back(up + "\\AppData\\Roaming\\npm-cache");
+
+        // Windows system temp (safe to clean contents, not the folder itself)
+        paths.push_back(wd + "\\Temp");
+        paths.push_back(wd + "\\Prefetch");
+        paths.push_back(wd + "\\SoftwareDistribution\\Download");   // Windows Update cache
+        paths.push_back(wd + "\\Logs");
+
+#elif defined(__APPLE__)
+        char* home = std::getenv("HOME");
+        if (home) {
+            std::string h(home);
+            paths.push_back(h + "/Library/Caches");
+            paths.push_back(h + "/Library/Logs");
+            paths.push_back(h + "/Library/Application Support/CrashReporter");
+            paths.push_back(h + "/Library/Saved Application State");
+            paths.push_back(h + "/Library/Containers");             // per-app sandbox cache
+            paths.push_back(h + "/.Trash");
+            paths.push_back(h + "/.npm/_cacache");
+            paths.push_back(h + "/.pip/cache");
+            paths.push_back(h + "/.cache");                         // XDG cache on macOS too
+        }
+        paths.push_back("/private/tmp");
+        paths.push_back("/tmp");
+        paths.push_back("/private/var/folders");                     // macOS per-user tmp/cache
+        paths.push_back("/System/Volumes/Data/.Spotlight-V100");     // Spotlight index cache
+        paths.push_back("/private/var/log");
+
+#else
+        // Linux
+        char* home = std::getenv("HOME");
+        if (home) {
+            std::string h(home);
+            paths.push_back(h + "/.cache");
+            paths.push_back(h + "/.local/share/Trash");
+            paths.push_back(h + "/.thumbnails");
+            paths.push_back(h + "/.npm/_cacache");
+            paths.push_back(h + "/.pip/cache");
+            paths.push_back(h + "/.gradle/caches");
+            paths.push_back(h + "/.m2/repository");                  // Maven cache
+            paths.push_back(h + "/.cargo/registry/cache");
+            paths.push_back(h + "/.docker/tmp");
+            paths.push_back(h + "/.yarn/cache");
+        }
+        paths.push_back("/tmp");
+        paths.push_back("/var/tmp");
+        paths.push_back("/var/cache/apt/archives");
+        paths.push_back("/var/cache/apt");
+        paths.push_back("/var/cache/yum");
+        paths.push_back("/var/cache/dnf");
+        paths.push_back("/var/cache/pacman/pkg");
+        paths.push_back("/var/log");                                  // log rotation cleanup
+#endif
+
+        return paths;
+    }
+
     // Always blocked — these will never be allowed regardless of sandbox flag
     static std::vector<std::string> GetCriticalBlockedPaths() {
         return {
