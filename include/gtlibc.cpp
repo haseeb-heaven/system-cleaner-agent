@@ -6,6 +6,7 @@
 
 #include "gtlibc.hpp"
 #include "Logger.hpp"
+#include <map>
 
 namespace GTLIBC {
 
@@ -97,10 +98,14 @@ std::vector<ProcessInfo> GTLibc::EnumerateAllProcesses() {
 
 size_t GTLibc::GetProcessMemoryUsage(DWORD pid) {
 #ifdef _WIN32
-    HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    // Use PROCESS_QUERY_LIMITED_INFORMATION so memory queries succeed for elevated/user processes (Chrome, Edge, IDEs)
+    HANDLE hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    if (!hProc) {
+        hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, pid);
+    }
     if (hProc) {
-        PROCESS_MEMORY_COUNTERS pmc;
-        if (GetProcessMemoryInfo(hProc, &pmc, sizeof(pmc))) {
+        PROCESS_MEMORY_COUNTERS_EX pmc;
+        if (GetProcessMemoryInfo(hProc, (PROCESS_MEMORY_COUNTERS*)&pmc, sizeof(pmc))) {
             CloseHandle(hProc);
             return pmc.WorkingSetSize;
         }
@@ -142,7 +147,115 @@ bool GTLibc::KillProcess(DWORD pid) {
     return false;
 }
 
-size_t GTLibc::KillProcessByName(const std::string& processName) {
+static std::vector<std::string> g_userProtectedProcesses;
+
+bool GTLibc::IsProtectedProcess(const std::string& processName) {
+    std::string procLower = processName;
+    std::transform(procLower.begin(), procLower.end(), procLower.begin(), ::tolower);
+    if (procLower.length() >= 4 && procLower.substr(procLower.length() - 4) == ".exe") {
+        procLower = procLower.substr(0, procLower.length() - 4);
+    }
+
+    static const std::set<std::string> protectedSet = {
+        // OS System Services & Shell
+        "csrss", "lsass", "explorer", "svchost", "system", "smss", "services",
+        "winlogon", "system-cleaner-agent", "agy", "antigravity", "gemini-cli",
+        "cline", "grok", "conhost", "dwm", "taskhostw",
+        "sihost", "ctfmon", "fontdrvhost", "runtimebroker", "searchhost",
+        "searchindexer", "securityhealthservice", "spoolsv", "taskmgr",
+        "audiodg", "shellexperiencehost", "startmenuexperiencehost", "lockapp",
+        "textinputhost", "wipfw", "smartscreen", "registry",
+
+        // User Browsers
+        "chrome", "msedge", "brave", "firefox", "opera", "vivaldi", "iexplore", "arc",
+
+        // IDEs & Code Editors
+        "code", "cursor", "devenv", "idea64", "pycharm64", "clion64", "webstorm64",
+        "rider64", "goland64", "notepad++", "sublime_text", "atom", "visualstudio",
+
+        // Terminals & Shells
+        "powershell", "cmd", "wt", "bash", "sh", "mintty", "windowsterminal",
+        "git-bash", "zsh", "fish",
+
+        // Productivity, Audio/Video & Communication Apps
+        "discord", "slack", "telegram", "spotify", "steam", "teams", "outlook",
+        "excel", "word", "powerpnt", "onedrive", "zoom", "notion", "obsidian"
+    };
+
+    if (protectedSet.count(procLower) > 0) return true;
+
+    for (const auto& custom : g_userProtectedProcesses) {
+        std::string cLower = custom;
+        std::transform(cLower.begin(), cLower.end(), cLower.begin(), ::tolower);
+        if (cLower.length() >= 4 && cLower.substr(cLower.length() - 4) == ".exe") {
+            cLower = cLower.substr(0, cLower.length() - 4);
+        }
+        if (procLower == cLower) return true;
+    }
+
+    return false;
+}
+
+void GTLibc::AddCustomProtectedProcess(const std::string& processName) {
+    if (!processName.empty()) {
+        g_userProtectedProcesses.push_back(processName);
+    }
+}
+
+std::vector<ProcessInfo> GTLibc::GetHighMemoryCandidateProcesses(size_t minRamBytes) {
+    std::vector<ProcessInfo> candidates;
+    auto procs = EnumerateAllProcesses();
+    for (auto proc : procs) {
+        proc.isProtected = IsProtectedProcess(proc.processName);
+        if (proc.memoryUsageBytes >= minRamBytes) {
+            candidates.push_back(proc);
+        }
+    }
+    return candidates;
+}
+
+std::vector<AggregatedProcessGroup> GTLibc::GetAggregatedProcessGroups(size_t minGroupRamBytes) {
+    std::map<std::string, AggregatedProcessGroup> groupMap;
+    auto procs = EnumerateAllProcesses();
+
+    for (const auto& proc : procs) {
+        std::string lowerName = proc.processName;
+        std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
+
+        auto& grp = groupMap[lowerName];
+        if (grp.processName.empty()) {
+            grp.processName = proc.processName;
+            grp.isProtected = IsProtectedProcess(proc.processName);
+        }
+        grp.totalMemoryUsageBytes += proc.memoryUsageBytes;
+        grp.instanceCount++;
+        grp.pids.push_back(proc.pid);
+    }
+
+    std::vector<AggregatedProcessGroup> groups;
+    for (const auto& kv : groupMap) {
+        if (kv.second.totalMemoryUsageBytes >= minGroupRamBytes) {
+            groups.push_back(kv.second);
+        }
+    }
+
+    std::sort(groups.begin(), groups.end(), [](const AggregatedProcessGroup& a, const AggregatedProcessGroup& b) {
+        return a.totalMemoryUsageBytes > b.totalMemoryUsageBytes;
+    });
+
+    return groups;
+}
+
+size_t GTLibc::KillProcessByName(const std::string& processName, bool enablePermission, bool userPermissionGranted) {
+    if (!enablePermission) {
+        Logger::Instance().Warn("RAM Cleaner: Killing process by name '" + processName + "' skipped (Permission disabled).");
+        return 0;
+    }
+    if (IsProtectedProcess(processName) && !userPermissionGranted) {
+        Logger::Instance().Info("RAM Cleaner: Cannot kill protected process without explicit user permission: " + processName);
+        return 0;
+    }
+
     size_t count = 0;
 #ifdef _WIN32
     HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -176,33 +289,28 @@ size_t GTLibc::KillProcessByName(const std::string& processName) {
     return count;
 }
 
-size_t GTLibc::KillHighMemoryProcesses(size_t minRamBytes, bool enableTermination) {
+size_t GTLibc::KillHighMemoryProcesses(size_t minRamBytes, bool enableTermination, bool userPermissionGranted) {
     size_t count = 0;
-    static const std::vector<std::string> criticalSystemProcs = {
-        "csrss.exe", "lsass.exe", "explorer.exe", "svchost.exe", "system",
-        "smss.exe", "services.exe", "winlogon.exe", "system-cleaner-agent.exe",
-        "conhost.exe", "dwm.exe", "taskhostw.exe"
-    };
+    auto candidates = GetHighMemoryCandidateProcesses(minRamBytes);
 
-    auto procs = EnumerateAllProcesses();
-    for (const auto& proc : procs) {
-        std::string procLower = proc.processName;
-        std::transform(procLower.begin(), procLower.end(), procLower.begin(), ::tolower);
-
-        bool isProtected = false;
-        for (const auto& prot : criticalSystemProcs) {
-            if (procLower == prot) { isProtected = true; break; }
+    for (const auto& proc : candidates) {
+        if (proc.isProtected) {
+            Logger::Instance().Info("RAM Cleaner Guard: Preserved protected application: " + proc.processName + " (PID: " + std::to_string(proc.pid) + ", RAM: " + std::to_string(proc.memoryUsageBytes / (1024 * 1024)) + " MB)");
+            continue;
         }
-        if (isProtected) continue;
 
-        if (proc.memoryUsageBytes >= minRamBytes) {
-            if (enableTermination) {
-                if (KillProcess(proc.pid)) {
-                    count++;
-                }
-            } else {
+        if (!userPermissionGranted) {
+            Logger::Instance().Warn("RAM Cleaner Guard: Candidate process skipped (Explicit user permission required): " + proc.processName + " (PID: " + std::to_string(proc.pid) + ", RAM: " + std::to_string(proc.memoryUsageBytes / (1024 * 1024)) + " MB)");
+            continue;
+        }
+
+        if (enableTermination) {
+            if (KillProcess(proc.pid)) {
+                Logger::Instance().Info("RAM Cleaner: Terminated high-RAM candidate process with permission: " + proc.processName + " (PID: " + std::to_string(proc.pid) + ")");
                 count++;
             }
+        } else {
+            count++;
         }
     }
     return count;

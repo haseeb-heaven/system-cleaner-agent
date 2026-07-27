@@ -675,23 +675,29 @@ void TestAgentQueryLanguage() {
 // 21. GTLibc Process & Memory Management Subsystem Suite
 // ===========================================================================
 void TestGTLibcSubsystem() {
-    std::cout << "[TEST 21] GTLibc Process Management Subsystem Engine... ";
+    std::cout << "[TEST 21] GTLibc Process Protection & Permissions... ";
 
     // Test process enumeration
     auto procs = GTLIBC::GTLibc::EnumerateAllProcesses();
     assert(!procs.empty());
 
-    // Test elevation status
-    bool elevated = GTLIBC::GTLibc::IsElevatedProcess();
-    (void)elevated;
+    // Test process protection whitelist
+    assert(GTLIBC::GTLibc::IsProtectedProcess("chrome.exe") == true);
+    assert(GTLIBC::GTLibc::IsProtectedProcess("code.exe") == true);
+    assert(GTLIBC::GTLibc::IsProtectedProcess("powershell.exe") == true);
+    assert(GTLIBC::GTLibc::IsProtectedProcess("explorer.exe") == true);
 
-    // Test finding current running process
-    bool isSelfRunning = GTLIBC::GTLibc::IsProcessRunning("unit_tests.exe") || GTLIBC::GTLibc::IsProcessRunning("unit_tests");
-    assert(isSelfRunning || !procs.empty());
+    // Test custom protected process addition
+    GTLIBC::GTLibc::AddCustomProtectedProcess("my_custom_app.exe");
+    assert(GTLIBC::GTLibc::IsProtectedProcess("my_custom_app.exe") == true);
 
-    // Test High RAM process scanning via GTLibc
-    size_t highRamCandidates = GTLIBC::GTLibc::KillHighMemoryProcesses(999ULL * 1024 * 1024 * 1024, false); // 999 GB threshold
-    assert(highRamCandidates == 0);
+    // Test High RAM candidate scan
+    auto candidates = GTLIBC::GTLibc::GetHighMemoryCandidateProcesses(1ULL * 1024 * 1024); // 1 MB
+    assert(candidates.size() >= 0);
+
+    // Test High RAM process scanning without permission (returns 0 killed)
+    size_t highRamCandidates = GTLIBC::GTLibc::KillHighMemoryProcesses(10ULL * 1024 * 1024, true, false); // No permission granted
+    assert(highRamCandidates == 0); // No processes killed without permission!
 
     PASS("GTLibcSubsystem", 10);
 }

@@ -267,7 +267,16 @@ public:
             } else {
                 ramCutoff = 200ULL * 1024 * 1024;
             }
-            ProcessManager::KillHighMemoryProcesses(ramCutoff, !dryRun);
+
+            auto candidates = ProcessManager::GetHighMemoryCandidates(ramCutoff);
+            std::cout << "\033[1;36m[AQL PROCESS SCAN] Found " << candidates.size() << " process(es) matching RAM threshold.\033[0m\n";
+            for (const auto& proc : candidates) {
+                std::string statusStr = proc.isProtected ? "\033[1;32m[PROTECTED APP - PRESERVED]\033[0m" : "\033[1;33m[PERMISSION REQUIRED]\033[0m";
+                std::cout << "  - " << proc.processName << " (PID: " << proc.pid << ", RAM: " << Cleaner::FormatSize(proc.memoryUsageBytes) << ") -> " << statusStr << "\n";
+            }
+
+            bool allowKill = false; // Require explicit permission / interactive selection
+            ProcessManager::KillHighMemoryProcesses(ramCutoff, !dryRun, allowKill);
         } else if (q.command == "MONITOR") {
             SmartScheduler::RunDaemonService(cleaner, {}, q.ramThresholdPercent, q.diskThresholdPercent, q.intervalSeconds, dryRun, q.diskFreeBelowBytes, q.drive);
         }

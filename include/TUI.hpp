@@ -328,16 +328,107 @@ public:
                     break;
                 }
                 case 4: {
-                    std::cout << "\033[1;36mLaunching background RAM Cleaner (GTLibc Subsystem)...\033[0m\n";
-                    bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
-                    std::thread worker([currentDryRun]() {
-                        g_tuiStatus.SetActive("RAM Cleaner (GTLibc Engine)");
-                        size_t releasedLocks = ProcessManager::StopLockingProcesses(!currentDryRun);
-                        size_t killedProcs = GTLIBC::GTLibc::KillHighMemoryProcesses(150ULL * 1024 * 1024, !currentDryRun);
-                        std::string summary = "RAM Cleaned. Freed " + std::to_string(killedProcs) + " high-RAM proc(s), " + std::to_string(releasedLocks) + " released lock(s).";
-                        g_tuiStatus.SetCompleted(summary);
-                    });
-                    worker.detach();
+                    while (true) {
+                        OpenTUI::TerminalEngine::ClearScreen();
+                        PrintBanner();
+                        std::cout << "\033[1;36m================================================================================\033[0m\n";
+                        std::cout << "\033[1;97m                 RAM CLEANER & PROCESS PERMISSION MANAGEMENT                    \033[0m\n";
+                        std::cout << "\033[1;36m================================================================================\033[0m\n\n";
+
+                        double curMemPct = SmartScheduler::GetMemoryUsagePercent();
+                        std::cout << "  System Memory (RAM): " << OpenTUI::ProgressBar::Render(curMemPct, 35, "% used") << "\n\n";
+
+                        auto highRamGroups = ProcessManager::GetAggregatedProcessGroups(200ULL * 1024 * 1024);
+
+                        std::cout << "\033[1;33mHigh-RAM Applications (> 200 MB Total RAM):\033[0m\n";
+                        if (highRamGroups.empty()) {
+                            std::cout << "  \033[32m[SAFE] No process applications consuming > 200 MB RAM detected.\033[0m\n\n";
+                        } else {
+                            for (size_t i = 0; i < highRamGroups.size(); ++i) {
+                                const auto& grp = highRamGroups[i];
+                                std::string ramStr = Cleaner::FormatSize(grp.totalMemoryUsageBytes);
+                                std::string countStr = (grp.instanceCount > 1) ? (" (" + std::to_string(grp.instanceCount) + " processes)") : (" (PID: " + (grp.pids.empty() ? "?" : std::to_string(grp.pids[0])) + ")");
+                                std::string tag = grp.isProtected ? "  \033[32m[PROTECTED APP]\033[0m" : "  \033[1;31m[PERMISSION REQUIRED]\033[0m";
+                                std::cout << "  [" << (i + 1) << "] " << grp.processName << countStr << " - " << ramStr << tag << "\n";
+                            }
+                            std::cout << "\n";
+                        }
+
+                        std::vector<std::string> ramMenuOptions = {
+                            "Terminate Process",
+                            "Add Process Name to Whitelist",
+                            "Release Process Lock Handles",
+                            "Return to Dashboard"
+                        };
+
+                        OpenTUI::Menu ramMenu("RAM CLEANER PERMISSIONS", ramMenuOptions);
+                        int ramChoice = ramMenu.Show();
+
+                        if (ramChoice == -1 || ramChoice == 3) break;
+
+                        if (ramChoice == 0) {
+                            auto groups = ProcessManager::GetAggregatedProcessGroups(200ULL * 1024 * 1024);
+                            if (groups.empty()) {
+                                std::cout << "\033[1;32m[SAFE] No process applications consuming > 200 MB RAM currently detected on system.\033[0m\n";
+                                std::this_thread::sleep_for(std::chrono::seconds(2));
+                            } else {
+                                std::vector<std::string> killOptions;
+                                for (const auto& grp : groups) {
+                                    std::string countStr = (grp.instanceCount > 1) ? (" (" + std::to_string(grp.instanceCount) + " procs)") : (" (PID: " + (grp.pids.empty() ? "?" : std::to_string(grp.pids[0])) + ")");
+                                    std::string statusLabel = grp.isProtected ? " [PROTECTED APP]" : " [PERMISSION REQUIRED]";
+                                    killOptions.push_back(grp.processName + countStr + " - RAM: " + Cleaner::FormatSize(grp.totalMemoryUsageBytes) + statusLabel);
+                                }
+                                killOptions.push_back("Cancel");
+
+                                OpenTUI::Menu killMenu("SELECT PROCESS TO TERMINATE (> 200 MB RAM)", killOptions);
+                                int kChoice = killMenu.Show();
+
+                                if (kChoice >= 0 && kChoice < static_cast<int>(groups.size())) {
+                                    const auto& targetGrp = groups[kChoice];
+                                    if (targetGrp.isProtected) {
+                                        std::cout << "\033[1;31m[WARNING] '" << targetGrp.processName << "' is classified as a protected application.\033[0m\n";
+                                    }
+                                    std::string details = (targetGrp.instanceCount > 1) 
+                                        ? ("all " + std::to_string(targetGrp.instanceCount) + " process instance(s) of " + targetGrp.processName + " (Total RAM: " + Cleaner::FormatSize(targetGrp.totalMemoryUsageBytes) + ")")
+                                        : (targetGrp.processName + " (PID: " + (targetGrp.pids.empty() ? "?" : std::to_string(targetGrp.pids[0])) + ", RAM: " + Cleaner::FormatSize(targetGrp.totalMemoryUsageBytes) + ")");
+                                    
+                                    std::string confirmPrompt = "Grant explicit permission to terminate " + details + "? [y/N]: ";
+                                    std::string confirm = OpenTUI::TextInput::ReadLine(confirmPrompt, "n");
+                                    if (confirm == "y" || confirm == "Y" || confirm == "yes") {
+                                        size_t killed = 0;
+                                        if (targetGrp.instanceCount > 1) {
+                                            killed = GTLIBC::GTLibc::KillProcessByName(targetGrp.processName, true, true);
+                                        } else if (!targetGrp.pids.empty()) {
+                                            if (GTLIBC::GTLibc::KillProcess(targetGrp.pids[0])) killed = 1;
+                                        }
+                                        if (killed > 0) {
+                                            std::cout << "\033[1;32mSuccessfully terminated " << killed << " process(es) of " << targetGrp.processName << "\033[0m\n";
+                                            Logger::Instance().Info("User granted explicit permission: Terminated " + std::to_string(killed) + " process(es) of " + targetGrp.processName);
+                                        } else {
+                                            std::cout << "\033[1;31mFailed to terminate process (Access Denied or process already exited).\033[0m\n";
+                                        }
+                                        std::this_thread::sleep_for(std::chrono::seconds(2));
+                                    } else {
+                                        std::cout << "\033[1;36mOperation cancelled by user. Process preserved.\033[0m\n";
+                                        std::this_thread::sleep_for(std::chrono::seconds(1));
+                                    }
+                                }
+                            }
+                        } else if (ramChoice == 1) {
+                            OpenTUI::TerminalEngine::ClearScreen();
+                            PrintBanner();
+                            std::string procName = OpenTUI::TextInput::ReadLine("Enter Process Name to Add to Protection Whitelist (e.g. myapp.exe): ", "");
+                            if (!procName.empty()) {
+                                GTLIBC::GTLibc::AddCustomProtectedProcess(procName);
+                                std::cout << "\033[1;32mProcess '" << procName << "' added to protection whitelist!\033[0m\n";
+                                std::this_thread::sleep_for(std::chrono::seconds(2));
+                            }
+                        } else if (ramChoice == 2) {
+                            size_t released = ProcessManager::StopLockingProcesses(true);
+                            std::cout << "\033[1;32mReleased " << released << " process lock handle(s).\033[0m\n";
+                            std::this_thread::sleep_for(std::chrono::seconds(2));
+                        }
+                    }
                     break;
                 }
                 case 5: {

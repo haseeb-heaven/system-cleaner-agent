@@ -2,6 +2,21 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.2.0] - 2026-07-27
+
+### Added / Features
+- **Comprehensive Process Protection Whitelist (`include/gtlibc.cpp`, `include/gtlibc.hpp`)**:
+  - Implemented `GTLibc::IsProtectedProcess()`, `GTLibc::AddCustomProtectedProcess()`, and `GTLibc::GetHighMemoryCandidateProcesses()`.
+  - Added protection for OS Services, Browsers (Chrome, Edge, Firefox), IDEs (VS Code, Cursor, Visual Studio), Terminals (PowerShell, CMD, WT, Bash), Apps (Discord, Slack, Telegram, Spotify), and AI Agent CLI Tools (`system-cleaner-agent`, `agy`, `antigravity`, `gemini-cli`, `cline`, `grok`).
+- **Aggregated Multi-Process RAM Tracker (`GTLibc::GetAggregatedProcessGroups`)**:
+  - Added memory aggregation by process name for multi-process applications (Chrome, Edge, VS Code), displaying total combined RAM (e.g. `chrome.exe (21 procs) - RAM: 1.14 GB`).
+- **Interactive TUI Process Permission & Termination Engine (`include/TUI.hpp`)**:
+  - Displays high-RAM applications (> 200 MB Total RAM) sorted by memory usage.
+  - Allows selecting process applications for termination with explicit `y/N` user permission confirmation.
+  - Integrated `OpenTUI::TextInput::ReadLine` to eliminate Windows raw console input freezing.
+  - Updated `GTLibc::KillProcessByName` to support explicit user permission overrides (`userPermissionGranted = true`).
+  - Reused existing `g_tuiSettings.monitorIntervalSec` setting for snapshot refresh intervals.
+
 ## [5.1.0] - 2026-07-27
 
 ### Added / Features
