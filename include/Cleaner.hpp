@@ -191,7 +191,6 @@ class Cleaner {
             fixedTargets.push_back({userProfile / ".config/Cursor/Cache", false, "Cursor IDE Cache", "Developer"});
 
 #ifdef __APPLE__
-            // macOS Specific Caches
             fixedTargets.push_back({userProfile / "Library/Caches", false, "macOS User Caches", "System"});
             fixedTargets.push_back({userProfile / "Library/Logs", false, "macOS User Logs", "System"});
             fixedTargets.push_back({userProfile / "Library/Application Support/CrashReporter", false, "macOS Crash Dumps", "System"});
@@ -359,15 +358,17 @@ public:
 
         std::vector<Target> activeTargets;
 
-        for (const auto& cp : customPaths) {
-            if (fs::exists(cp)) {
-                activeTargets.push_back({cp, true, "Custom Path [" + cp.string() + "]", "Custom"});
+        if (!customPaths.empty()) {
+            for (const auto& cp : customPaths) {
+                if (fs::exists(cp)) {
+                    activeTargets.push_back({cp, true, "Custom Path [" + cp.string() + "]", "Custom"});
+                }
             }
-        }
-
-        for (const auto& target : fixedTargets) {
-            if (fs::exists(target.path) && IsCategoryAllowed(target.category)) {
-                activeTargets.push_back(target);
+        } else {
+            for (const auto& target : fixedTargets) {
+                if (fs::exists(target.path) && IsCategoryAllowed(target.category)) {
+                    activeTargets.push_back(target);
+                }
             }
         }
 
@@ -392,7 +393,9 @@ public:
             }
         }
 
-        EmptyWindowsRecycleBin();
+        if (customPaths.empty()) {
+            EmptyWindowsRecycleBin();
+        }
 
         Logger::Instance().Info("------------------------------------------------------------------");
         Logger::Instance().Info("Scan Summary: Found " + std::to_string(itemsCount) + " cleanable locations.");
@@ -411,14 +414,17 @@ public:
         std::atomic<size_t> cleanedCount{0};
 
         std::vector<Target> activeTargets;
-        for (const auto& cp : customPaths) {
-            if (fs::exists(cp)) {
-                activeTargets.push_back({cp, true, "Custom Path [" + cp.string() + "]", "Custom"});
+        if (!customPaths.empty()) {
+            for (const auto& cp : customPaths) {
+                if (fs::exists(cp)) {
+                    activeTargets.push_back({cp, true, "Custom Path [" + cp.string() + "]", "Custom"});
+                }
             }
-        }
-        for (const auto& target : fixedTargets) {
-            if (fs::exists(target.path) && IsCategoryAllowed(target.category)) {
-                activeTargets.push_back(target);
+        } else {
+            for (const auto& target : fixedTargets) {
+                if (fs::exists(target.path) && IsCategoryAllowed(target.category)) {
+                    activeTargets.push_back(target);
+                }
             }
         }
 
@@ -446,7 +452,9 @@ public:
             fut.get();
         }
 
-        EmptyWindowsRecycleBin();
+        if (customPaths.empty()) {
+            EmptyWindowsRecycleBin();
+        }
 
         Logger::Instance().Info("------------------------------------------------------------------");
         std::string verb = dryRun ? "Would free total" : "Total space freed";
