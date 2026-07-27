@@ -1,7 +1,25 @@
-.env
-__pycache__/
-*.csv
+# Build artifacts & executables
 build/
+Release/
+Debug/
 *.exe
+*.obj
+*.o
+*.pdb
+*.ilk
+*.idb
+*.tlog
+
+# Python cache & env
+__pycache__/
+*.pyc
+.env
+
+# Logs and Reports
 *.log
+*.json
+*.csv
+gemini-sys-cleaner.log
+
+# Worktrees
 .worktrees/
