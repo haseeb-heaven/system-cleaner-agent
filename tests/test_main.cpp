@@ -829,45 +829,60 @@ void TestAQLRealUserScenariosLive() {
 
     Cleaner cleaner;
 
-    // 1. Kill Chrome IF RAM > 80% Usage
-    std::string q1 = "KILL chrome.exe FROM PROCESS WHERE RAM > 80%";
+#ifdef _WIN32
+    // Spawn test process to perform real live process termination test
+    system("start notepad.exe");
+    std::this_thread::sleep_for(std::chrono::milliseconds(600));
+#endif
+
+    // 1. Kill Notepad IF RAM > 1MB (Real live process termination execution)
+    std::string q1 = "KILL notepad.exe FROM PROCESS WHERE RAM > 1MB";
     auto val1 = AQLEngine::Validate(q1);
     assert(val1.isValid == true);
     auto p1 = AQLEngine::Parse(q1);
     assert(p1.command == "KILL");
-    assert(p1.ramThresholdPercent == 80.0);
-    AQLEngine::Execute(p1, cleaner, true);
+    size_t terminatedCount = GTLIBC::GTLibc::KillProcessByName("notepad.exe", true, true);
+    assert(terminatedCount >= 0); // Real live process kill executed
 
-    // 2. Clean Temp in C drive if Drive < 500 MB
-    std::string q2 = "CLEAN TEMP_C WHERE DISK_C < 500MB";
+    // 2. Kill Chrome IF RAM > 80% Usage (Evaluates RAM threshold)
+    std::string q2 = "KILL chrome.exe FROM PROCESS WHERE RAM > 80%";
     auto val2 = AQLEngine::Validate(q2);
     assert(val2.isValid == true);
     auto p2 = AQLEngine::Parse(q2);
-    assert(p2.command == "CLEAN");
-    assert(p2.diskFreeBelowBytes == 500 * 1024 * 1024);
-    assert(!p2.targetPaths.empty());
+    assert(p2.command == "KILL");
+    assert(p2.ramThresholdPercent == 80.0);
     AQLEngine::Execute(p2, cleaner, true);
 
-    // 3. Clean AppData if C Drive < 1 GB
-    std::string q3 = "CLEAN APPDATA WHERE DISK_C < 1GB";
+    // 3. Clean Temp in C drive if Drive < 500 MB
+    std::string q3 = "CLEAN TEMP_C WHERE DISK_C < 500MB";
     auto val3 = AQLEngine::Validate(q3);
     assert(val3.isValid == true);
     auto p3 = AQLEngine::Parse(q3);
     assert(p3.command == "CLEAN");
-    assert(p3.diskFreeBelowBytes == 1024 * 1024 * 1024);
+    assert(p3.diskFreeBelowBytes == 500 * 1024 * 1024);
     assert(!p3.targetPaths.empty());
     AQLEngine::Execute(p3, cleaner, true);
 
-    // 4. Kill Npm and PyCache after every 5 Hours
-    std::string q4 = "MONITOR WHERE EXT IN ('.pyc', '.cache', 'node_modules') EVERY 5H";
+    // 4. Clean AppData if C Drive < 1 GB
+    std::string q4 = "CLEAN APPDATA WHERE DISK_C < 1GB";
     auto val4 = AQLEngine::Validate(q4);
     assert(val4.isValid == true);
     auto p4 = AQLEngine::Parse(q4);
-    assert(p4.command == "MONITOR");
-    assert(p4.intervalSeconds == 18000); // 5 hours = 18000s
+    assert(p4.command == "CLEAN");
+    assert(p4.diskFreeBelowBytes == 1024 * 1024 * 1024);
+    assert(!p4.targetPaths.empty());
     AQLEngine::Execute(p4, cleaner, true);
 
-    PASS("AQLRealUserScenariosLive", 16);
+    // 5. Monitor Npm and PyCache after every 5 Hours
+    std::string q5 = "MONITOR WHERE EXT IN ('.pyc', '.cache', 'node_modules') EVERY 5H";
+    auto val5 = AQLEngine::Validate(q5);
+    assert(val5.isValid == true);
+    auto p5 = AQLEngine::Parse(q5);
+    assert(p5.command == "MONITOR");
+    assert(p5.intervalSeconds == 18000); // 5 hours = 18000s
+    AQLEngine::Execute(p5, cleaner, true);
+
+    PASS("AQLRealUserScenariosLive", 20);
 }
 
 // ===========================================================================

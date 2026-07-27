@@ -129,7 +129,7 @@ public:
         std::cout << "\033[H\033[1;1H" << std::flush;
     }
 
-    static void ClearScreen() {
+    static void ClearScreen(const std::string& panelBg = "") {
 #ifdef _WIN32
         HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
         if (hOut != INVALID_HANDLE_VALUE) {
@@ -144,10 +144,12 @@ public:
                 SetConsoleCursorPosition(hOut, coord);
             }
         }
-        std::cout << "\033[2J\033[1;1H" << std::flush;
-#else
-        std::cout << "\033[2J\033[1;1H" << std::flush;
 #endif
+        if (!panelBg.empty()) {
+            std::cout << panelBg << "\033[2J\033[1;1H" << std::flush;
+        } else {
+            std::cout << "\033[2J\033[1;1H" << std::flush;
+        }
     }
 
     static void HideCursor() { std::cout << "\033[?25l" << std::flush; }
@@ -341,7 +343,7 @@ public:
         } else {
             for (int i = 0; i < lineLen; ++i) ss << style.borderHoriz;
         }
-        ss << style.borderTR << Color::Reset << "\n";
+        ss << style.borderTR << style.panelBg << "\033[K\n";
         return ss.str();
     }
 
@@ -350,7 +352,7 @@ public:
         std::ostringstream ss;
         ss << style.panelBg << style.secondaryColor << style.borderSplitL;
         for (int i = 0; i < width - 2; ++i) ss << style.borderHoriz;
-        ss << style.borderSplitR << Color::Reset << "\n";
+        ss << style.borderSplitR << style.panelBg << "\033[K\n";
         return ss.str();
     }
 
@@ -359,7 +361,7 @@ public:
         std::ostringstream ss;
         ss << style.panelBg << style.secondaryColor << style.borderBL;
         for (int i = 0; i < width - 2; ++i) ss << style.borderHoriz;
-        ss << style.borderBR << Color::Reset << "\n";
+        ss << style.borderBR << style.panelBg << "\033[K\n";
         return ss.str();
     }
 
@@ -443,7 +445,7 @@ public:
     static std::string DrawLine(int width, const std::string& text, bool highlight = false, const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Default", const std::string& fg = "Default", const std::string& bg = "Default") {
         auto style = GetThemeStyle(themeName, colorScheme, fg, bg);
         std::ostringstream ss;
-        ss << style.panelBg << style.secondaryColor << style.borderVert << " " << Color::Reset;
+        ss << style.panelBg << style.secondaryColor << style.borderVert << " ";
         std::string safeText = TruncateVisibleText(text, width - 7);
         int visibleWidth = GetVisibleDisplayWidth(safeText);
         if (highlight) {
@@ -459,7 +461,7 @@ public:
             for (int i = 0; i < fill; ++i) ss << " ";
             ss << Color::Reset;
         }
-        ss << style.panelBg << style.secondaryColor << " " << style.borderVert << Color::Reset << "\n";
+        ss << style.panelBg << style.secondaryColor << " " << style.borderVert << style.panelBg << "\033[K\n";
         return ss.str();
     }
 };
@@ -588,11 +590,13 @@ public:
     }
 
     MenuSelection ShowExtended() {
+        auto style = GetThemeStyle(themeName, colorScheme, fgColor, bgColor);
         TerminalEngine::EnableVirtualTerminal();
         TerminalEngine::HideCursor();
-        TerminalEngine::ClearScreen();
+        TerminalEngine::ClearScreen(style.panelBg);
 
         while (true) {
+            style = GetThemeStyle(themeName, colorScheme, fgColor, bgColor);
             std::ostringstream frame;
 
             if (onPreRender) {
@@ -601,6 +605,7 @@ public:
                 std::cout.rdbuf(oldBuf);
             }
 
+            frame << style.panelBg;
             frame << Box::DrawBorder(80, title, themeName, colorScheme, fgColor, bgColor);
 
             if (!headerLines.empty()) {
@@ -628,7 +633,7 @@ public:
             frame << Box::DrawFooter(80, themeName, colorScheme, fgColor, bgColor);
 
             TerminalEngine::MoveCursorToHome();
-            std::cout << frame.str() << "\033[J" << std::flush;
+            std::cout << style.panelBg << frame.str() << style.panelBg << "\033[J" << std::flush;
 
             KeyEvent ev = TerminalEngine::ReadKey();
             if (ev.key == Key::Up) {

@@ -205,24 +205,33 @@ public:
 
     static void ShowSystemResourceMonitor() {
         while (true) {
-            OpenTUI::TerminalEngine::ClearScreen();
+            auto style = OpenTUI::GetThemeStyle(g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+            OpenTUI::TerminalEngine::ClearScreen(style.panelBg);
             PrintBanner();
-            std::cout << "\033[1;36m================================================================================\033[0m\n";
-            std::cout << "\033[1;97m                 SYSTEM RESOURCE & DRIVE MONITOR (LIVE MONITOR)                \033[0m\n";
-            std::cout << "\033[1;36m================================================================================\033[0m\n\n";
+            std::ostringstream ss;
+            ss << OpenTUI::Box::DrawBorder(80, "SYSTEM RESOURCE & DRIVE MONITOR", g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
 
             double memPercent = SmartScheduler::GetMemoryUsagePercent();
-            std::cout << "  System Memory (RAM): " << OpenTUI::ProgressBar::Render(memPercent, 35, "% used") << "\n\n";
+            std::string ramBar = OpenTUI::ProgressBar::Render(memPercent, 35, "% used");
+            ss << OpenTUI::Box::DrawLine(80, "System Memory (RAM): " + ramBar, false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+            ss << OpenTUI::Box::DrawDivider(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
 
-            std::cout << "  Storage Drives:\n";
             auto driveStats = SmartScheduler::GetAllDriveStats();
             for (const auto& ds : driveStats) {
                 double freePercent = 100.0 - ds.usedPercent;
-                std::cout << "  - Drive " << ds.driveName << "  " << OpenTUI::ProgressBar::Render(ds.usedPercent, 25, "% used")
-                          << "  (Free: " << Cleaner::FormatSize(ds.freeBytes) << " [" << std::fixed << std::setprecision(1) << freePercent << "% free] / Total: " << Cleaner::FormatSize(ds.capacityBytes) << ")\n";
+                std::string diskBar = OpenTUI::ProgressBar::Render(ds.usedPercent, 20, "% used");
+                std::ostringstream dss;
+                dss << "Drive " << ds.driveName << " " << diskBar << " (Free: " << Cleaner::FormatSize(ds.freeBytes) << " / " << Cleaner::FormatSize(ds.capacityBytes) << ")";
+                ss << OpenTUI::Box::DrawLine(80, dss.str(), false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             }
 
-            std::cout << "\n\033[90mRefreshing every " << g_tuiSettings.monitorIntervalSec << "s... Press ESC or 'q' to return to dashboard...\033[0m\n";
+            ss << OpenTUI::Box::DrawDivider(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+            std::string hint = "Refreshing every " + std::to_string(g_tuiSettings.monitorIntervalSec) + "s... Press ESC or 'q' to return to dashboard.";
+            ss << OpenTUI::Box::DrawLine(80, hint, false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+            ss << OpenTUI::Box::DrawFooter(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+
+            OpenTUI::TerminalEngine::MoveCursorToHome();
+            std::cout << style.panelBg << ss.str() << style.panelBg << "\033[J" << std::flush;
 
             // Sleep in 100ms intervals to allow ESC/q responsiveness
             int checkCycles = g_tuiSettings.monitorIntervalSec * 10;
@@ -321,17 +330,23 @@ public:
             "Back to Main Menu"
         };
 
-        OpenTUI::Menu libMenu("TASK LIBRARY / PROCESS HISTORY", options);
+        OpenTUI::Menu libMenu("TASK LIBRARY / PROCESS HISTORY", options, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
         libMenu.SetPreRenderCallback([]() { PrintBanner(); });
 
         while (true) {
+            libMenu.SetTheme(g_tuiSettings.tuiThemeEngine);
+            libMenu.SetColorScheme(g_tuiSettings.tuiColorScheme);
+            libMenu.SetFgColor(g_tuiSettings.tuiFgColor);
+            libMenu.SetBgColor(g_tuiSettings.tuiBgColor);
+
             std::string headerLine = TaskHistory::Instance().HeaderSummary();
             libMenu.SetHeaderLines({headerLine});
             libMenu.SetStatusLine("[TASK LIB] Use UP/DOWN to navigate, ENTER to select, ESC to return");
             int sel = libMenu.Show();
             if (sel < 0 || sel == 7) break;
 
-            OpenTUI::TerminalEngine::ClearScreen();
+            auto style = OpenTUI::GetThemeStyle(g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+            OpenTUI::TerminalEngine::ClearScreen(style.panelBg);
             PrintBanner();
 
             if (sel == 0) {
@@ -361,10 +376,6 @@ public:
                     std::this_thread::sleep_for(std::chrono::seconds(1));
                 }
             }
-
-            std::cout << "\n\033[90mPress Enter to return to Task Library menu...\033[0m";
-            FlushInputBuffer();
-            std::cin.get();
         }
     }
 
@@ -1015,8 +1026,7 @@ public:
                         if (!val.isValid) {
                             std::cout << "\033[1;31m[AQL SYNTAX ERROR] " << val.errorMessage << "\033[0m\n";
                             std::cout << "\033[1;33m[STRICT AQL GRAMMAR RULES & EXAMPLES]\n" << val.suggestedHint << "\033[0m\n\n";
-                            std::cout << "\033[90mPress Enter to return...\033[0m";
-                            std::cin.get();
+                            std::this_thread::sleep_for(std::chrono::seconds(2));
                             break;
                         }
                         bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
