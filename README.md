@@ -1,55 +1,70 @@
 ```
-   ______                  _       _  _____                  _____  _                           
-  / ____/___  ____  ____  (_)     | |/ /   |  _________     / ___/ (_)___  ____ _____  ___  _____
- / / __/ _ \/ __ \/ __ \/ /______/   / /| | / ___/ __ \    \__ \ / / __ \/ __ `/ __ \/ _ \/ ___/
-/ /_/ /  __/ / / / / / / /_____/   / ___ |/ /__/ /_/ /   ___/ / / / /_/ / /_/ / /_/ /  __/ /    
-\____/\___/_/ /_/_/ /_/_/     /_/|_/_/  |_|\___/\____/   /____/_/_/ .___/\__,_/ .___/\___/_/     
-                                                                 /_/         /_/                
+   _____ _   _ _____ _____ _____ ___  ___ _____ _     _____ ___   _   _ _____ _____ _   _ _____ 
+  /  ___| | | /  ___|_   _|  ___|  \/  |/  __ \ |   |  ___/ _ \ | \ | |  ___|  ___| \ | |_   _|
+  \ `--.| |_| \ `--.  | | | |__ | .  . || /  \/ |   | |__/ /_\ \|  \| | |__ | |__ |  \| | | |  
+   `--. \__  | `--. \ | | |  __|| |\/| || |   | |   |  __|  _  || . ` |  __||  __|| . ` | | |  
+  /\__/ / | |/\__/ / | | | |___| |  | || \__/\ |___| |__| | | || |\  | |___| |___| |\  | | |  
+  \____/  \_/\____/  \_/ \____/\_|  |_/ \____/\____/\____\_| |_/\_| \_/\____/\____/\_| \_/ \_/  
 ```
 
-# Gemini System Cleaner v3.5 (Enterprise Edition)
+# system-cleaner-agent v4.0.0
 
-> **High-Performance C++17 Multi-Platform Storage Optimization & Content-Inspected Cleanup Engine**
+> **Autonomous ReAct Agentic Storage Optimization Engine & System Cleanup Framework (C++17 Multi-Platform)**
 
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/haseeb-heaven/gemini-sys-cleaner)
+[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/haseeb-heaven/system-cleaner-agent)
+[![Agentic ReAct](https://img.shields.io/badge/architecture-ReAct%20Loop-magenta.svg)](https://github.com/haseeb-heaven/system-cleaner-agent)
 [![Language](https://img.shields.io/badge/C%2B%2B-17-blue.svg)](https://en.cppreference.com/w/cpp/17)
-[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey.svg)](https://github.com/haseeb-heaven/gemini-sys-cleaner)
-[![Tests](https://img.shields.io/badge/unit--tests-100%25%20passing-success.svg)](https://github.com/haseeb-heaven/gemini-sys-cleaner)
+[![Tests](https://img.shields.io/badge/unit--tests-100%25%20passing-success.svg)](https://github.com/haseeb-heaven/system-cleaner-agent)
+
+---
+
+## 🤖 ReAct Autonomous Agent Architecture
+
+`system-cleaner-agent` incorporates an autonomous **Reasoning + Action + Observation (ReAct)** execution loop:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ 1. THOUGHT     : Reason about drive state, target paths & locks   │
+│ 2. ACTION      : Issue atomic tool action (Scan, Release, Inspect)│
+│ 3. OBSERVATION : Observe result, measure freed bytes & verify    │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+Run the agent in autonomous mode:
+```powershell
+.\system-cleaner-agent.exe agent --task "Perform autonomous full storage optimization"
+```
 
 ---
 
 ## Key Features
 
-- 🛡️ **Smart File Content Inspection & Protection Shield**:
-  - Magic byte verification (`%PDF`, `PNG`, `JPEG`, `SQLite format 3`, `MZ`, `ELF`).
-  - **User Data Safety Shield**: Never deletes source code (`.py`, `.cpp`, `.js`, `.ts`), documents, databases, or project assets even if located in a `temp` folder.
-  - 40/64-character SHA-1/SHA-256 hex hash cache blob detector.
-- ⚡ **Multi-Threaded $O(N)$ Parallel Execution**:
-  - Multi-threaded scanning and non-blocking deletion using `std::async` worker threads.
-  - Reparse point and junction safety (prevents recursive loop hangs).
+- 🧠 **Autonomous ReAct Agent Loop (`AgentEngine.hpp`)**:
+  - Cycles through Thought -> Action -> Observation trajectories.
+  - Automatically reasons about target locations, releases process lock handles, verifies content magic bytes, and executes non-blocking parallel cleanup.
+- 🛡️ **Content Protection Shield & Magic Byte Verifier**:
+  - Verifies magic bytes (`%PDF`, `PNG`, `JPEG`, `SQLite format 3`).
+  - Never deletes user source code (`.py`, `.cpp`, `.js`), documents, or databases.
+  - Detects 40/64-character SHA-1/SHA-256 hex hash cache blobs.
 - 🔓 **Process Lock Manager**:
-  - Automatically releases process file handles (`mintty`, `cat`, `bash`, `werfault`) prior to cleaning.
+  - Releases process handles (`mintty`, `cat`, `bash`, `werfault`) locking temporary paths.
 - 💻 **Terminal User Interface (TUI)**:
-  - Interactive terminal menu accessible via `gemini-sys-cleaner tui` or `-i`.
+  - Interactive terminal menu accessible via `system-cleaner-agent tui` or `-i`.
 - 🔒 **Secure Zero-Overwrite Shredding**:
-  - Overwrites matching junk files with binary zeros before disk removal (`--mode shred`).
-- 📊 **JSON Execution Reports**:
-  - Export structured audit logs with `--json-report report.json`.
-- 🧪 **Unit Test & TDD Regression Suite**:
-  - Comprehensive assertions covering size formatters, duration/size parsers, hex hash detectors, and safety shields.
+  - Overwrites junk files with binary zeros before deletion (`--mode shred`).
+- 🧪 **Unit Test Suite**:
+  - Executable test runner `unit_tests.exe` with 100% pass rate across all engine modules.
 
 ---
 
-## Quick Start
+## Build Instructions
 
-### Build Instructions
-
-#### **Windows (MSVC / MinGW / CMake)**:
+### **Windows (MSVC / MinGW / CMake)**:
 ```cmd
 build.bat
 ```
 
-#### **Linux / macOS (GCC / Clang / CMake)**:
+### **Linux / macOS (GCC / Clang / CMake)**:
 ```bash
 chmod +x build.sh
 ./build.sh
@@ -57,13 +72,14 @@ chmod +x build.sh
 
 ---
 
-## CLI Usage & Options
+## CLI & Agentic Options
 
 ```
 USAGE:
-  gemini-sys-cleaner <COMMAND> [FLAGS]
+  system-cleaner-agent <COMMAND> [FLAGS]
 
 COMMANDS:
+  agent        Launch Autonomous ReAct Agent Loop (Thought->Action->Observation).
   scan         Analyze system/drive targets and report cleanable storage.
   clean        Execute multi-threaded cleanup using active policy rules.
   deep-clean   Perform full system cache cleanup + empty OS Recycle Bin / Trash.
@@ -72,13 +88,15 @@ COMMANDS:
   version      Display version, engine build, and architecture details.
   help         Show this help and usage specification.
 
+AGENTIC REACT OPTIONS:
+  --task <goal>        Specify custom natural language goal for ReAct loop.
+  --agent              Enable autonomous reasoning and action trajectory.
+
 FILTERING (WHAT):
   --category <list>     Target categories: system, browser, dev, messaging, app.
-  --exclude-category <c> Exclude target categories from operation.
   --only-ext <exts>      Only clean matching file extensions (e.g. .log,.tmp).
   --exclude-ext <exts>   Protect specific extensions from deletion (e.g. .py,.cpp).
   --older-than <dur>     Filter files older than duration (e.g. 30m, 24h, 7d).
-  --min-size <size>      Minimum file size threshold (e.g. 10MB, 100MB, 1GB).
 
 LOCATION (WHERE):
   --path <p1,p2>         Specify custom directory path(s) to process.
@@ -93,18 +111,5 @@ CONTROL (HOW):
 
 ---
 
-## Running Unit Tests
-
-Run the engine diagnostic test suite directly:
-```powershell
-.\gemini-sys-cleaner.exe test
-```
-Or run the compiled test binary:
-```powershell
-.\build\Release\unit_tests.exe
-```
-
----
-
 ## License
-MIT License © 2026 Gemini Sys Cleaner Project.
+MIT License © 2026 system-cleaner-agent Project.

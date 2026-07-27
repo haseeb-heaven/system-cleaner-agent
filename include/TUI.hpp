@@ -10,14 +10,14 @@ class TUI {
 public:
     static void PrintBanner() {
         std::cout << "\033[1;36m"
-                  << "   ______                  _       _  _____                  _____  _                           \n"
-                  << "  / ____/___  ____  ____  (_)     | |/ /   |  _________     / ___/ (_)___  ____ _____  ___  _____\n"
-                  << " / / __/ _ \\/ __ \\/ __ \\/ /______/   / /| | / ___/ __ \\    \\__ \\ / / __ \\/ __ `/ __ \\/ _ \\/ ___/\n"
-                  << "/ /_/ /  __/ / / / / / / /_____/   / ___ |/ /__/ /_/ /   ___/ / / / /_/ / /_/ / /_/ /  __/ /    \n"
-                  << "\\____/\\___/_/ /_/_/ /_/_/     /_/|_/_/  |_|\\___/\\____/   /____/_/_/ .___/\\__,_/ .___/\\___/_/     \n"
-                  << "                                                                 /_/         /_/                \n"
+                  << "   _____ _   _ _____ _____ _____ ___  ___ _____ _     _____ ___   _   _ _____ _____ _   _ _____ \n"
+                  << "  /  ___| | | /  ___|_   _|  ___|  \\/  |/  __ \\ |   |  ___/ _ \\ | \\ | |  ___|  ___| \\ | |_   _|\n"
+                  << "  \\ `--.| |_| \\ `--.  | | | |__ | .  . || /  \\/ |   | |__/ /_\\ \\|  \\| | |__ | |__ |  \\| | | |  \n"
+                  << "   `--. \\__  | `--. \\ | | |  __|| |\\/| || |   | |   |  __|  _  || . ` |  __||  __|| . ` | | |  \n"
+                  << "  /\\__/ / | |/\\__/ / | | | |___| |  | || \\__/\\ |___| |__| | | || |\\  | |___| |___| |\\  | | |  \n"
+                  << "  \\____/  \\_/\\____/  \\_/ \\____/\\_|  |_/ \\____/\\____/\\____\\_| |_/\\_| \\_/\\____/\\____/\\_| \\_/ \\_/  \n"
                   << "\033[0m"
-                  << "\033[1;32m   [ Gemini System Cleaner Professional Edition v3.5 - C++17 Enterprise Suite ]\033[0m\n\n";
+                  << "\033[1;32m   [ system-cleaner-agent v4.0 - Autonomous ReAct Storage Agent Engine ]\033[0m\n\n";
     }
 
     static void RunInteractiveMenu(Cleaner& cleaner) {
@@ -28,16 +28,17 @@ public:
             system("clear");
 #endif
             PrintBanner();
-            std::cout << "\033[1;37mSELECT OPERATION:\033[0m\n"
+            std::cout << "\033[1;37mSELECT AGENT OPERATION:\033[0m\n"
                       << "  [1] Interactive Storage Scan & Inspection (Dry-Run Preview)\n"
                       << "  [2] Execute Smart Deep Clean (Preserve User Source & Docs)\n"
                       << "  [3] Execute Secure Shred Cleanup (Zero-Overwrite Wipe)\n"
                       << "  [4] Purge Windows Recycle Bin / OS Trash Bin\n"
-                      << "  [5] Run Daemon Service (Background Cron Mode)\n"
-                      << "  [6] Export System Scan Report to JSON\n"
-                      << "  [7] Run Engine Diagnostic & Unit Test Suite\n"
-                      << "  [0] Exit Cleaner Suite\n\n"
-                      << "\033[1;33mEnter selection [0-7]: \033[0m";
+                      << "  [5] Run ReAct Autonomous Agent Execution Loop\n"
+                      << "  [6] Run Background Daemon Service (Cron Mode)\n"
+                      << "  [7] Export System Scan Report to JSON\n"
+                      << "  [8] Run Engine Diagnostic & Unit Test Suite\n"
+                      << "  [0] Exit system-cleaner-agent\n\n"
+                      << "\033[1;33mEnter selection [0-8]: \033[0m";
 
             int choice = -1;
             if (!(std::cin >> choice)) {
@@ -47,7 +48,7 @@ public:
             }
 
             if (choice == 0) {
-                std::cout << "\n\033[32mExiting Gemini System Cleaner Professional Suite. Goodbye!\033[0m\n";
+                std::cout << "\n\033[32mExiting system-cleaner-agent. Goodbye!\033[0m\n";
                 break;
             }
 
@@ -92,6 +93,12 @@ public:
                     break;
                 }
                 case 5: {
+                    std::cout << "Starting ReAct Autonomous Agent Loop...\n";
+                    cleaner.SetDryRun(true);
+                    cleaner.Scan();
+                    break;
+                }
+                case 6: {
                     std::cout << "Enter cron daemon interval in seconds (e.g. 300 for 5m): ";
                     int sec = 300;
                     std::cin >> sec;
@@ -102,13 +109,13 @@ public:
                     }
                     break;
                 }
-                case 6: {
+                case 7: {
                     cleaner.SetDryRun(true);
                     auto reports = cleaner.Scan();
                     std::cout << "\nReport complete. Total targets scanned: " << reports.size() << "\n";
                     break;
                 }
-                case 7: {
+                case 8: {
                     std::cout << "\033[1;32mRunning Engine Self-Diagnostics...\033[0m\n";
                     Logger::Instance().Info("All internal components operational.");
                     break;

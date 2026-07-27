@@ -3,6 +3,7 @@
 #include "include/ProcessManager.hpp"
 #include "include/ContentInspector.hpp"
 #include "include/TUI.hpp"
+#include "include/AgentEngine.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -20,9 +21,10 @@ void PrintHeader() {
 void PrintHelp() {
     PrintHeader();
     std::cout << "\033[1mUSAGE:\033[0m\n"
-              << "  gemini-sys-cleaner-pro <COMMAND> [FLAGS]\n"
-              << "  gemini-pro-cleaner     <COMMAND> [FLAGS]\n\n"
+              << "  system-cleaner-agent <COMMAND> [FLAGS]\n"
+              << "  SystemCleanerAgent   <COMMAND> [FLAGS]\n\n"
               << "\033[1mCOMMANDS:\033[0m\n"
+              << "  \033[36magent\033[0m        Launch Autonomous ReAct Agent Loop (Thought->Action->Observation).\n"
               << "  \033[36mscan\033[0m         Analyze system/drive targets and report cleanable storage.\n"
               << "  \033[36mclean\033[0m        Execute multi-threaded cleanup using active policy rules.\n"
               << "  \033[36mdeep-clean\033[0m   Perform full system cache cleanup + empty OS Recycle Bin / Trash.\n"
@@ -30,6 +32,9 @@ void PrintHelp() {
               << "  \033[36mtest\033[0m         Execute automated engine diagnostic & unit test suite.\n"
               << "  \033[36mversion\033[0m      Display version, engine build, and architecture details.\n"
               << "  \033[36mhelp\033[0m         Show this help and usage specification.\n\n"
+              << "\033[1mAGENTIC REACT OPTIONS:\033[0m\n"
+              << "  \033[33m--task <goal>\033[0m        Specify custom natural language goal for ReAct loop.\n"
+              << "  \033[33m--agent\033[0m              Enable autonomous reasoning and action trajectory.\n\n"
               << "\033[1mFILTERING & TARGET SELECTION (WHAT):\033[0m\n"
               << "  \033[33m--category <list>\033[0m     Target categories: system, browser, dev, messaging, app.\n"
               << "  \033[33m--exclude-category <c>\033[0m Exclude target categories from operation.\n"
@@ -53,11 +58,11 @@ void PrintHelp() {
               << "  \033[33m--cron <duration>\033[0m      Run daemon service on recurring schedule (e.g. 10m, 1h).\n"
               << "  \033[33m--verbose\033[0m              Enable detailed trace logging.\n\n"
               << "\033[1mPRODUCTION EXAMPLES:\033[0m\n"
-              << "  gemini-sys-cleaner-pro tui\n"
-              << "  gemini-sys-cleaner-pro scan --dry-run\n"
-              << "  gemini-sys-cleaner-pro deep-clean --recycle-bin\n"
-              << "  gemini-sys-cleaner-pro clean --path \"D:\\tmp\" --older-than 24h\n"
-              << "  gemini-sys-cleaner-pro scan --drive all --json-report report.json\n\n";
+              << "  system-cleaner-agent agent --task \"Perform full autonomous disk cleanup\"\n"
+              << "  system-cleaner-agent agent --dry-run\n"
+              << "  system-cleaner-agent tui\n"
+              << "  system-cleaner-agent scan --dry-run\n"
+              << "  system-cleaner-agent deep-clean --recycle-bin\n";
 }
 
 std::vector<std::string> SplitString(const std::string& str, char delim) {
@@ -76,7 +81,7 @@ void ExportJsonReport(const std::string& jsonPath, const std::vector<TargetRepor
         if (!jsonFile.is_open()) return;
 
         jsonFile << "{\n";
-        jsonFile << "  \"engine\": \"Gemini System Cleaner Professional Edition v3.5 (C++17)\",\n";
+        jsonFile << "  \"engine\": \"system-cleaner-agent v4.0 (C++17 ReAct Agentic Engine)\",\n";
         jsonFile << "  \"targets\": [\n";
 
         uintmax_t grandTotal = 0;
@@ -140,7 +145,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (cmd == "version" || cmd == "--version" || cmd == "-v") {
-        std::cout << "Gemini System Cleaner Professional Edition v3.5.0 (C++17 Enterprise Engine - 64-bit Architecture)\n";
+        std::cout << "system-cleaner-agent v4.0.0 (C++17 Autonomous ReAct Agentic Engine - 64-bit Architecture)\n";
         return 0;
     }
 
@@ -148,27 +153,14 @@ int main(int argc, char* argv[]) {
     InspectionConfig cfg;
     CleanMode cleanMode = CleanMode::Light;
 
-    if (cmd == "tui" || cmd == "--interactive" || cmd == "-i") {
-        TUI::RunInteractiveMenu(cleaner);
-        return 0;
-    }
-
-    if (cmd == "test" || cmd == "--test") {
-        std::cout << "Executing Engine Unit Tests...\n";
-#ifdef _WIN32
-        system("unit_tests.exe");
-#else
-        system("./unit_tests");
-#endif
-        return 0;
-    }
-
     bool dryRun = false;
     bool recycleBin = false;
     bool killLocks = true;
     long long cronIntervalSeconds = 0;
     size_t threadCount = 0;
     std::string jsonReportPath = "";
+    std::string agentTaskGoal = "Perform autonomous system optimization and storage cleanup";
+    bool runAgentLoop = (cmd == "agent" || cmd == "--agent" || cmd == "-a");
 
     std::vector<fs::path> customPaths;
     std::vector<fs::path> targetDrives;
@@ -180,6 +172,11 @@ int main(int argc, char* argv[]) {
 
         if (lowerArg == "--dry-run") {
             dryRun = true;
+        } else if (lowerArg == "--agent") {
+            runAgentLoop = true;
+        } else if (lowerArg == "--task" && i + 1 < argc) {
+            agentTaskGoal = argv[++i];
+            runAgentLoop = true;
         } else if (lowerArg == "--recycle-bin") {
             recycleBin = true;
         } else if (lowerArg == "--kill-locks" && i + 1 < argc) {
@@ -242,6 +239,27 @@ int main(int argc, char* argv[]) {
         } else if (lowerArg == "--max-size" && i + 1 < argc) {
             cfg.maxSizeBytes = ContentInspector::ParseSizeToBytes(argv[++i]);
         }
+    }
+
+    if (cmd == "tui" || cmd == "--interactive" || cmd == "-i") {
+        TUI::RunInteractiveMenu(cleaner);
+        return 0;
+    }
+
+    if (cmd == "test" || cmd == "--test") {
+        std::cout << "Executing Engine Unit Tests...\n";
+#ifdef _WIN32
+        system("unit_tests.exe");
+#else
+        system("./unit_tests");
+#endif
+        return 0;
+    }
+
+    if (runAgentLoop) {
+        AgentEngine agent(agentTaskGoal);
+        agent.RunReActLoop(dryRun);
+        return 0;
     }
 
     if (cmd == "deep-clean") {

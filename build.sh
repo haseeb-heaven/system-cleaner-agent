@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Cross-Platform Build Script for Gemini Enterprise System Cleaner v2.5
+# system-cleaner-agent - C++17 Autonomous ReAct Agent Build Script
 # ==============================================================================
 
 set -e
 
-echo "Building Gemini Enterprise System Cleaner (C++17)..."
+echo "Building system-cleaner-agent (C++17 ReAct Engine)..."
 
 if command -v cmake &> /dev/null; then
     echo "[INFO] Using CMake to build project..."
@@ -13,23 +13,17 @@ if command -v cmake &> /dev/null; then
     cd build
     cmake .. -DCMAKE_BUILD_TYPE=Release
     cmake --build . --config Release -j$(nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 4)
-    cp gemini-sys-cleaner ../gemini-sys-cleaner 2>/dev/null || true
+    cp system-cleaner-agent ../system-cleaner-agent 2>/dev/null || true
+    cp SystemCleanerAgent ../SystemCleanerAgent 2>/dev/null || true
     cd ..
-    echo "[SUCCESS] Build complete! Executable: ./gemini-sys-cleaner"
+    echo "[SUCCESS] Build complete! Executable: ./system-cleaner-agent"
     exit 0
 fi
 
 if command -v g++ &> /dev/null; then
     echo "[INFO] Using G++ to build..."
-    g++ -std=c++17 -O3 -I./include main.cpp -o gemini-sys-cleaner -lpthread
-    echo "[SUCCESS] Build complete! Executable: ./gemini-sys-cleaner"
-    exit 0
-fi
-
-if command -v clang++ &> /dev/null; then
-    echo "[INFO] Using Clang++ to build..."
-    clang++ -std=c++17 -O3 -I./include main.cpp -o gemini-sys-cleaner -lpthread
-    echo "[SUCCESS] Build complete! Executable: ./gemini-sys-cleaner"
+    g++ -std=c++17 -O3 -I./include main.cpp -o system-cleaner-agent -lpthread
+    echo "[SUCCESS] Build complete! Executable: ./system-cleaner-agent"
     exit 0
 fi
 

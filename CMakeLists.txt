@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(GeminiSysCleanerPro VERSION 3.5.0 LANGUAGES CXX)
+project(system-cleaner-agent VERSION 4.0.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,31 +13,32 @@ set(HEADERS
     include/ProcessManager.hpp
     include/Cleaner.hpp
     include/TUI.hpp
+    include/AgentEngine.hpp
 )
 
-# Professional Executable
-add_executable(gemini-sys-cleaner-pro main.cpp ${HEADERS})
-add_executable(gemini-pro-cleaner main.cpp ${HEADERS})
+# Agentic System Executables
+add_executable(system-cleaner-agent main.cpp ${HEADERS})
+add_executable(SystemCleanerAgent main.cpp ${HEADERS})
 
-# Unit Test Executable
+# Comprehensive Unit Test Executable
 add_executable(unit_tests tests/test_main.cpp ${HEADERS})
 
 enable_testing()
-add_test(NAME EngineUnitTests COMMAND unit_tests)
+add_test(NAME SystemCleanerAgentUnitTests COMMAND unit_tests)
 
 if(WIN32)
-    target_link_libraries(gemini-sys-cleaner-pro PRIVATE shell32)
-    target_link_libraries(gemini-pro-cleaner PRIVATE shell32)
+    target_link_libraries(system-cleaner-agent PRIVATE shell32)
+    target_link_libraries(SystemCleanerAgent PRIVATE shell32)
     target_link_libraries(unit_tests PRIVATE shell32)
     if(MSVC)
-        set_property(TARGET gemini-sys-cleaner-pro PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-        set_property(TARGET gemini-pro-cleaner PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        set_property(TARGET system-cleaner-agent PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        set_property(TARGET SystemCleanerAgent PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
         set_property(TARGET unit_tests PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     endif()
 endif()
 
 if(UNIX AND NOT APPLE)
-    target_link_libraries(gemini-sys-cleaner-pro PRIVATE pthread)
-    target_link_libraries(gemini-pro-cleaner PRIVATE pthread)
+    target_link_libraries(system-cleaner-agent PRIVATE pthread)
+    target_link_libraries(SystemCleanerAgent PRIVATE pthread)
     target_link_libraries(unit_tests PRIVATE pthread)
 endif()
