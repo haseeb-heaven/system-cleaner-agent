@@ -5,6 +5,8 @@
 #include "SmartScheduler.hpp"
 #include "Logger.hpp"
 #include "ProcessManager.hpp"
+#include "TaskHistory.hpp"
+
 
 #include <string>
 #include <vector>
@@ -216,6 +218,15 @@ public:
 
         cleaner.SetDryRun(dryRun);
 
+        // Register this query in the unified Task Library
+        std::string aqlName = "AQL " + q.command;
+        if (!q.targetPaths.empty()) {
+            aqlName += " (" + q.targetPaths.front().string() + ")";
+        }
+        uint64_t taskId = TaskHistory::Instance().Register("AQL", aqlName, q.rawQuery, "AQL Engine");
+        TaskHistory::Instance().MarkRunning(taskId);
+        TaskHistory::Instance().UpdateProgress(taskId, "Executing AQL " + q.command + "...");
+
         std::cout << "\033[1;33m+--[ Agent Query Language (AQL) Execution ]-------------------------+\033[0m\n";
         std::cout << "\033[1;36m|  Query:   " << q.rawQuery << "\033[0m\n";
         std::cout << "\033[1;36m|  Command: " << q.command;
@@ -280,5 +291,8 @@ public:
         } else if (q.command == "MONITOR") {
             SmartScheduler::RunDaemonService(cleaner, {}, q.ramThresholdPercent, q.diskThresholdPercent, q.intervalSeconds, dryRun, q.diskFreeBelowBytes, q.drive);
         }
+
+        // Mark the AQL task as completed in the unified Task Library
+        TaskHistory::Instance().MarkCompleted(taskId, "AQL " + q.command + " finished.", 0, 0, 0, 0);
     }
 };

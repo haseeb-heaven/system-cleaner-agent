@@ -19,6 +19,8 @@ set(HEADERS
     include/LocalLLMBrain.hpp
     include/SecurityGuard.hpp
     include/AgentQueryLanguage.hpp
+    include/TaskHistory.hpp
+
     include/gtlibc.hpp
 )
 

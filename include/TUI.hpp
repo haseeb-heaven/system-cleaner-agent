@@ -6,6 +6,7 @@
 #include "AgentEngine.hpp"
 #include "AgentQueryLanguage.hpp"
 #include "ConfigManager.hpp"
+#include "TaskHistory.hpp"
 #include "SecurityGuard.hpp"
 
 #include <iostream>
@@ -187,6 +188,169 @@ public:
         }
     }
 
+
+    // =================================================================
+    //  Task Library / History Viewer
+    // =================================================================
+    static void ShowTaskLibrary() {
+        std::vector<std::string> options = {
+            "Live Task List (auto-refresh)",
+            "All Tasks (chronological)",
+            "Running Tasks Only",
+            "Completed Tasks Only",
+            "Failed Tasks Only",
+            "Clear All History",
+            "Back to Main Menu"
+        };
+
+        OpenTUI::Menu libMenu("TASK LIBRARY / PROCESS HISTORY", options);
+        libMenu.SetPreRenderCallback([]() { PrintBanner(); });
+
+        while (true) {
+            std::string headerLine = TaskHistory::Instance().HeaderSummary();
+            libMenu.SetHeaderLines({headerLine});
+            libMenu.SetStatusLine("[TASK LIB] Use UP/DOWN to navigate, ENTER to select, ESC to return");
+            int sel = libMenu.Show();
+            if (sel < 0 || sel == 6) break;
+
+            OpenTUI::TerminalEngine::ClearScreen();
+            PrintBanner();
+
+            if (sel == 0) {
+                ShowTaskListView(true, -1);
+            } else if (sel == 1) {
+                ShowTaskListView(false, -1);
+            } else if (sel == 2) {
+                ShowTaskListView(false, (int)TaskStatus::Running);
+            } else if (sel == 3) {
+                ShowTaskListView(false, (int)TaskStatus::Completed);
+            } else if (sel == 4) {
+                ShowTaskListView(false, (int)TaskStatus::Failed);
+            } else if (sel == 5) {
+                std::string confirm = OpenTUI::TextInput::ReadLine("Clear all task history? [y/N]: ", "n");
+                if (confirm == "y" || confirm == "Y") {
+                    TaskHistory::Instance().Clear();
+                    std::cout << "\033[1;32m[OK] Task library cleared.\033[0m" << std::endl;
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                }
+            }
+
+            std::cout << "\n\033[90mPress Enter to return to Task Library menu...\033[0m";
+            FlushInputBuffer();
+            std::cin.get();
+        }
+    }
+
+    static void ShowTaskListView(bool liveAutoRefresh, int statusFilter) {
+        auto renderOnce = [statusFilter]() {
+            OpenTUI::TerminalEngine::ClearScreen();
+            PrintBanner();
+            std::cout << "\033[1;36m================================================================================\033[0m" << std::endl;
+            std::string filterLabel = "ALL TASKS";
+            if (statusFilter == (int)TaskStatus::Running)   filterLabel = "RUNNING TASKS";
+            else if (statusFilter == (int)TaskStatus::Completed) filterLabel = "COMPLETED TASKS";
+            else if (statusFilter == (int)TaskStatus::Failed)    filterLabel = "FAILED TASKS";
+            else if (statusFilter == (int)TaskStatus::Cancelled) filterLabel = "CANCELLED TASKS";
+            std::cout << "\033[1;97m              TASK LIBRARY  -  " << filterLabel << "\033[0m" << std::endl;
+            std::cout << "\033[1;36m================================================================================\033[0m" << std::endl;
+            std::cout << TaskHistory::Instance().HeaderSummary() << std::endl << std::endl;
+
+            auto tasks = TaskHistory::Instance().Snapshot();
+            if (tasks.empty()) {
+                std::cout << "\033[1;33m  No tasks recorded yet.\033[0m" << std::endl;
+                std::cout << "\033[90m  Run any clean / scan / shred / AQL / agent / daemon operation to populate.\033[0m" << std::endl << std::endl;
+                return;
+            }
+            std::reverse(tasks.begin(), tasks.end());
+
+            std::cout << "\033[1;37m"
+                      << std::left
+                      << std::setw(6)  << "ID"
+                      << std::setw(11) << "STATUS"
+                      << std::setw(10) << "CATEGORY"
+                      << std::setw(11) << "TIME"
+                      << std::setw(9)  << "DUR"
+                      << std::setw(26) << "NAME"
+                      << std::setw(40) << "DETAIL / RESULT"
+                      << "\033[0m" << std::endl;
+            std::cout << "\033[90m" << std::string(113, '-') << "\033[0m" << std::endl;
+
+            size_t shown = 0;
+            for (auto& t : tasks) {
+                if (statusFilter >= 0 && (int)t.status != statusFilter) continue;
+
+                auto now    = std::chrono::system_clock::now();
+                auto elapsed= std::chrono::duration_cast<std::chrono::milliseconds>(now - t.startedAt);
+                bool isLive = (t.status == TaskStatus::Running || t.status == TaskStatus::Queued);
+
+                std::string timeStr = TaskHistoryNS::FormatTimestamp(isLive ? t.startedAt : t.finishedAt);
+                std::string durStr  = TaskHistoryNS::FormatDuration(elapsed);
+
+                std::string name = t.name;
+                if (name.size() > 24) name = name.substr(0, 21) + "...";
+
+                std::string detail = isLive
+                    ? (t.progressMsg.empty() ? TaskHistoryNS::StatusLabel(t.status) : t.progressMsg)
+                    : (t.resultSummary.empty() ? TaskHistoryNS::StatusLabel(t.status) : t.resultSummary);
+                if (detail.size() > 38) detail = detail.substr(0, 35) + "...";
+
+                std::cout << "\033[90m"
+                          << "[" << std::setw(3) << std::setfill('0') << t.id << "]\033[0m "
+                          << TaskHistoryNS::StatusColor(t.status) << std::left
+                          << std::setw(10) << TaskHistoryNS::StatusLabel(t.status) << std::right
+                          << "\033[0m "
+                          << std::left
+                          << std::setw(10) << t.category << std::right
+                          << " "
+                          << "\033[1;33m" << std::left << std::setw(10) << timeStr << std::right << "\033[0m "
+                          << "\033[90m" << std::left << std::setw(8)  << durStr << std::right << "\033[0m "
+                          << "\033[1;97m" << std::left << std::setw(25) << name << std::right << "\033[0m "
+                          << "\033[1;36m" << std::left << std::setw(38) << detail << std::right << "\033[0m";
+
+                if (isLive && t.percent > 0.0 && t.percent < 100.0) {
+                    int barWidth = 14;
+                    int filled = static_cast<int>((t.percent / 100.0) * barWidth);
+                    std::cout << "  \033[1;32m";
+                    for (int i = 0; i < filled; ++i) std::cout << "#";
+                    std::cout << "\033[90m";
+                    for (int i = filled; i < barWidth; ++i) std::cout << "-";
+                    std::cout << "\033[0m \033[1;33m" << static_cast<int>(t.percent) << "%\033[0m";
+                } else if (t.bytesFreed > 0) {
+                    std::cout << "  \033[1;32mfreed " << Cleaner::FormatSize(t.bytesFreed) << "\033[0m";
+                } else if (t.filesProcessed > 0) {
+                    std::cout << "  \033[1;36m" << t.filesProcessed << " files\033[0m";
+                } else if (t.processesHandled > 0) {
+                    std::cout << "  \033[1;36m" << t.processesHandled << " procs\033[0m";
+                }
+                std::cout << std::endl;
+                ++shown;
+            }
+            if (shown == 0) {
+                std::cout << "\033[1;33m  (no tasks match this filter)\033[0m" << std::endl;
+            }
+            std::cout << std::endl;
+        };
+
+        if (liveAutoRefresh) {
+            int refreshSec = 2;
+            for (int tick = 0; tick < 1000; ++tick) {
+                renderOnce();
+                std::cout << "\033[90mLive refresh every " << refreshSec << "s.  Press ESC or 'q' to return...\033[0m";
+                std::cout.flush();
+                for (int s = 0; s < refreshSec * 10; ++s) {
+#ifdef _WIN32
+                    if (_kbhit()) {
+                        int c = _getch();
+                        if (c == 27 || c == 'q' || c == 'Q') return;
+                    }
+#endif
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                }
+            }
+        } else {
+            renderOnce();
+        }
+    }
     static void ShowSettingsMenu(Cleaner& cleaner) {
         while (true) {
 #ifdef _WIN32
@@ -293,8 +457,33 @@ public:
         if (choice <= 0) {
             OpenTUI::TerminalEngine::ClearScreen();
             PrintBanner();
-            std::cout << "\033[90m(Type query or press TAB to autocomplete suggestion)\033[0m\n\n";
-            return OpenTUI::TextInput::ReadLine("Query: ", "CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB", suggestions);
+            std::cout << "\033[1;36m=== Agent Query Language (AQL) Help ===\033[0m" << std::endl;
+            std::cout << "\033[90m" << std::endl;
+            std::cout << "  COMMANDS:" << std::endl;
+            std::cout << "    CLEAN  <path> WHERE <condition>     Clean files in path matching condition" << std::endl;
+            std::cout << "    SCAN   <path> WHERE <condition>     Preview cleanable items" << std::endl;
+            std::cout << "    SHRED  <path> WHERE <condition>     Secure-wipe with zero-overwrite before delete" << std::endl;
+            std::cout << "    KILL   PROCESS WHERE <condition>    Terminate processes matching condition" << std::endl;
+            std::cout << "    MONITOR <condition> EVERY <dur>     Watch thresholds & auto-clean" << std::endl;
+            std::cout << "    PURGE  RECYCLE_BIN                  Empty OS Recycle Bin / Trash" << std::endl;
+            std::cout << std::endl;
+            std::cout << "  CONDITIONS:" << std::endl;
+            std::cout << "    FREE_DISK < 500MB | 2GB              Free space below threshold" << std::endl;
+            std::cout << "    RAM > 80%                            Memory usage percentage" << std::endl;
+            std::cout << "    SIZE > 10MB | 1GB                    Minimum file size" << std::endl;
+            std::cout << "    AGE  > 24H | 7D | 30D                File age threshold" << std::endl;
+            std::cout << "    EXT IN ('.log', '.tmp')              Match extension list" << std::endl;
+            std::cout << std::endl;
+            std::cout << "  EXAMPLES:" << std::endl;
+            std::cout << "    CLEAN  'D:/Temp' WHERE FREE_DISK < 1GB" << std::endl;
+            std::cout << "    SCAN   'C:/Windows/Temp' WHERE AGE > 1H" << std::endl;
+            std::cout << "    SHRED  'D:/Temp' WHERE SIZE > 10MB" << std::endl;
+            std::cout << "    KILL   PROCESS WHERE RAM > 200MB" << std::endl;
+            std::cout << "    MONITOR WHERE RAM > 80% EVERY 15S" << std::endl;
+            std::cout << "    PURGE  RECYCLE_BIN" << std::endl;
+            std::cout << "\033[0m" << std::endl;
+            std::cout << "\033[90m(Type your query - TAB auto-completes, ESC keeps default, ENTER to run)\033[0m" << std::endl << std::endl;
+            return OpenTUI::TextInput::ReadLine("Query: ", "CLEAN 'C:/Users/hasee/AppData/Local/Temp' WHERE FREE_DISK < 500MB", suggestions);
         }
 
         static const std::vector<std::string> preMadeQueries = {
@@ -321,6 +510,7 @@ public:
             "Agent & AQL Query",
             "Daemon Monitor",
             "System Resource Monitor",
+            "Task Library / History",
             "Settings",
             "Exit Agent"
         };
@@ -333,7 +523,7 @@ public:
             menu.SetStatusLine(g_tuiStatus.GetStatusLine());
             int selected = menu.Show();
 
-            if (selected == -1 || selected == 9) {
+            if (selected == -1 || selected == 10) {
                 std::cout << "\n\033[32mExiting system-cleaner-agent OpenTUI Suite. Goodbye!\033[0m\n";
                 break;
             }
@@ -345,51 +535,75 @@ public:
             switch (selected) {
                 case 0: {
                     std::cout << "\033[1;36mLaunching background Storage Scan...\033[0m\n";
-                    std::thread worker([&cleaner]() {
-                        g_tuiStatus.SetActive("Storage Scan");
-                        cleaner.SetDryRun(true);
-                        auto reports = cleaner.Scan();
-                        uintmax_t freed = 0;
-                        for (const auto& r : reports) freed += r.sizeBytes;
-                        g_tuiStatus.SetCompleted("Scan completed. Cleanable: " + Cleaner::FormatSize(freed));
-                    });
-                    worker.detach();
+                    {
+                        uint64_t tid = TaskHistory::Instance().Register("TUI", "Storage Scan", "scan --dry-run", "OpenTUI Menu");
+                        std::thread worker([&cleaner, tid]() {
+                            TaskHistory::Instance().MarkRunning(tid);
+                            TaskHistory::Instance().UpdateProgress(tid, "Scanning all targets...");
+                            g_tuiStatus.SetActive("Storage Scan");
+                            cleaner.SetDryRun(true);
+                            auto reports = cleaner.Scan();
+                            uintmax_t freed = 0;
+                            for (const auto& r : reports) freed += r.sizeBytes;
+                            g_tuiStatus.SetCompleted("Scan completed. Cleanable: " + Cleaner::FormatSize(freed));
+                            TaskHistory::Instance().MarkCompleted(tid, "Scan found " + Cleaner::FormatSize(freed) + " cleanable across " + std::to_string(reports.size()) + " targets", freed, 0, 0, 0);
+                        });
+                        worker.detach();
+                    }
                     break;
                 }
                 case 1: {
                     std::cout << "\033[1;36mLaunching background Smart Deep Clean...\033[0m\n";
-                    std::thread worker([&cleaner]() {
-                        g_tuiStatus.SetActive("Smart Deep Clean");
-                        cleaner.SetSandbox(g_tuiSettings.sandboxMode);
-                        cleaner.SetDryRun(g_tuiSettings.dryRun);
-                        cleaner.Clean();
-                        g_tuiStatus.SetCompleted("Deep Clean finished.");
-                    });
-                    worker.detach();
+                    {
+                        uint64_t tid = TaskHistory::Instance().Register("TUI", "Smart Deep Clean", "clean --mode deep", "OpenTUI Menu");
+                        std::thread worker([&cleaner, tid]() {
+                            TaskHistory::Instance().MarkRunning(tid);
+                            TaskHistory::Instance().UpdateProgress(tid, "Deep cleaning all targets...");
+                            g_tuiStatus.SetActive("Smart Deep Clean");
+                            cleaner.SetSandbox(g_tuiSettings.sandboxMode);
+                            cleaner.SetDryRun(g_tuiSettings.dryRun);
+                            cleaner.Clean();
+                            g_tuiStatus.SetCompleted("Deep Clean finished.");
+                            TaskHistory::Instance().MarkCompleted(tid, "Deep Clean completed.");
+                        });
+                        worker.detach();
+                    }
                     break;
                 }
                 case 2: {
                     std::cout << "\033[1;36mLaunching background Secure Shred Wipe...\033[0m\n";
-                    std::thread worker([&cleaner]() {
-                        g_tuiStatus.SetActive("Secure Shred Wipe");
-                        cleaner.SetMode(CleanMode::Shred);
-                        cleaner.SetSandbox(g_tuiSettings.sandboxMode);
-                        cleaner.SetDryRun(g_tuiSettings.dryRun);
-                        cleaner.Clean();
-                        g_tuiStatus.SetCompleted("Shred Wipe finished.");
-                    });
-                    worker.detach();
+                    {
+                        uint64_t tid = TaskHistory::Instance().Register("TUI", "Secure Shred Wipe", "clean --mode shred", "OpenTUI Menu");
+                        std::thread worker([&cleaner, tid]() {
+                            TaskHistory::Instance().MarkRunning(tid);
+                            TaskHistory::Instance().UpdateProgress(tid, "Shredding (zero-overwrite) targets...");
+                            g_tuiStatus.SetActive("Secure Shred Wipe");
+                            cleaner.SetMode(CleanMode::Shred);
+                            cleaner.SetSandbox(g_tuiSettings.sandboxMode);
+                            cleaner.SetDryRun(g_tuiSettings.dryRun);
+                            cleaner.Clean();
+                            g_tuiStatus.SetCompleted("Shred Wipe finished.");
+                            TaskHistory::Instance().MarkCompleted(tid, "Secure Shred Wipe completed.");
+                        });
+                        worker.detach();
+                    }
                     break;
                 }
                 case 3: {
                     std::cout << "\033[1;36mLaunching background Empty Recycle Bin...\033[0m\n";
-                    std::thread worker([&cleaner]() {
-                        g_tuiStatus.SetActive("Empty Recycle Bin");
-                        cleaner.SetEmptyRecycleBin(true);
-                        cleaner.EmptyWindowsRecycleBin();
-                        g_tuiStatus.SetCompleted("Recycle Bin emptied.");
-                    });
-                    worker.detach();
+                    {
+                        uint64_t tid = TaskHistory::Instance().Register("TUI", "Empty Recycle Bin", "clean --recycle-bin", "OpenTUI Menu");
+                        std::thread worker([&cleaner, tid]() {
+                            TaskHistory::Instance().MarkRunning(tid);
+                            TaskHistory::Instance().UpdateProgress(tid, "Emptying Recycle Bin...");
+                            g_tuiStatus.SetActive("Empty Recycle Bin");
+                            cleaner.SetEmptyRecycleBin(true);
+                            cleaner.EmptyWindowsRecycleBin();
+                            g_tuiStatus.SetCompleted("Recycle Bin emptied.");
+                            TaskHistory::Instance().MarkCompleted(tid, "Recycle Bin emptied.");
+                        });
+                        worker.detach();
+                    }
                     break;
                 }
                 case 4: {
@@ -501,33 +715,49 @@ public:
                 case 5: {
                     std::string selectedQuery = SelectAgentQuery();
                     std::cout << "\033[1;33mLaunching background Agent Task: " << selectedQuery << "\033[0m\n";
-                    bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
-                    std::thread worker([selectedQuery, currentDryRun]() {
-                        g_tuiStatus.SetActive("Agent Task: " + selectedQuery);
-                        AgentEngine agent(selectedQuery);
-                        agent.RunReActLoop(currentDryRun);
-                        g_tuiStatus.SetCompleted("Agent Task finished: " + selectedQuery);
-                    });
-                    worker.detach();
+                    {
+                        uint64_t tid = TaskHistory::Instance().Register("AGENT", "Agent: " + selectedQuery, selectedQuery, "OpenTUI Menu");
+                        bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
+                        std::thread worker([selectedQuery, currentDryRun, tid]() {
+                            TaskHistory::Instance().MarkRunning(tid);
+                            TaskHistory::Instance().UpdateProgress(tid, "ReAct agent reasoning...");
+                            g_tuiStatus.SetActive("Agent Task: " + selectedQuery);
+                            AgentEngine agent(selectedQuery);
+                            agent.RunReActLoop(currentDryRun);
+                            g_tuiStatus.SetCompleted("Agent Task finished: " + selectedQuery);
+                            TaskHistory::Instance().MarkCompleted(tid, "Agent loop finished for: " + selectedQuery);
+                        });
+                        worker.detach();
+                    }
                     break;
                 }
                 case 6: {
                     std::cout << "\033[1;36mLaunching background Smart Daemon Service...\033[0m\n";
-                    bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
-                    int interval = g_tuiSettings.monitorIntervalSec;
-                    std::thread worker([&cleaner, currentDryRun, interval]() {
-                        g_tuiStatus.SetActive("Smart Daemon (RAM > 80% / Free Disk < 500MB)");
-                        SmartScheduler::RunDaemonService(cleaner, {}, 80.0, 0.0, interval, currentDryRun, 500ULL * 1024 * 1024, "C:\\");
-                    });
-                    worker.detach();
+                    {
+                        uint64_t tid = TaskHistory::Instance().Register("DAEMON", "Smart Daemon Monitor", "daemon --mem-threshold 80% --disk-threshold", "OpenTUI Menu");
+                        bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
+                        int interval = g_tuiSettings.monitorIntervalSec;
+                        std::thread worker([&cleaner, currentDryRun, interval, tid]() {
+                            TaskHistory::Instance().MarkRunning(tid);
+                            TaskHistory::Instance().UpdateProgress(tid, "Daemon watching RAM > 80% / Free Disk < 500MB...");
+                            g_tuiStatus.SetActive("Smart Daemon (RAM > 80% / Free Disk < 500MB)");
+                            SmartScheduler::RunDaemonService(cleaner, {}, 80.0, 0.0, interval, currentDryRun, 500ULL * 1024 * 1024, "C:\\");
+                            TaskHistory::Instance().MarkCompleted(tid, "Daemon service stopped.");
+                        });
+                        worker.detach();
+                    }
                     break;
                 }
                 case 7: {
                     ShowSystemResourceMonitor();
                     break;
                 }
-                case 8: {
+                case 9: {
                     ShowSettingsMenu(cleaner);
+                    break;
+                }
+                case 8: {
+                    ShowTaskLibrary();
                     break;
                 }
             }

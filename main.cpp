@@ -9,6 +9,7 @@
 #include "include/LocalLLMBrain.hpp"
 #include "include/SecurityGuard.hpp"
 #include "include/AgentQueryLanguage.hpp"
+#include "include/TaskHistory.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -28,13 +29,15 @@ void PrintHelp() {
     std::cout << "\033[1mUSAGE:\033[0m\n"
               << "  system-cleaner-agent [COMMAND] [FLAGS]\n\n"
               << "\033[1mCOMMANDS:\033[0m\n"
-              << "  \033[36mchat\033[0m         Launch Interactive Local LLM ReAct Prompt Shell.\n"
+              << "  \033[36mchat\033[0m         Launch Interactive Local LLM ReAct Prompt Shell (try 'menu' for queries).\n"
               << "  \033[36magent\033[0m        Launch Autonomous ReAct Agent Loop (Thought->Action->Observation).\n"
               << "  \033[36mdaemon\033[0m       Run Smart Background Scheduler & Memory Threshold Monitoring Daemon.\n"
               << "  \033[36mscan\033[0m         Analyze system/drive targets and report cleanable storage.\n"
               << "  \033[36mclean\033[0m        Execute multi-threaded cleanup using active policy rules.\n"
               << "  \033[36mdeep-clean\033[0m   Perform full system cache cleanup + empty OS Recycle Bin / Trash.\n"
-              << "  \033[36mtui\033[0m          Launch interactive Terminal User Interface (TUI).\n"
+              << "  \033[36maql\033[0m          Execute a single Agent Query Language (AQL) statement (e.g. aql \"CLEAN ...\").\n"
+              << "  \033[36mhistory\033[0m      Show the unified Task Library (all clean/scan/AQL/agent/daemon tasks).\n"
+              << "  \033[36mtui\033[0m          Launch interactive Terminal User Interface (TUI) - default mode.\n"
               << "  \033[36mtest\033[0m         Execute automated engine diagnostic & unit test suite.\n"
               << "  \033[36mversion\033[0m      Display version, engine build, and architecture details.\n"
               << "  \033[36mhelp\033[0m         Show this help and usage specification.\n\n"
@@ -68,13 +71,47 @@ void PrintHelp() {
               << "  \033[33m--json-report <file>\033[0m   Export structured execution results to JSON report.\n"
               << "  \033[33m--cron <duration>\033[0m      Run daemon service on recurring schedule (e.g. 10m, 1h).\n"
               << "  \033[33m--verbose\033[0m              Enable detailed trace logging.\n\n"
+              << "\033[1mAGENT QUERY LANGUAGE (AQL) SYNTAX:\033[0m\n"
+              << "  Use the \033[36maql\033[0m command or the chat/TUI mode to run natural-language-style queries:\n\n"
+              << "  \033[1;33mCOMMANDS:\033[0m\n"
+              << "    \033[32mCLEAN\033[0m   <path> WHERE <condition>      Clean files in <path> matching condition\n"
+              << "    \033[32mSCAN\033[0m    <path> WHERE <condition>      Preview cleanable items (no deletion)\n"
+              << "    \033[32mSHRED\033[0m   <path> WHERE <condition>      Secure-wipe (zero-overwrite) + delete\n"
+              << "    \033[32mKILL\033[0m    PROCESS WHERE <condition>     Terminate processes matching condition\n"
+              << "    \033[32mMONITOR\033[0m WHERE <condition> EVERY <dur> Watch thresholds & auto-clean\n"
+              << "    \033[32mPURGE\033[0m   RECYCLE_BIN                   Empty OS Recycle Bin / Trash\n\n"
+              << "  \033[1;33mCONDITIONS:\033[0m\n"
+              << "    FREE_DISK < 500MB | 2GB | 10GB            Free space below threshold\n"
+              << "    RAM > 80%  (or any %)                     Memory usage percentage\n"
+              << "    SIZE > 10MB | 1GB                         Minimum file size\n"
+              << "    AGE  > 24H | 7D | 30D                     File age threshold\n"
+              << "    EXT IN ('.log', '.tmp')                   Match extension list\n\n"
+              << "  \033[1;33mAQL EXAMPLE QUERIES (try these!):\033[0m\n"
+              << "    \033[36maql \"CLEAN 'D:/Temp' WHERE FREE_DISK < 1GB\"\033[0m\n"
+              << "    \033[36maql \"SCAN 'C:/Windows/Temp' WHERE AGE > 1H\"\033[0m\n"
+              << "    \033[36maql \"SHRED 'D:/Temp' WHERE SIZE > 10MB\"\033[0m\n"
+              << "    \033[36maql \"KILL PROCESS WHERE RAM > 200MB\"\033[0m\n"
+              << "    \033[36maql \"MONITOR WHERE RAM > 80% EVERY 15S\"\033[0m\n"
+              << "    \033[36maql \"PURGE RECYCLE_BIN\"\033[0m\n"
+              << "    \033[36maql \"CLEAN 'C:/Users' WHERE EXT IN ('.log', '.tmp') AND AGE > 7D\"\033[0m\n\n"
+              << "\033[1mTASK LIBRARY / PROCESS HISTORY:\033[0m\n"
+              << "  Every launched operation (AQL queries, deep-clean, scan, shred, daemon, agent loop,\n"
+              << "  RAM kill, recycle bin purge, etc.) is automatically tracked in a unified in-memory\n"
+              << "  Task Library.  View it via:\n"
+              << "    \033[36mhistory\033[0m        CLI view of all recorded tasks (status, timing, results)\n"
+              << "    OpenTUI -> 'Task Library / History' menu  (live auto-refresh + filters)\n\n"
               << "\033[1mPRODUCTION EXAMPLES:\033[0m\n"
               << "  system-cleaner-agent chat\n"
               << "  system-cleaner-agent daemon --mem-threshold 80% --interval 15s\n"
               << "  system-cleaner-agent agent --task \"Perform clean code on D:/Temp when mem>80%\"\n"
               << "  system-cleaner-agent scan --dry-run\n"
-              << "  system-cleaner-agent deep-clean --recycle-bin\n";
+              << "  system-cleaner-agent deep-clean --recycle-bin\n"
+              << "  system-cleaner-agent aql \"KILL PROCESS WHERE RAM > 200MB\"\n"
+              << "  system-cleaner-agent aql \"MONITOR WHERE RAM > 80% EVERY 15S\"\n"
+              << "  system-cleaner-agent history\n";
 }
+
+
 
 std::vector<std::string> SplitString(const std::string& str, char delim) {
     std::vector<std::string> tokens;
@@ -105,11 +142,45 @@ void RunInteractiveChatShell() {
         if (lowerInput == "menu" || lowerInput == "queries" || lowerInput == "select" || input.empty()) {
             input = TUI::SelectAgentQuery();
             std::cout << "\033[1;33mExecuting Selected Goal: " << input << "\033[0m\n\n";
+        } else if (lowerInput == "help" || lowerInput == "?") {
+            PrintHelp();
+            std::cout << "\n\033[90m(Press Enter to return to the chat shell...)\033[0m";
+            std::cin.get();
+            continue;
+        } else if (lowerInput == "history" || lowerInput == "tasks") {
+            std::cout << "\033[1;36m=== Task Library / Process History ===\033[0m\n";
+            std::cout << TaskHistory::Instance().HeaderSummary() << "\n\n";
+            auto tasks = TaskHistory::Instance().Snapshot();
+            if (tasks.empty()) {
+                std::cout << "\033[1;33m  No tasks yet - run any clean / scan / shred / aql query first.\033[0m\n";
+            } else {
+                std::reverse(tasks.begin(), tasks.end());
+                for (auto& t : tasks) {
+                    bool isLive = (t.status == TaskStatus::Running || t.status == TaskStatus::Queued);
+                    std::string timeStr = TaskHistoryNS::FormatTimestamp(isLive ? t.startedAt : t.finishedAt);
+                    std::string durStr  = TaskHistoryNS::FormatDuration(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - t.startedAt));
+                    std::string detail = isLive ? (t.progressMsg.empty() ? TaskHistoryNS::StatusLabel(t.status) : t.progressMsg) : (t.resultSummary.empty() ? TaskHistoryNS::StatusLabel(t.status) : t.resultSummary);
+                    if (detail.size() > 60) detail = detail.substr(0, 57) + "...";
+                    std::cout << "  [" << std::setw(3) << std::setfill('0') << t.id << "] " << std::setfill(' ')
+                              << TaskHistoryNS::StatusColor(t.status) << std::left << std::setw(8) << TaskHistoryNS::StatusLabel(t.status) << std::right << "\033[0m "
+                              << std::left << std::setw(8) << t.category << std::right << " "
+                              << "\033[1;33m" << std::left << std::setw(10) << timeStr << std::right << "\033[0m "
+                              << "\033[90m(" << std::left << std::setw(7) << durStr << std::right << ")\033[0m "
+                              << "\033[1;97m" << std::left << std::setw(28) << t.name << std::right << "\033[0m "
+                              << "\033[1;36m" << detail << "\033[0m\n";
+                }
+            }
+            std::cout << "\n\033[90m(Press Enter to return to the chat shell...)\033[0m";
+            std::cin.get();
+            continue;
         }
 
+        // Register this chat goal in the unified Task Library
+        uint64_t chatTaskId = TaskHistory::Instance().Register("CHAT", "Chat: " + input, input, "Chat Shell");
+        TaskHistory::Instance().MarkRunning(chatTaskId);
+        TaskHistory::Instance().UpdateProgress(chatTaskId, "ReAct agent reasoning...");
         AgentEngine agent(input);
-        agent.RunReActLoop(true);
-    }
+        agent.RunReActLoop(true);    }
 }
 
 void ExportJsonReport(const std::string& jsonPath, const std::vector<TargetReport>& reports) {
@@ -222,6 +293,47 @@ int main(int argc, char* argv[]) {
         std::string queryStr = (args.size() > 1) ? args[1] : "CLEAN 'C:\\Temp' WHERE FREE_DISK < 500MB";
         AQLQuery q = AQLEngine::Parse(queryStr);
         AQLEngine::Execute(q, cleaner, true);
+        return 0;
+    }
+
+    if (cmd == "history" || cmd == "--history" || cmd == "tasks") {
+        // Print the unified Task Library to stdout and exit
+        TUI::PrintBanner();
+        std::cout << TaskHistory::Instance().HeaderSummary() << std::endl << std::endl;
+        std::vector<TaskEntry> tasks = TaskHistory::Instance().Snapshot();
+        if (tasks.empty()) {
+            std::cout << "\033[1;33m  No tasks recorded yet. Run any clean / scan / shred / AQL / agent / daemon command first.\033[0m" << std::endl;
+            std::cout << "\033[90m  Tip: launch the OpenTUI with no args for a beautiful live Task Library view.\033[0m" << std::endl;
+        } else {
+            std::cout << "\033[1;37m" << std::left
+                      << std::setw(6)  << "ID"
+                      << std::setw(11) << "STATUS"
+                      << std::setw(10) << "CATEGORY"
+                      << std::setw(11) << "TIME"
+                      << std::setw(9)  << "DUR"
+                      << std::setw(26) << "NAME"
+                      << std::setw(40) << "DETAIL / RESULT"
+                      << "\033[0m" << std::endl;
+            std::cout << "\033[90m" << std::string(113, char(45)) << "\033[0m" << std::endl;
+            std::reverse(tasks.begin(), tasks.end());
+            for (auto& t : tasks) {
+                bool isLive = (t.status == TaskStatus::Running || t.status == TaskStatus::Queued);
+                std::string timeStr = TaskHistoryNS::FormatTimestamp(isLive ? t.startedAt : t.finishedAt);
+                std::string durStr  = TaskHistoryNS::FormatDuration(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - t.startedAt));
+                std::string name = t.name; if (name.size() > 24) name = name.substr(0, 21) + "...";
+                std::string detail = isLive ? (t.progressMsg.empty() ? TaskHistoryNS::StatusLabel(t.status) : t.progressMsg) : (t.resultSummary.empty() ? TaskHistoryNS::StatusLabel(t.status) : t.resultSummary);
+                if (detail.size() > 38) detail = detail.substr(0, 35) + "...";
+                std::cout << "\033[90m[" << std::setw(3) << std::setfill('0') << t.id << "]\033[0m " << std::setfill(' ')
+                          << TaskHistoryNS::StatusColor(t.status) << std::left << std::setw(10) << TaskHistoryNS::StatusLabel(t.status) << std::right << "\033[0m "
+                          << std::left << std::setw(10) << t.category << std::right << " "
+                          << "\033[1;33m" << std::left << std::setw(10) << timeStr << std::right << "\033[0m "
+                          << "\033[90m" << std::left << std::setw(8) << durStr << std::right << "\033[0m "
+                          << "\033[1;97m" << std::left << std::setw(25) << name << std::right << "\033[0m "
+                          << "\033[1;36m" << std::left << std::setw(38) << detail << std::right << "\033[0m";
+                if (t.bytesFreed > 0) std::cout << "  \033[1;32mfreed " << Cleaner::FormatSize(t.bytesFreed) << "\033[0m";
+                std::cout << std::endl;
+            }
+        }
         return 0;
     }
 
