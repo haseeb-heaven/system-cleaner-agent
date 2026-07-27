@@ -152,10 +152,39 @@ long long ParseDuration(const std::string& durationStr) {
     return 0;
 }
 
-int main(int argc, char* argv[]) {
-    bool verbose = false;
+std::vector<std::string> PreprocessArgs(int argc, char* argv[]) {
+    std::vector<std::string> tokens;
     for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
+        std::string raw = argv[i];
+        while (!raw.empty() && (raw.front() == '"' || raw.front() == '\'')) raw.erase(0, 1);
+        while (!raw.empty() && (raw.back() == '"' || raw.back() == '\'')) raw.pop_back();
+
+        size_t flagPos = raw.find(" --");
+        if (flagPos != std::string::npos) {
+            std::string head = raw.substr(0, flagPos);
+            while (!head.empty() && (head.back() == '"' || head.back() == '\'')) head.pop_back();
+            if (!head.empty()) tokens.push_back(head);
+
+            std::string tail = raw.substr(flagPos + 1);
+            std::stringstream ss(tail);
+            std::string sub;
+            while (ss >> sub) {
+                while (!sub.empty() && (sub.front() == '"' || sub.front() == '\'')) sub.erase(0, 1);
+                while (!sub.empty() && (sub.back() == '"' || sub.back() == '\'')) sub.pop_back();
+                if (!sub.empty()) tokens.push_back(sub);
+            }
+        } else {
+            if (!raw.empty()) tokens.push_back(raw);
+        }
+    }
+    return tokens;
+}
+
+int main(int argc, char* argv[]) {
+    auto args = PreprocessArgs(argc, argv);
+
+    bool verbose = false;
+    for (const auto& arg : args) {
         if (arg == "--verbose" || arg == "-v") verbose = true;
     }
 
@@ -163,12 +192,12 @@ int main(int argc, char* argv[]) {
 
     Cleaner cleaner;
 
-    if (argc < 2) {
+    if (args.empty()) {
         TUI::RunInteractiveMenu(cleaner);
         return 0;
     }
 
-    std::string cmd = argv[1];
+    std::string cmd = args[0];
     std::transform(cmd.begin(), cmd.end(), cmd.begin(), ::tolower);
 
     if (cmd == "help" || cmd == "--help" || cmd == "-h") {
@@ -216,8 +245,8 @@ int main(int argc, char* argv[]) {
     std::vector<fs::path> customPaths;
     std::vector<fs::path> targetDrives;
 
-    for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
+    for (size_t i = 0; i < args.size(); ++i) {
+        std::string arg = args[i];
         std::string lowerArg = arg;
         std::transform(lowerArg.begin(), lowerArg.end(), lowerArg.begin(), ::tolower);
 
@@ -229,87 +258,87 @@ int main(int argc, char* argv[]) {
             pathProtection = false;
         } else if (lowerArg == "--agent") {
             runAgentLoop = true;
-        } else if (lowerArg == "--task" && i + 1 < argc) {
-            agentTaskGoal = argv[++i];
+        } else if (lowerArg == "--task" && i + 1 < args.size()) {
+            agentTaskGoal = args[++i];
             runAgentLoop = true;
-        } else if (lowerArg == "--mem-threshold" && i + 1 < argc) {
-            std::string val = argv[++i];
+        } else if (lowerArg == "--mem-threshold" && i + 1 < args.size()) {
+            std::string val = args[++i];
             if (val.back() == '%') val.pop_back();
             try { memThresholdPercent = std::stod(val); } catch (...) {}
-        } else if (lowerArg == "--disk-threshold" && i + 1 < argc) {
-            std::string val = argv[++i];
+        } else if (lowerArg == "--disk-threshold" && i + 1 < args.size()) {
+            std::string val = args[++i];
             if (val.back() == '%') val.pop_back();
             try { diskThresholdPercent = std::stod(val); } catch (...) {}
-        } else if (lowerArg == "--disk-free-below" && i + 1 < argc) {
-            diskFreeBelowBytes = ContentInspector::ParseSizeToBytes(argv[++i]);
-        } else if (lowerArg == "--monitor-drive" && i + 1 < argc) {
-            monitorDrive = fs::path(argv[++i]);
-        } else if (lowerArg == "--schedule" && i + 1 < argc) {
-            scheduleRules.push_back(SmartScheduler::ParseRuleString(argv[++i]));
-        } else if (lowerArg == "--interval" && i + 1 < argc) {
-            daemonCheckIntervalSeconds = ParseDuration(argv[++i]);
+        } else if (lowerArg == "--disk-free-below" && i + 1 < args.size()) {
+            diskFreeBelowBytes = ContentInspector::ParseSizeToBytes(args[++i]);
+        } else if (lowerArg == "--monitor-drive" && i + 1 < args.size()) {
+            monitorDrive = SmartScheduler::NormalizeDrivePath(args[++i]);
+        } else if (lowerArg == "--schedule" && i + 1 < args.size()) {
+            scheduleRules.push_back(SmartScheduler::ParseRuleString(args[++i]));
+        } else if (lowerArg == "--interval" && i + 1 < args.size()) {
+            daemonCheckIntervalSeconds = ParseDuration(args[++i]);
             if (daemonCheckIntervalSeconds <= 0) daemonCheckIntervalSeconds = 15;
         } else if (lowerArg == "--recycle-bin") {
             recycleBin = true;
-        } else if (lowerArg == "--kill-locks" && i + 1 < argc) {
-            std::string val = argv[++i];
+        } else if (lowerArg == "--kill-locks" && i + 1 < args.size()) {
+            std::string val = args[++i];
             killLocks = (val == "true" || val == "1" || val == "yes");
-        } else if (lowerArg == "--cron" && i + 1 < argc) {
-            cronIntervalSeconds = ParseDuration(argv[++i]);
-        } else if (lowerArg == "--threads" && i + 1 < argc) {
-            try { threadCount = std::stoul(argv[++i]); } catch (...) {}
-        } else if (lowerArg == "--json-report" && i + 1 < argc) {
-            jsonReportPath = argv[++i];
-        } else if (lowerArg == "--path" && i + 1 < argc) {
-            auto pathList = SplitString(argv[++i], ',');
+        } else if (lowerArg == "--cron" && i + 1 < args.size()) {
+            cronIntervalSeconds = ParseDuration(args[++i]);
+        } else if (lowerArg == "--threads" && i + 1 < args.size()) {
+            try { threadCount = std::stoul(args[++i]); } catch (...) {}
+        } else if (lowerArg == "--json-report" && i + 1 < args.size()) {
+            jsonReportPath = args[++i];
+        } else if (lowerArg == "--path" && i + 1 < args.size()) {
+            auto pathList = SplitString(args[++i], ',');
             for (const auto& p : pathList) customPaths.push_back(fs::path(p));
-        } else if (lowerArg == "--drive" && i + 1 < argc) {
-            auto driveList = SplitString(argv[++i], ',');
+        } else if (lowerArg == "--drive" && i + 1 < args.size()) {
+            auto driveList = SplitString(args[++i], ',');
             for (const auto& d : driveList) targetDrives.push_back(fs::path(d));
-        } else if (lowerArg == "--project-root" && i + 1 < argc) {
-            cleaner.SetProjectRoot(fs::path(argv[++i]));
-        } else if (lowerArg == "--mode" && i + 1 < argc) {
-            std::string mStr = argv[++i];
+        } else if (lowerArg == "--project-root" && i + 1 < args.size()) {
+            cleaner.SetProjectRoot(fs::path(args[++i]));
+        } else if (lowerArg == "--mode" && i + 1 < args.size()) {
+            std::string mStr = args[++i];
             std::transform(mStr.begin(), mStr.end(), mStr.begin(), ::tolower);
             if (mStr == "light") cleanMode = CleanMode::Light;
             else if (mStr == "deep") cleanMode = CleanMode::Deep;
             else if (mStr == "full") cleanMode = CleanMode::Full;
             else if (mStr == "shred") cleanMode = CleanMode::Shred;
-        } else if (lowerArg == "--strategy" && i + 1 < argc) {
-            cfg.strategy = argv[++i];
+        } else if (lowerArg == "--strategy" && i + 1 < args.size()) {
+            cfg.strategy = args[++i];
             std::transform(cfg.strategy.begin(), cfg.strategy.end(), cfg.strategy.begin(), ::tolower);
-        } else if (lowerArg == "--category" && i + 1 < argc) {
-            auto catList = SplitString(argv[++i], ',');
+        } else if (lowerArg == "--category" && i + 1 < args.size()) {
+            auto catList = SplitString(args[++i], ',');
             for (auto c : catList) {
                 std::transform(c.begin(), c.end(), c.begin(), ::tolower);
                 cfg.includeCategories.insert(c);
             }
-        } else if (lowerArg == "--exclude-category" && i + 1 < argc) {
-            auto catList = SplitString(argv[++i], ',');
+        } else if (lowerArg == "--exclude-category" && i + 1 < args.size()) {
+            auto catList = SplitString(args[++i], ',');
             for (auto c : catList) {
                 std::transform(c.begin(), c.end(), c.begin(), ::tolower);
                 cfg.excludeCategories.insert(c);
             }
-        } else if (lowerArg == "--only-ext" && i + 1 < argc) {
-            auto extList = SplitString(argv[++i], ',');
+        } else if (lowerArg == "--only-ext" && i + 1 < args.size()) {
+            auto extList = SplitString(args[++i], ',');
             for (auto e : extList) {
                 if (e.front() != '.') e = "." + e;
                 std::transform(e.begin(), e.end(), e.begin(), ::tolower);
                 cfg.onlyExts.insert(e);
             }
-        } else if (lowerArg == "--exclude-ext" && i + 1 < argc) {
-            auto extList = SplitString(argv[++i], ',');
+        } else if (lowerArg == "--exclude-ext" && i + 1 < args.size()) {
+            auto extList = SplitString(args[++i], ',');
             for (auto e : extList) {
                 if (e.front() != '.') e = "." + e;
                 std::transform(e.begin(), e.end(), e.begin(), ::tolower);
                 cfg.excludeExts.insert(e);
             }
-        } else if (lowerArg == "--older-than" && i + 1 < argc) {
-            cfg.minAgeMinutes = ContentInspector::ParseDurationToMinutes(argv[++i]);
-        } else if (lowerArg == "--min-size" && i + 1 < argc) {
-            cfg.minSizeBytes = ContentInspector::ParseSizeToBytes(argv[++i]);
-        } else if (lowerArg == "--max-size" && i + 1 < argc) {
-            cfg.maxSizeBytes = ContentInspector::ParseSizeToBytes(argv[++i]);
+        } else if (lowerArg == "--older-than" && i + 1 < args.size()) {
+            cfg.minAgeMinutes = ContentInspector::ParseDurationToMinutes(args[++i]);
+        } else if (lowerArg == "--min-size" && i + 1 < args.size()) {
+            cfg.minSizeBytes = ContentInspector::ParseSizeToBytes(args[++i]);
+        } else if (lowerArg == "--max-size" && i + 1 < args.size()) {
+            cfg.maxSizeBytes = ContentInspector::ParseSizeToBytes(args[++i]);
         }
     }
 

@@ -76,13 +76,24 @@ public:
         return 0.0;
     }
 
+    static fs::path NormalizeDrivePath(const fs::path& p) {
+        std::string s = p.string();
+        while (!s.empty() && (s.front() == '"' || s.front() == '\'')) s.erase(0, 1);
+        while (!s.empty() && (s.back() == '"' || s.back() == '\'')) s.pop_back();
+        if (s.size() == 2 && s[1] == ':') {
+            s += "\\";
+        }
+        return fs::path(s.empty() ? "C:\\" : s);
+    }
+
     // ----------------------------------------------------------------
     // Disk used %
     // ----------------------------------------------------------------
     static double GetDiskUsagePercent(const fs::path& path = "C:\\") {
         try {
             std::error_code ec;
-            fs::space_info si = fs::space(path, ec);
+            fs::path norm = NormalizeDrivePath(path);
+            fs::space_info si = fs::space(norm, ec);
             if (!ec && si.capacity > 0) {
                 uintmax_t used = si.capacity - si.available;
                 return (static_cast<double>(used) / static_cast<double>(si.capacity)) * 100.0;
@@ -97,7 +108,8 @@ public:
     static uintmax_t GetDiskFreeBytes(const fs::path& path = "C:\\") {
         try {
             std::error_code ec;
-            fs::space_info si = fs::space(path, ec);
+            fs::path norm = NormalizeDrivePath(path);
+            fs::space_info si = fs::space(norm, ec);
             if (!ec) return si.available;
         } catch (...) {}
         return 0;
