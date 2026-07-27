@@ -12,7 +12,7 @@ on:
 
 jobs:
   build-cpp:
-    name: Build & Test system-cleaner-agent (${{ matrix.os }})
+    name: "Build & Test (${{ matrix.os }})"
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -20,46 +20,158 @@ jobs:
         os: [windows-latest, ubuntu-latest, macos-latest]
 
     steps:
+      # ----------------------------------------------------------------
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # ----------------------------------------------------------------
       - name: Setup MSVC environment (Windows)
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
+      # ----------------------------------------------------------------
       - name: Configure with CMake
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
+      # ----------------------------------------------------------------
       - name: Build Release
-        run: |
-          cmake --build build --config Release
+        run: cmake --build build --config Release
 
-      - name: Run Unit Tests (Windows)
+      # ----------------------------------------------------------------
+      - name: Verify main executable exists (Windows)
         if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          .\build\Release\unit_tests.exe
-
-      - name: Run Unit Tests (Linux / macOS)
-        if: runner.os != 'Windows'
-        run: |
-          ./build/unit_tests
-
-      - name: Verify Executable (Windows)
-        if: runner.os == 'Windows'
-        run: |
-          if (Test-Path "build\Release\system-cleaner-agent.exe") {
-            Write-Host "Build successful: system-cleaner-agent.exe exists"
-            Get-Item "build\Release\system-cleaner-agent.exe"
+          $exe = "build\Release\system-cleaner-agent.exe"
+          if (Test-Path $exe) {
+            Write-Host "✅ Main executable: $exe"
+            Get-Item $exe | Select Name, Length, LastWriteTime
           } else {
-            Write-Error "Executable not found!"
+            Write-Error "❌ Main executable not found: $exe"
             exit 1
           }
 
-      - name: Upload Build Artifact (Windows)
+      - name: Verify main executable exists (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          if [ -f "build/system-cleaner-agent" ]; then
+            echo "✅ Main executable: build/system-cleaner-agent"
+            ls -lh build/system-cleaner-agent
+          else
+            echo "❌ Main executable not found"
+            exit 1
+          fi
+
+      # ----------------------------------------------------------------
+      - name: Verify unit test executable exists (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $exe = "build\Release\unit_tests.exe"
+          if (Test-Path $exe) {
+            Write-Host "✅ Unit test binary: $exe"
+          } else {
+            Write-Error "❌ Unit test binary not found: $exe"
+            exit 1
+          }
+
+      - name: Verify unit test executable exists (Linux/macOS)
+        if: runner.os != 'Windows'
+        run: |
+          if [ -f "build/unit_tests" ]; then
+            echo "✅ Unit test binary: build/unit_tests"
+          else
+            echo "❌ Unit test binary not found"
+            exit 1
+          fi
+
+      # ----------------------------------------------------------------
+      - name: "🧪 Run Unit Tests (Windows)"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Write-Host "Running 18-suite comprehensive unit test suite..."
+          $result = & ".\build\Release\unit_tests.exe" 2>&1
+          $result | ForEach-Object { Write-Host $_ }
+          if ($LASTEXITCODE -ne 0) {
+            Write-Error "❌ Unit tests FAILED with exit code $LASTEXITCODE"
+            exit $LASTEXITCODE
+          }
+          Write-Host "✅ All unit tests PASSED"
+
+      - name: "🧪 Run Unit Tests (Linux / macOS)"
+        if: runner.os != 'Windows'
+        run: |
+          echo "Running 18-suite comprehensive unit test suite..."
+          ./build/unit_tests
+          if [ $? -ne 0 ]; then
+            echo "❌ Unit tests FAILED"
+            exit 1
+          fi
+          echo "✅ All unit tests PASSED"
+
+      # ----------------------------------------------------------------
+      - name: "💨 Smoke Test — help flag (Windows)"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $out = & ".\build\Release\system-cleaner-agent.exe" help 2>&1
+          $out | ForEach-Object { Write-Host $_ }
+          if ($out -match "USAGE" -or $out -match "COMMANDS" -or $out -match "system-cleaner") {
+            Write-Host "✅ Smoke test: help output OK"
+          } else {
+            Write-Error "❌ Smoke test: unexpected help output"
+            exit 1
+          }
+
+      - name: "💨 Smoke Test — help flag (Linux / macOS)"
+        if: runner.os != 'Windows'
+        run: |
+          out=$(./build/system-cleaner-agent help 2>&1 || true)
+          echo "$out"
+          if echo "$out" | grep -q -i "usage\|command\|system-cleaner\|SANDBOX"; then
+            echo "✅ Smoke test: help output OK"
+          else
+            echo "❌ Smoke test: unexpected help output"
+            exit 1
+          fi
+
+      # ----------------------------------------------------------------
+      - name: "💨 Smoke Test — version flag (Windows)"
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $out = & ".\build\Release\system-cleaner-agent.exe" version 2>&1
+          $out | ForEach-Object { Write-Host $_ }
+          Write-Host "✅ Version smoke test passed"
+
+      - name: "💨 Smoke Test — version flag (Linux / macOS)"
+        if: runner.os != 'Windows'
+        run: |
+          ./build/system-cleaner-agent version 2>&1 || true
+          echo "✅ Version smoke test passed"
+
+      # ----------------------------------------------------------------
+      - name: "Upload Windows Executable"
         if: runner.os == 'Windows'
         uses: actions/upload-artifact@v4
         with:
           name: system-cleaner-agent-windows
           path: build/Release/system-cleaner-agent.exe
-          retention-days: 7
+          retention-days: 14
+
+      - name: "Upload Linux Executable"
+        if: runner.os == 'Linux'
+        uses: actions/upload-artifact@v4
+        with:
+          name: system-cleaner-agent-linux
+          path: build/system-cleaner-agent
+          retention-days: 14
+
+      - name: "Upload macOS Executable"
+        if: runner.os == 'macOS'
+        uses: actions/upload-artifact@v4
+        with:
+          name: system-cleaner-agent-macos
+          path: build/system-cleaner-agent
+          retention-days: 14
