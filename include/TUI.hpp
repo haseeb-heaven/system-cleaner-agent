@@ -121,7 +121,7 @@ public:
                   << "   /     \\    / ___)( \\/ )( ___)(_  _)(  __)( \\/ )  \n"
                   << "  |   *   |   \\___ \\ )  /  )__)   )(   ) _) / \\/ \\  \n"
                   << "   \\     /    (____/(__/  (____) (__) (____)\\_/\\_/  \n"
-                  << "    \\___/     \033[1;33mSYSTEM-CLEANER-AGENT \033[1;32mv5.3\033[0m\n"
+                  << "    \\___/     \033[1;33mSYSTEM-CLEANER-AGENT \033[1;32mv5.5.0\033[0m\n"
                   << "\033[90m  [ Autonomous ReAct Agent | C++17 OpenTUI | AQL Engine ]\033[0m\n\n";
     }
 
@@ -589,8 +589,15 @@ public:
 
         OpenTUI::Menu menu("SYSTEM-CLEANER-AGENT", options);
         menu.SetPreRenderCallback([]() { PrintBanner(); });
+        bool firstRender = true;
 
         while (true) {
+            if (firstRender) {
+                firstRender = false;
+            } else {
+                // On re-entry clear once so banner from callback is fresh
+                OpenTUI::TerminalEngine::ClearScreen();
+            }
             menu.SetHeaderLines(GetLiveResourceHeaders());
             menu.SetStatusLine(g_tuiStatus.GetStatusLine());
             int selected = menu.Show();
