@@ -239,7 +239,8 @@ struct ThemeStyle {
     std::string headerColor;
     std::string accentColor;
     std::string statusColor;
-    std::string bgHighlight;
+    std::string panelBg;        // Container Panel Background ANSI escape code
+    std::string bgHighlight;    // Menu Item Active Background ANSI escape code
     std::string borderTL, borderTR, borderBL, borderBR;
     std::string borderHoriz, borderVert;
     std::string borderSplitL, borderSplitR;
@@ -250,43 +251,54 @@ struct ThemeStyle {
 inline ThemeStyle GetThemeStyle(const std::string& themeName, const std::string& colorScheme = "Default (Engine Native)") {
     std::string bTL = "╔", bTR = "╗", bBL = "╚", bBR = "╝", bH = "═", bV = "║", bSL = "╠", bSR = "╣", sel = "► ", banner = "[ AUTONOMOUS REACT AGENT | C++17 OPENTUI | AQL ENGINE ]";
     
-    // Default Engine Native Color Palettes
+    // Default Engine Native Color Palettes (Both Foreground and Background)
     std::string pri = Color::BrightCyan + Color::Bold;
     std::string sec = Color::BrightCyan;
     std::string hdr = Color::BrightWhite + Color::Bold;
     std::string acc = Color::BrightGreen;
     std::string st  = Color::BrightGreen;
-    std::string bg  = Color::BgBlue + Color::BrightWhite + Color::Bold;
+    std::string pBg = "\033[44m";                      // Deep Navy Blue Container Background
+    std::string bg  = "\033[106m\033[1;30m";          // Bright Cyan Highlight Box, Dark Text
 
     if (themeName == "TermOx") {
         bTL = "╭"; bTR = "╮"; bBL = "╰"; bBR = "╯"; bH = "─"; bV = "│"; bSL = "├"; bSR = "┤"; sel = "◆ ";
         banner = "[ TERMOX RECT WIDGET ENGINE | C++20 LAYOUT CONTAINER ]";
-        // TermOx signature Electric Magenta & Deep Blue theme colors
-        pri = "\033[1;95m"; sec = "\033[1;95m"; hdr = "\033[1;95m"; acc = "\033[1;94m"; st = "\033[1;92m"; bg = "\033[45m\033[1;97m";
+        // TermOx signature Electric Magenta & Deep Blue theme colors with Magenta Panel Background
+        pri = "\033[1;97m"; sec = "\033[1;95m"; hdr = "\033[1;95m"; acc = "\033[1;94m"; st = "\033[1;92m"; 
+        pBg = "\033[45m";                              // Electric Magenta Container Background
+        bg  = "\033[105m\033[1;30m";                   // Bright Magenta Highlight Box, Dark Text
     } else if (themeName == "FTXUI") {
         bTL = "┏"; bTR = "┓"; bBL = "┗"; bBR = "┛"; bH = "━"; bV = "┃"; bSL = "┣"; bSR = "┫"; sel = "▶ ";
         banner = "[ FTXUI GRAPHICAL DOM ENGINE | COMPONENT TREE RENDERER ]";
-        // FTXUI signature Amber Gold & Royal Purple DOM theme colors
-        pri = "\033[1;93m"; sec = "\033[1;35m"; hdr = "\033[1;35m"; acc = "\033[1;93m"; st = "\033[1;96m"; bg = "\033[43m\033[1;30m";
+        // FTXUI signature Amber Gold & Royal Purple DOM theme colors with Amber Panel Background
+        pri = "\033[1;30m"; sec = "\033[1;35m"; hdr = "\033[1;35m"; acc = "\033[1;93m"; st = "\033[1;96m"; 
+        pBg = "\033[43m";                              // Amber Gold Container Background
+        bg  = "\033[45m\033[1;97m";                    // Royal Purple Highlight Box, White Text
     }
 
     // Explicit Color Scheme Overrides (when user picks specific color palette)
     if (colorScheme == "Cyan Matrix") {
-        pri = Color::BrightCyan + Color::Bold; sec = Color::BrightCyan; hdr = Color::BrightWhite + Color::Bold; acc = Color::BrightGreen; st = Color::BrightGreen; bg = Color::BgBlue + Color::BrightWhite + Color::Bold;
+        pri = Color::BrightCyan + Color::Bold; sec = Color::BrightCyan; hdr = Color::BrightWhite + Color::Bold; acc = Color::BrightGreen; st = Color::BrightGreen;
+        pBg = "\033[40m"; bg = "\033[46m\033[1;30m";
     } else if (colorScheme == "Electric Magenta") {
-        pri = "\033[1;95m"; sec = "\033[1;95m"; hdr = "\033[1;95m"; acc = "\033[1;94m"; st = "\033[1;92m"; bg = "\033[45m\033[1;97m";
+        pri = "\033[1;97m"; sec = "\033[1;95m"; hdr = "\033[1;95m"; acc = "\033[1;94m"; st = "\033[1;92m";
+        pBg = "\033[45m"; bg = "\033[105m\033[1;30m";
     } else if (colorScheme == "Amber Gold") {
-        pri = "\033[1;93m"; sec = "\033[1;35m"; hdr = "\033[1;35m"; acc = "\033[1;33m"; st = "\033[1;96m"; bg = "\033[43m\033[1;30m";
+        pri = "\033[1;30m"; sec = "\033[1;35m"; hdr = "\033[1;35m"; acc = "\033[1;33m"; st = "\033[1;96m";
+        pBg = "\033[43m"; bg = "\033[45m\033[1;97m";
     } else if (colorScheme == "Emerald Cyber") {
-        pri = "\033[1;92m"; sec = "\033[1;32m"; hdr = "\033[1;97m"; acc = "\033[1;36m"; st = "\033[1;92m"; bg = "\033[42m\033[1;97m";
+        pri = "\033[1;97m"; sec = "\033[1;92m"; hdr = "\033[1;97m"; acc = "\033[1;36m"; st = "\033[1;92m";
+        pBg = "\033[42m"; bg = "\033[102m\033[1;30m";
     } else if (colorScheme == "Neon Cyberpunk") {
-        pri = "\033[1;95m"; sec = "\033[1;96m"; hdr = "\033[1;93m"; acc = "\033[1;96m"; st = "\033[1;95m"; bg = "\033[46m\033[1;30m";
+        pri = "\033[1;95m"; sec = "\033[1;96m"; hdr = "\033[1;93m"; acc = "\033[1;96m"; st = "\033[1;95m";
+        pBg = "\033[46m"; bg = "\033[45m\033[1;97m";
     } else if (colorScheme == "Monochrome Slate") {
-        pri = "\033[1;97m"; sec = "\033[1;90m"; hdr = "\033[1;97m"; acc = "\033[1;37m"; st = "\033[1;97m"; bg = "\033[47m\033[1;30m";
+        pri = "\033[1;97m"; sec = "\033[1;37m"; hdr = "\033[1;97m"; acc = "\033[1;37m"; st = "\033[1;97m";
+        pBg = "\033[100m"; bg = "\033[47m\033[1;30m";
     }
 
     return {
-        themeName, pri, sec, hdr, acc, st, bg,
+        themeName, pri, sec, hdr, acc, st, pBg, bg,
         bTL, bTR, bBL, bBR, bH, bV, bSL, bSR, sel, banner
     };
 }
@@ -299,12 +311,12 @@ public:
     static std::string DrawBorder(int width, const std::string& title = "", const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Cyan Matrix") {
         auto style = GetThemeStyle(themeName, colorScheme);
         std::ostringstream ss;
-        ss << style.secondaryColor << style.borderTL;
+        ss << style.panelBg << style.secondaryColor << style.borderTL;
         int titleLen = static_cast<int>(title.length());
         int lineLen = width - 2;
         if (titleLen > 0 && titleLen < lineLen - 4) {
             ss << style.borderHoriz << style.borderHoriz << style.borderHoriz
-               << "[ " << style.headerColor << title << Color::Reset << style.secondaryColor << " ]";
+               << "[ " << style.headerColor << title << Color::Reset << style.panelBg << style.secondaryColor << " ]";
             int rem = lineLen - titleLen - 7;
             for (int i = 0; i < rem; ++i) ss << style.borderHoriz;
         } else {
@@ -317,7 +329,7 @@ public:
     static std::string DrawDivider(int width, const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Cyan Matrix") {
         auto style = GetThemeStyle(themeName, colorScheme);
         std::ostringstream ss;
-        ss << style.secondaryColor << style.borderSplitL;
+        ss << style.panelBg << style.secondaryColor << style.borderSplitL;
         for (int i = 0; i < width - 2; ++i) ss << style.borderHoriz;
         ss << style.borderSplitR << Color::Reset << "\n";
         return ss.str();
@@ -326,7 +338,7 @@ public:
     static std::string DrawFooter(int width, const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Cyan Matrix") {
         auto style = GetThemeStyle(themeName, colorScheme);
         std::ostringstream ss;
-        ss << style.secondaryColor << style.borderBL;
+        ss << style.panelBg << style.secondaryColor << style.borderBL;
         for (int i = 0; i < width - 2; ++i) ss << style.borderHoriz;
         ss << style.borderBR << Color::Reset << "\n";
         return ss.str();
@@ -412,7 +424,7 @@ public:
     static std::string DrawLine(int width, const std::string& text, bool highlight = false, const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Cyan Matrix") {
         auto style = GetThemeStyle(themeName, colorScheme);
         std::ostringstream ss;
-        ss << style.secondaryColor << style.borderVert << " " << Color::Reset;
+        ss << style.panelBg << style.secondaryColor << style.borderVert << " " << Color::Reset;
         std::string safeText = TruncateVisibleText(text, width - 7);
         int visibleWidth = GetVisibleDisplayWidth(safeText);
         if (highlight) {
@@ -422,12 +434,13 @@ public:
             for (int i = 0; i < fill; ++i) ss << " ";
             ss << Color::Reset;
         } else {
-            ss << "   " << safeText;
+            ss << style.panelBg << style.primaryColor << "   " << safeText;
             int padding = width - visibleWidth - 7;
             int fill = (std::max)(0, padding);
             for (int i = 0; i < fill; ++i) ss << " ";
+            ss << Color::Reset;
         }
-        ss << style.secondaryColor << " " << style.borderVert << Color::Reset << "\n";
+        ss << style.panelBg << style.secondaryColor << " " << style.borderVert << Color::Reset << "\n";
         return ss.str();
     }
 };
