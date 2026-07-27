@@ -87,37 +87,98 @@ public:
             }
         }
 
+        // Parse unquoted target process/folder tokens (e.g. SELECT chrome.exe FROM PROCESS, KILL notepad.exe)
+        std::stringstream ss(queryStr);
+        std::string token;
+        while (ss >> token) {
+            std::string tLower = token;
+            std::transform(tLower.begin(), tLower.end(), tLower.begin(), ::tolower);
+            if (tLower.length() >= 4 && tLower.substr(tLower.length() - 4) == ".exe") {
+                query.targetPaths.push_back(fs::path(token));
+            }
+        }
+
+        // Expand safe OS aliases (TEMP_C, TEMP_D, TEMP_X, APPDATA, CACHE) across Windows, Linux, macOS
+#ifdef _WIN32
+        char userProfile[MAX_PATH] = {};
+        char winDir[MAX_PATH] = {};
+        ExpandEnvironmentStringsA("%USERPROFILE%", userProfile, MAX_PATH);
+        ExpandEnvironmentStringsA("%WINDIR%", winDir, MAX_PATH);
+        std::string up(userProfile);
+        std::string wd(winDir);
+
+        if (upper.find("TEMP_C") != std::string::npos) {
+            query.targetPaths.push_back(fs::path(up + "\\AppData\\Local\\Temp"));
+            query.targetPaths.push_back(fs::path(wd + "\\Temp"));
+        }
+        if (upper.find("TEMP_D") != std::string::npos) {
+            query.targetPaths.push_back(fs::path("D:\\Temp"));
+            query.targetPaths.push_back(fs::path("D:\\Cache"));
+        }
+        if (upper.find("APPDATA") != std::string::npos) {
+            query.targetPaths.push_back(fs::path(up + "\\AppData\\Local\\Temp"));
+            query.targetPaths.push_back(fs::path(up + "\\AppData\\Local\\Caches"));
+            query.targetPaths.push_back(fs::path(up + "\\AppData\\Roaming\\npm-cache"));
+        }
+        if (upper.find("CACHE") != std::string::npos) {
+            query.targetPaths.push_back(fs::path(up + "\\AppData\\Local\\Google\\Chrome\\User Data\\Default\\Cache"));
+            query.targetPaths.push_back(fs::path(up + "\\AppData\\Local\\Microsoft\\Edge\\User Data\\Default\\Cache"));
+            query.targetPaths.push_back(fs::path(up + "\\AppData\\Local\\Mozilla\\Firefox\\Profiles"));
+        }
+#else
+        char* home = std::getenv("HOME");
+        std::string h = home ? std::string(home) : "/tmp";
+        if (upper.find("TEMP_C") != std::string::npos || upper.find("TEMP") != std::string::npos) {
+            query.targetPaths.push_back(fs::path("/tmp"));
+            query.targetPaths.push_back(fs::path("/var/tmp"));
+        }
+        if (upper.find("APPDATA") != std::string::npos || upper.find("CACHE") != std::string::npos) {
+            query.targetPaths.push_back(fs::path(h + "/.cache"));
+#ifdef __APPLE__
+            query.targetPaths.push_back(fs::path(h + "/Library/Caches"));
+#endif
+        }
+#endif
+
         // Extract WHERE conditions
         std::string lower = queryStr;
         std::transform(lower.begin(), lower.end(), lower.begin(), ::tolower);
 
-        // FREE_DISK < 500MB / disk_free < 500mb / free < 500mb / 500mb
+        // FREE_DISK < 500MB / DISK_C < 500MB / disk_free < 500mb / 500mb
         if (lower.find("free_disk") != std::string::npos ||
             lower.find("disk_free") != std::string::npos ||
+            lower.find("disk_c") != std::string::npos ||
+            lower.find("disk_d") != std::string::npos ||
             lower.find("free") != std::string::npos ||
             lower.find("500") != std::string::npos) {
             size_t pos = lower.find("<");
             if (pos != std::string::npos) {
                 std::string valStr = lower.substr(pos + 1);
                 std::stringstream valSS(valStr);
-                std::string token;
-                if (valSS >> token) {
-                    query.diskFreeBelowBytes = ContentInspector::ParseSizeToBytes(token);
+                std::string tToken;
+                if (valSS >> tToken) {
+                    query.diskFreeBelowBytes = ContentInspector::ParseSizeToBytes(tToken);
                 }
             } else {
                 query.diskFreeBelowBytes = ContentInspector::ParseSizeToBytes("500mb");
             }
         }
 
-        // RAM > 80% / memory > 80%
+        // RAM > 80% / RAM > 200MB / memory > 80%
         if (lower.find("ram") != std::string::npos || lower.find("mem") != std::string::npos) {
             size_t pos = lower.find(">");
             if (pos != std::string::npos) {
                 std::string valStr = lower.substr(pos + 1);
-                if (!valStr.empty() && valStr.back() == '%') valStr.pop_back();
                 std::stringstream valSS(valStr);
-                double val = 0.0;
-                if (valSS >> val) query.ramThresholdPercent = val;
+                std::string valToken;
+                if (valSS >> valToken) {
+                    if (valToken.back() == '%') {
+                        valToken.pop_back();
+                        try { query.ramThresholdPercent = std::stod(valToken); } catch (...) { query.ramThresholdPercent = 80.0; }
+                    } else {
+                        query.minSizeBytes = ContentInspector::ParseSizeToBytes(valToken);
+                    }
+                }
             } else {
                 query.ramThresholdPercent = 80.0;
             }
@@ -129,9 +190,9 @@ public:
             if (pos != std::string::npos) {
                 std::string valStr = lower.substr(pos + 1);
                 std::stringstream valSS(valStr);
-                std::string token;
-                if (valSS >> token) {
-                    query.minSizeBytes = ContentInspector::ParseSizeToBytes(token);
+                std::string tToken;
+                if (valSS >> tToken) {
+                    query.minSizeBytes = ContentInspector::ParseSizeToBytes(tToken);
                 }
             }
         }
@@ -142,9 +203,9 @@ public:
             if (pos != std::string::npos) {
                 std::string valStr = lower.substr(pos + 1);
                 std::stringstream valSS(valStr);
-                std::string token;
-                if (valSS >> token) {
-                    query.minAgeMinutes = ContentInspector::ParseDurationToMinutes(token);
+                std::string tToken;
+                if (valSS >> tToken) {
+                    query.minAgeMinutes = ContentInspector::ParseDurationToMinutes(tToken);
                 }
             }
         }
@@ -155,11 +216,11 @@ public:
             if (pos == std::string::npos) pos = lower.find("interval");
             std::string valStr = lower.substr(pos + 5);
             std::stringstream valSS(valStr);
-            std::string token;
-            if (valSS >> token) {
-                query.intervalSeconds = ContentInspector::ParseDurationToMinutes(token) * 60;
+            std::string tToken;
+            if (valSS >> tToken) {
+                query.intervalSeconds = ContentInspector::ParseDurationToMinutes(tToken) * 60;
                 if (query.intervalSeconds <= 0) {
-                    try { query.intervalSeconds = std::stoll(token); } catch (...) { query.intervalSeconds = 15; }
+                    try { query.intervalSeconds = std::stoll(tToken); } catch (...) { query.intervalSeconds = 15; }
                 }
             }
         }
@@ -179,7 +240,7 @@ public:
         if (queryStr.empty()) {
             result.isValid = false;
             result.errorMessage = "Empty AQL query string.";
-            result.suggestedHint = "CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB";
+            result.suggestedHint = "SELECT chrome.exe FROM PROCESS | KILL notepad.exe FROM PROCESS WHERE RAM > 200MB | CLEAN TEMP_C WHERE DISK_C < 500MB";
             return result;
         }
 
@@ -201,7 +262,7 @@ public:
         if (!cmdFound) {
             result.isValid = false;
             result.errorMessage = "Unrecognized AQL command in query: '" + queryStr + "'";
-            result.suggestedHint = "Valid AQL format: KILL PROCESS WHERE RAM > 70%  |  CLEAN WHERE FREE_DISK < 500MB";
+            result.suggestedHint = "Valid AQL Examples:\n  - SELECT chrome.exe FROM PROCESS\n  - KILL notepad.exe FROM PROCESS WHERE RAM > 200MB\n  - CLEAN TEMP_C WHERE DISK_C < 500MB\n  - CLEAN APPDATA WHERE DISK_FREE < 1GB";
             return result;
         }
 
@@ -212,7 +273,7 @@ public:
         ValidationResult valRes = Validate(q.rawQuery);
         if (!valRes.isValid) {
             std::cout << "\033[1;31m[AQL SYNTAX ERROR] " << valRes.errorMessage << "\033[0m\n";
-            std::cout << "\033[1;33m[AQL HINT] " << valRes.suggestedHint << "\033[0m\n\n";
+            std::cout << "\033[1;33m[AQL HINT]\n" << valRes.suggestedHint << "\033[0m\n\n";
             return;
         }
 

@@ -645,7 +645,7 @@ public:
                 return input;
             } else if (ev.key == Key::Escape) {
                 std::cout << "\n";
-                return defaultVal;
+                return "";
             } else if (ev.key == Key::Char) {
                 if (ev.ch == 9) { // TAB key autocompletes ghost text!
                     if (!ghost.empty()) {
