@@ -416,7 +416,11 @@ public:
                 } else if (c == 'r') {
                     TaskHistory::Instance().ResumeTask(targetId);
                 } else if (c == 'd') {
-                    ShowTaskActionDialog(targetId);
+                    TaskInfo detailsTask;
+                    if (TaskHistory::Instance().GetTask(targetId, detailsTask)) {
+                        std::string resInfo = detailsTask.resultSummary.empty() ? detailsTask.progressMsg : detailsTask.resultSummary;
+                        g_tuiStatus.SetActive("Task #" + std::to_string(targetId) + " (" + detailsTask.name + "): " + resInfo);
+                    }
                 } else if (c == 'c') {
                     TaskHistory::Instance().Clear();
                     selectedRow = 0;
@@ -700,22 +704,115 @@ public:
         return preMadeQueries[choice - 1];
     }
 
+    static void ShowDiskCleanerSubmenu(Cleaner& cleaner) {
+        std::vector<std::string> subOptions = {
+            "Storage Scan",
+            "Smart Deep Clean",
+            "Secure Shred Wipe",
+            "Empty Recycle Bin",
+            "Back"
+        };
+        OpenTUI::Menu subMenu("DISK CLEANER SUITE", subOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+        subMenu.SetPreRenderCallback([]() { PrintBanner(); });
+        int sel = subMenu.Show();
+
+        if (sel == 0) {
+            uint64_t tid = TaskHistory::Instance().Register("TUI", "Storage Scan", "scan --dry-run", "Disk Cleaner");
+            std::thread worker([&cleaner, tid]() {
+                TaskHistory::Instance().MarkRunning(tid);
+                g_tuiStatus.SetActive("Storage Scan");
+                cleaner.SetDryRun(true);
+                auto reports = cleaner.Scan();
+                uintmax_t freed = 0;
+                for (const auto& r : reports) freed += r.sizeBytes;
+                g_tuiStatus.SetCompleted("Scan completed. Cleanable: " + Cleaner::FormatSize(freed));
+                TaskHistory::Instance().MarkCompleted(tid, "Scan found " + Cleaner::FormatSize(freed) + " cleanable across " + std::to_string(reports.size()) + " targets", freed, 0, 0, 0);
+            });
+            worker.detach();
+        } else if (sel == 1) {
+            bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
+            uint64_t tid = TaskHistory::Instance().Register("TUI", "Smart Deep Clean", currentDryRun ? "clean --dry-run" : "clean --real", "Disk Cleaner");
+            std::thread worker([&cleaner, currentDryRun, tid]() {
+                TaskHistory::Instance().MarkRunning(tid);
+                g_tuiStatus.SetActive(currentDryRun ? "Smart Deep Clean (DRY-RUN)" : "Smart Deep Clean (REAL DELETE)");
+                cleaner.SetDryRun(currentDryRun);
+                auto reports = cleaner.Clean();
+                uintmax_t freed = 0;
+                size_t files = 0;
+                for (const auto& r : reports) { freed += r.sizeBytes; files += r.deletedFiles; }
+                g_tuiStatus.SetCompleted("Clean finished. Freed: " + Cleaner::FormatSize(freed));
+                TaskHistory::Instance().MarkCompleted(tid, "Cleaned " + std::to_string(files) + " files, freed " + Cleaner::FormatSize(freed), freed, files, 0, 0);
+            });
+            worker.detach();
+        } else if (sel == 2) {
+            bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
+            uint64_t tid = TaskHistory::Instance().Register("TUI", "Secure Shred Wipe", currentDryRun ? "shred --dry-run" : "shred --real", "Disk Cleaner");
+            std::thread worker([&cleaner, currentDryRun, tid]() {
+                TaskHistory::Instance().MarkRunning(tid);
+                g_tuiStatus.SetActive("Secure Shred Wipe");
+                cleaner.SetDryRun(currentDryRun);
+                cleaner.SetMode(CleanMode::Shred);
+                auto reports = cleaner.Clean();
+                uintmax_t freed = 0;
+                for (const auto& r : reports) freed += r.sizeBytes;
+                g_tuiStatus.SetCompleted("Shred finished. Shredded: " + Cleaner::FormatSize(freed));
+                TaskHistory::Instance().MarkCompleted(tid, "Shredded " + Cleaner::FormatSize(freed), freed, 0, 0, 0);
+            });
+            worker.detach();
+        } else if (sel == 3) {
+            uint64_t tid = TaskHistory::Instance().Register("TUI", "Empty Recycle Bin", "empty-recycle-bin", "Disk Cleaner");
+            std::thread worker([&cleaner, tid]() {
+                TaskHistory::Instance().MarkRunning(tid);
+                g_tuiStatus.SetActive("Empty Recycle Bin");
+                cleaner.EmptyWindowsRecycleBin();
+                g_tuiStatus.SetCompleted("Recycle Bin emptied.");
+                TaskHistory::Instance().MarkCompleted(tid, "Windows Recycle Bin purged.", 0, 0, 0, 0);
+            });
+            worker.detach();
+        }
+    }
+
+    static void ShowRamCleanerSubmenu(Cleaner& cleaner) {
+        std::vector<std::string> subOptions = {
+            "Quick RAM Clean",
+            "Process Protection Guard",
+            "Back"
+        };
+        OpenTUI::Menu subMenu("RAM CLEANER SUITE", subOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+        subMenu.SetPreRenderCallback([]() { PrintBanner(); });
+        int sel = subMenu.Show();
+
+        if (sel == 0) {
+            uint64_t tid = TaskHistory::Instance().Register("TUI", "RAM Cleaner", "ram-clean --cutoff 200MB", "RAM Cleaner");
+            bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
+            bool enableKill = g_tuiSettings.enablePermission;
+            std::thread worker([currentDryRun, enableKill, tid]() {
+                TaskHistory::Instance().MarkRunning(tid);
+                g_tuiStatus.SetActive("RAM Cleaner");
+                size_t handled = ProcessManager::KillHighMemoryProcesses(200ULL * 1024 * 1024, !currentDryRun, enableKill);
+                g_tuiStatus.SetCompleted("RAM Cleaner finished. Procs handled: " + std::to_string(handled));
+                TaskHistory::Instance().MarkCompleted(tid, "Handled " + std::to_string(handled) + " high-memory processes", 0, 0, handled, 0);
+            });
+            worker.detach();
+        } else if (sel == 1) {
+            size_t released = ProcessManager::StopLockingProcesses(true);
+            std::cout << "\033[1;32m[OK] Process Protection Guard checked. Released " << released << " lock handles.\033[0m\n";
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+    }
+
     static void RunInteractiveMenu(Cleaner& cleaner) {
         Logger::Instance().SetTUIActive(true);
         LoadTUISettings();
 
         std::vector<std::string> options = {
-            "Storage Scan",
-            "Smart Deep Clean",
-            "Secure Shred Wipe",
-            "Empty Recycle Bin",
+            "Disk Cleaner",
             "RAM Cleaner",
-            "Agent & AQL Query",
+            "AQL Query",
             "Daemon Monitor",
-            "System Resource Monitor",
             "Task Library",
             "Settings",
-            "Exit Agent"
+            "Exit"
         };
 
         OpenTUI::Menu menu("SYSTEM-CLEANER-AGENT", options, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
@@ -730,15 +827,14 @@ public:
             if (firstRender) {
                 firstRender = false;
             } else {
-                // On re-entry clear once so banner from callback is fresh
                 OpenTUI::TerminalEngine::ClearScreen();
             }
             menu.SetHeaderLines(GetLiveResourceHeaders());
             menu.SetStatusLine(g_tuiStatus.GetStatusLine());
             int selected = menu.Show();
 
-            if (selected == -1 || selected == 10) {
-                std::cout << "\n\033[32mExiting system-cleaner-agent OpenTUI Suite. Goodbye!\033[0m\n";
+            if (selected == -1 || selected == 6) {
+                std::cout << "\n\033[32mExiting system-cleaner-agent. Goodbye!\033[0m\n";
                 break;
             }
 
@@ -748,185 +844,14 @@ public:
 
             switch (selected) {
                 case 0: {
-                    std::cout << "\033[1;36mLaunching background Storage Scan...\033[0m\n";
-                    {
-                        uint64_t tid = TaskHistory::Instance().Register("TUI", "Storage Scan", "scan --dry-run", "OpenTUI Menu");
-                        std::thread worker([&cleaner, tid]() {
-                            TaskHistory::Instance().MarkRunning(tid);
-                            TaskHistory::Instance().UpdateProgress(tid, "Scanning all targets...");
-                            g_tuiStatus.SetActive("Storage Scan");
-                            cleaner.SetDryRun(true);
-                            auto reports = cleaner.Scan();
-                            uintmax_t freed = 0;
-                            for (const auto& r : reports) freed += r.sizeBytes;
-                            g_tuiStatus.SetCompleted("Scan completed. Cleanable: " + Cleaner::FormatSize(freed));
-                            TaskHistory::Instance().MarkCompleted(tid, "Scan found " + Cleaner::FormatSize(freed) + " cleanable across " + std::to_string(reports.size()) + " targets", freed, 0, 0, 0);
-                        });
-                        worker.detach();
-                    }
+                    ShowDiskCleanerSubmenu(cleaner);
                     break;
                 }
                 case 1: {
-                    std::cout << "\033[1;36mLaunching background Smart Deep Clean...\033[0m\n";
-                    {
-                        uint64_t tid = TaskHistory::Instance().Register("TUI", "Smart Deep Clean", "clean --mode deep", "OpenTUI Menu");
-                        std::thread worker([&cleaner, tid]() {
-                            TaskHistory::Instance().MarkRunning(tid);
-                            TaskHistory::Instance().UpdateProgress(tid, "Deep cleaning all targets...");
-                            g_tuiStatus.SetActive("Smart Deep Clean");
-                            cleaner.SetSandbox(g_tuiSettings.sandboxMode);
-                            cleaner.SetDryRun(g_tuiSettings.dryRun);
-                            cleaner.Clean();
-                            g_tuiStatus.SetCompleted("Deep Clean finished.");
-                            TaskHistory::Instance().MarkCompleted(tid, "Deep Clean completed.");
-                        });
-                        worker.detach();
-                    }
+                    ShowRamCleanerSubmenu(cleaner);
                     break;
                 }
                 case 2: {
-                    std::cout << "\033[1;36mLaunching background Secure Shred Wipe...\033[0m\n";
-                    {
-                        uint64_t tid = TaskHistory::Instance().Register("TUI", "Secure Shred Wipe", "clean --mode shred", "OpenTUI Menu");
-                        std::thread worker([&cleaner, tid]() {
-                            TaskHistory::Instance().MarkRunning(tid);
-                            TaskHistory::Instance().UpdateProgress(tid, "Shredding (zero-overwrite) targets...");
-                            g_tuiStatus.SetActive("Secure Shred Wipe");
-                            cleaner.SetMode(CleanMode::Shred);
-                            cleaner.SetSandbox(g_tuiSettings.sandboxMode);
-                            cleaner.SetDryRun(g_tuiSettings.dryRun);
-                            cleaner.Clean();
-                            g_tuiStatus.SetCompleted("Shred Wipe finished.");
-                            TaskHistory::Instance().MarkCompleted(tid, "Secure Shred Wipe completed.");
-                        });
-                        worker.detach();
-                    }
-                    break;
-                }
-                case 3: {
-                    std::cout << "\033[1;36mLaunching background Empty Recycle Bin...\033[0m\n";
-                    {
-                        uint64_t tid = TaskHistory::Instance().Register("TUI", "Empty Recycle Bin", "clean --recycle-bin", "OpenTUI Menu");
-                        std::thread worker([&cleaner, tid]() {
-                            TaskHistory::Instance().MarkRunning(tid);
-                            TaskHistory::Instance().UpdateProgress(tid, "Emptying Recycle Bin...");
-                            g_tuiStatus.SetActive("Empty Recycle Bin");
-                            cleaner.SetEmptyRecycleBin(true);
-                            cleaner.EmptyWindowsRecycleBin();
-                            g_tuiStatus.SetCompleted("Recycle Bin emptied.");
-                            TaskHistory::Instance().MarkCompleted(tid, "Recycle Bin emptied.");
-                        });
-                        worker.detach();
-                    }
-                    break;
-                }
-                case 4: {
-                    while (true) {
-                        OpenTUI::TerminalEngine::ClearScreen();
-                        PrintBanner();
-                        std::cout << "\033[1;36m================================================================================\033[0m\n";
-                        std::cout << "\033[1;97m                 RAM CLEANER & PROCESS PERMISSION MANAGEMENT                    \033[0m\n";
-                        std::cout << "\033[1;36m================================================================================\033[0m\n\n";
-
-                        double curMemPct = SmartScheduler::GetMemoryUsagePercent();
-                        std::cout << "  System Memory (RAM): " << OpenTUI::ProgressBar::Render(curMemPct, 35, "% used") << "\n\n";
-
-                        auto highRamGroups = ProcessManager::GetAggregatedProcessGroups(200ULL * 1024 * 1024);
-
-                        std::cout << "\033[1;33mHigh-RAM Applications (> 200 MB Total RAM):\033[0m\n";
-                        if (highRamGroups.empty()) {
-                            std::cout << "  \033[32m[SAFE] No process applications consuming > 200 MB RAM detected.\033[0m\n\n";
-                        } else {
-                            for (size_t i = 0; i < highRamGroups.size(); ++i) {
-                                const auto& grp = highRamGroups[i];
-                                std::string ramStr = Cleaner::FormatSize(grp.totalMemoryUsageBytes);
-                                std::string countStr = (grp.instanceCount > 1) ? (" (" + std::to_string(grp.instanceCount) + " processes)") : (" (PID: " + (grp.pids.empty() ? "?" : std::to_string(grp.pids[0])) + ")");
-                                std::string tag = grp.isProtected ? "  \033[32m[PROTECTED APP]\033[0m" : "  \033[1;31m[PERMISSION REQUIRED]\033[0m";
-                                std::cout << "  [" << (i + 1) << "] " << grp.processName << countStr << " - " << ramStr << tag << "\n";
-                            }
-                            std::cout << "\n";
-                        }
-
-                        std::vector<std::string> ramMenuOptions = {
-                            "Terminate Process",
-                            "Add Process Name to Whitelist",
-                            "Release Process Lock Handles",
-                            "Return to Dashboard"
-                        };
-
-                        OpenTUI::Menu ramMenu("RAM CLEANER PERMISSIONS", ramMenuOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme);
-                        int ramChoice = ramMenu.Show();
-
-                        if (ramChoice == -1 || ramChoice == 3) break;
-
-                        if (ramChoice == 0) {
-                            auto groups = ProcessManager::GetAggregatedProcessGroups(200ULL * 1024 * 1024);
-                            if (groups.empty()) {
-                                std::cout << "\033[1;32m[SAFE] No process applications consuming > 200 MB RAM currently detected on system.\033[0m\n";
-                                std::this_thread::sleep_for(std::chrono::seconds(2));
-                            } else {
-                                std::vector<std::string> killOptions;
-                                for (const auto& grp : groups) {
-                                    std::string countStr = (grp.instanceCount > 1) ? (" (" + std::to_string(grp.instanceCount) + " procs)") : (" (PID: " + (grp.pids.empty() ? "?" : std::to_string(grp.pids[0])) + ")");
-                                    std::string statusLabel = grp.isProtected ? " [PROTECTED APP]" : " [PERMISSION REQUIRED]";
-                                    killOptions.push_back(grp.processName + countStr + " - RAM: " + Cleaner::FormatSize(grp.totalMemoryUsageBytes) + statusLabel);
-                                }
-                                killOptions.push_back("Cancel");
-
-                                OpenTUI::Menu killMenu("SELECT PROCESS TO TERMINATE (> 200 MB RAM)", killOptions);
-                                int kChoice = killMenu.Show();
-
-                                if (kChoice >= 0 && kChoice < static_cast<int>(groups.size())) {
-                                    const auto& targetGrp = groups[kChoice];
-                                    if (targetGrp.isProtected) {
-                                        std::cout << "\033[1;31m[WARNING] '" << targetGrp.processName << "' is classified as a protected application.\033[0m\n";
-                                    }
-                                    std::string details = (targetGrp.instanceCount > 1) 
-                                        ? ("all " + std::to_string(targetGrp.instanceCount) + " process instance(s) of " + targetGrp.processName + " (Total RAM: " + Cleaner::FormatSize(targetGrp.totalMemoryUsageBytes) + ")")
-                                        : (targetGrp.processName + " (PID: " + (targetGrp.pids.empty() ? "?" : std::to_string(targetGrp.pids[0])) + ", RAM: " + Cleaner::FormatSize(targetGrp.totalMemoryUsageBytes) + ")");
-                                    
-                                    std::string confirmPrompt = "Grant explicit permission to terminate " + details + "? [y/N]: ";
-                                    std::string confirm = OpenTUI::TextInput::ReadLine(confirmPrompt, "n");
-                                    if (confirm == "y" || confirm == "Y" || confirm == "yes") {
-                                        size_t killed = 0;
-                                        if (targetGrp.instanceCount > 1) {
-                                            killed = GTLIBC::GTLibc::KillProcessByName(targetGrp.processName, true, true);
-                                        } else if (!targetGrp.pids.empty()) {
-                                            if (GTLIBC::GTLibc::KillProcess(targetGrp.pids[0])) killed = 1;
-                                        }
-                                        if (killed > 0) {
-                                            std::cout << "\033[1;32mSuccessfully terminated " << killed << " process(es) of " << targetGrp.processName << "\033[0m\n";
-                                            Logger::Instance().Info("User granted explicit permission: Terminated " + std::to_string(killed) + " process(es) of " + targetGrp.processName);
-                                        } else {
-                                            std::cout << "\033[1;31mFailed to terminate process (Access Denied or process already exited).\033[0m\n";
-                                        }
-                                        std::this_thread::sleep_for(std::chrono::seconds(2));
-                                    } else {
-                                        std::cout << "\033[1;36mOperation cancelled by user. Process preserved.\033[0m\n";
-                                        std::this_thread::sleep_for(std::chrono::seconds(1));
-                                    }
-                                }
-                            }
-                        } else if (ramChoice == 1) {
-                            OpenTUI::TerminalEngine::ClearScreen();
-                            PrintBanner();
-                            std::string procName = OpenTUI::TextInput::ReadLine("Enter Process Name to Add to Protection Whitelist (e.g. myapp.exe): ", "");
-                            if (!procName.empty()) {
-                                GTLIBC::GTLibc::AddCustomProtectedProcess(procName);
-                                g_tuiSettings.customProtectedProcesses.push_back(procName);
-                                SaveTUISettings();
-                                std::cout << "\033[1;32mProcess '" << procName << "' added to protection whitelist & saved to cleaner_config.json!\033[0m\n";
-                                std::this_thread::sleep_for(std::chrono::seconds(2));
-                            }
-                        } else if (ramChoice == 2) {
-                            size_t released = ProcessManager::StopLockingProcesses(true);
-                            std::cout << "\033[1;32mReleased " << released << " process lock handle(s).\033[0m\n";
-                            std::this_thread::sleep_for(std::chrono::seconds(2));
-                        }
-                    }
-                    break;
-                }
-                case 5: {
                     std::string selectedQuery = SelectAgentQuery();
                     if (selectedQuery.empty()) {
                         std::cout << "\033[1;33m[AQL CANCELLED] Operation cancelled by user.\033[0m\n";
@@ -978,7 +903,7 @@ public:
                     }
                     break;
                 }
-                case 6: {
+                case 3: {
                     std::cout << "\033[1;36mLaunching background Smart Daemon Service...\033[0m\n";
                     {
                         uint64_t tid = TaskHistory::Instance().Register("DAEMON", "Smart Daemon Monitor", "daemon --mem-threshold 80% --disk-threshold", "OpenTUI Menu");
@@ -995,16 +920,12 @@ public:
                     }
                     break;
                 }
-                case 7: {
-                    ShowSystemResourceMonitor();
-                    break;
-                }
-                case 9: {
-                    ShowSettingsMenu(cleaner);
-                    break;
-                }
-                case 8: {
+                case 4: {
                     ShowTaskLibrary();
+                    break;
+                }
+                case 5: {
+                    ShowSettingsMenu(cleaner);
                     break;
                 }
             }
