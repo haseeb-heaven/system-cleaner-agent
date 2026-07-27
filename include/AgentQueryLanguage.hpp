@@ -4,6 +4,7 @@
 #include "ContentInspector.hpp"
 #include "SmartScheduler.hpp"
 #include "Logger.hpp"
+#include "ProcessManager.hpp"
 
 #include <string>
 #include <vector>
@@ -47,7 +48,9 @@ public:
         std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
 
         // Command detection
-        if (upper.find("CLEAN") == 0 || upper.find("CLEAN ") != std::string::npos) {
+        if (upper.find("KILL") == 0 || upper.find("KILL ") != std::string::npos || upper.find("TERMINATE") != std::string::npos) {
+            query.command = "KILL";
+        } else if (upper.find("CLEAN") == 0 || upper.find("CLEAN ") != std::string::npos) {
             query.command = "CLEAN";
         } else if (upper.find("SCAN") == 0 || upper.find("SCAN ") != std::string::npos || upper.find("SELECT") == 0) {
             query.command = "SCAN";
@@ -205,6 +208,9 @@ public:
         } else if (q.command == "PURGE") {
             cleaner.SetEmptyRecycleBin(true);
             cleaner.EmptyWindowsRecycleBin();
+        } else if (q.command == "KILL") {
+            uintmax_t ramCutoff = (q.minSizeBytes > 0) ? q.minSizeBytes : (200ULL * 1024 * 1024);
+            ProcessManager::KillHighMemoryProcesses(ramCutoff, !dryRun);
         } else if (q.command == "MONITOR") {
             SmartScheduler::RunDaemonService(cleaner, {}, q.ramThresholdPercent, q.diskThresholdPercent, q.intervalSeconds, dryRun, q.diskFreeBelowBytes, q.drive);
         }

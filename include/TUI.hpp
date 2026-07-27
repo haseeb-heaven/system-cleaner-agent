@@ -154,9 +154,9 @@ public:
             };
 
             OpenTUI::Menu settingsMenu("SETTINGS", settingsOptions);
-            int sel = settingsMenu.Show();
+            OpenTUI::MenuSelection sel = settingsMenu.ShowExtended();
 
-            if (sel == -1 || sel == 6) {
+            if (sel.index == -1 || sel.index == 6) {
                 cleaner.SetSandbox(g_tuiSettings.sandboxMode);
                 cleaner.SetDangerousPathProtection(g_tuiSettings.pathProtection);
                 cleaner.SetDryRun(g_tuiSettings.dryRun);
@@ -176,14 +176,21 @@ public:
                 break;
             }
 
-            switch (sel) {
+            switch (sel.index) {
                 case 0: g_tuiSettings.sandboxMode = !g_tuiSettings.sandboxMode; break;
                 case 1: g_tuiSettings.pathProtection = !g_tuiSettings.pathProtection; break;
                 case 2: g_tuiSettings.dryRun = !g_tuiSettings.dryRun; break;
                 case 3: g_tuiSettings.killLocks = !g_tuiSettings.killLocks; break;
                 case 4: {
-                    g_tuiSettings.monitorIntervalSec += 5;
-                    if (g_tuiSettings.monitorIntervalSec > 30) g_tuiSettings.monitorIntervalSec = 3;
+                    static const std::vector<int> intervals = { 3, 5, 10, 15, 30, 60 };
+                    auto it = std::find(intervals.begin(), intervals.end(), g_tuiSettings.monitorIntervalSec);
+                    int idx = (it != intervals.end()) ? static_cast<int>(std::distance(intervals.begin(), it)) : 1;
+                    if (sel.actionKey == OpenTUI::Key::Left) {
+                        idx = (idx > 0) ? idx - 1 : static_cast<int>(intervals.size()) - 1;
+                    } else {
+                        idx = (idx + 1) % static_cast<int>(intervals.size());
+                    }
+                    g_tuiSettings.monitorIntervalSec = intervals[idx];
                     break;
                 }
                 case 5: {
@@ -201,6 +208,7 @@ public:
         std::vector<std::string> queryMenuOptions = {
             "[Custom Query]",
             "CLEAN WHERE FREE_DISK < 500MB",
+            "KILL PROCESS WHERE RAM > 200MB",
             "MONITOR WHERE RAM > 80%",
             "SHRED WHERE SIZE > 10MB",
             "PURGE RECYCLE_BIN",
@@ -218,6 +226,7 @@ public:
 
         static const std::vector<std::string> preMadeQueries = {
             "CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB",
+            "KILL PROCESS WHERE RAM > 200MB",
             "MONITOR WHERE RAM > 80% EVERY 15S",
             "SHRED 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE SIZE > 10MB",
             "PURGE RECYCLE_BIN",

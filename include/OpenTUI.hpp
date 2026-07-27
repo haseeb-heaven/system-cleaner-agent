@@ -338,6 +338,11 @@ public:
     }
 };
 
+struct MenuSelection {
+    int index = -1;
+    Key actionKey = Key::Enter;
+};
+
 class Menu {
     std::string title;
     std::vector<std::string> options;
@@ -355,6 +360,10 @@ public:
     int GetSelectedIndex() const { return selectedIndex; }
 
     int Show() {
+        return ShowExtended().index;
+    }
+
+    MenuSelection ShowExtended() {
         TerminalEngine::EnableVirtualTerminal();
         TerminalEngine::HideCursor();
 
@@ -381,19 +390,22 @@ public:
             }
 
             std::cout << Box::DrawFooter(80);
-            std::cout << "\033[90m Use UP/DOWN to navigate, Enter to select, ESC or 'q' to exit.\033[0m\n";
+            std::cout << "\033[90m Use UP/DOWN to navigate, LEFT/RIGHT or Enter to toggle/select, ESC/'q' to exit.\033[0m\n";
 
             KeyEvent ev = TerminalEngine::ReadKey();
             if (ev.key == Key::Up) {
                 selectedIndex = (selectedIndex > 0) ? selectedIndex - 1 : static_cast<int>(options.size()) - 1;
             } else if (ev.key == Key::Down) {
                 selectedIndex = (selectedIndex + 1) % static_cast<int>(options.size());
+            } else if (ev.key == Key::Left || ev.key == Key::Right) {
+                TerminalEngine::ShowCursor();
+                return { selectedIndex, ev.key };
             } else if (ev.key == Key::Enter) {
                 TerminalEngine::ShowCursor();
-                return selectedIndex;
+                return { selectedIndex, Key::Enter };
             } else if (ev.key == Key::Escape || (ev.key == Key::Char && (ev.ch == 'q' || ev.ch == 'Q'))) {
                 TerminalEngine::ShowCursor();
-                return -1;
+                return { -1, Key::Escape };
             }
         }
     }
