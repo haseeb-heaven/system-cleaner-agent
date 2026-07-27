@@ -266,7 +266,7 @@ int main(int argc, char* argv[]) {
         if (arg == "--verbose" || arg == "-v") verbose = true;
     }
 
-    Logger::Instance().Init("gemini-sys-cleaner.log", verbose);
+    Logger::Instance().Init("system-cleaner-agent.log", verbose);
     LoadTUISettings();
 
     Cleaner cleaner;

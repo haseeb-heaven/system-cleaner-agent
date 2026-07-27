@@ -21,6 +21,7 @@ class Logger {
     std::string logFilePath;
     bool verbose = false;
     bool colorEnabled = true;
+    bool tuiActive = false;
 
     std::string CurrentTime() {
         auto now = std::chrono::system_clock::now();
@@ -59,13 +60,16 @@ public:
         verbose = enableVerbose;
         colorEnabled = enableColor;
         CheckLogSizeLimit();
+        if (file.is_open()) file.close();
+        file.open(filepath, std::ios::app);
         if (!file.is_open()) {
-            file.open(filepath, std::ios::app);
+            file.open("system-cleaner-agent.log", std::ios::app);
         }
     }
 
     void SetVerbose(bool v) { verbose = v; }
     void SetColor(bool c) { colorEnabled = c; }
+    void SetTUIActive(bool active) { tuiActive = active; }
 
     void Log(LogLevel level, const std::string& msg, bool consoleOnly = false) {
         std::lock_guard<std::mutex> lock(mtx);
@@ -82,14 +86,21 @@ public:
 
         std::string formattedLog = "[" + timeStr + "] [" + lvlStr + "] " + msg;
 
-        if (colorEnabled) {
-            std::cout << colorCode << formattedLog << "\033[0m" << std::endl;
-        } else {
-            std::cout << formattedLog << std::endl;
+        if (!tuiActive) {
+            if (colorEnabled) {
+                std::cout << colorCode << formattedLog << "\033[0m" << std::endl;
+            } else {
+                std::cout << formattedLog << std::endl;
+            }
         }
 
-        if (!consoleOnly && file.is_open()) {
-            file << formattedLog << std::endl;
+        if (!consoleOnly) {
+            if (!file.is_open()) {
+                file.open(logFilePath.empty() ? "system-cleaner-agent.log" : logFilePath, std::ios::app);
+            }
+            if (file.is_open()) {
+                file << formattedLog << "\n" << std::flush;
+            }
         }
     }
 

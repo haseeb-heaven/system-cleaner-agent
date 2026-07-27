@@ -314,6 +314,12 @@ public:
         TaskHistory::Instance().MarkRunning(taskId);
         TaskHistory::Instance().UpdateProgress(taskId, "Executing AQL " + q.command + "...");
 
+        bool isFutureCronTrigger = (q.rawQuery.find("WHEN") != std::string::npos ||
+                                    q.rawQuery.find("when") != std::string::npos ||
+                                    q.rawQuery.find("EVERY") != std::string::npos ||
+                                    q.rawQuery.find("every") != std::string::npos ||
+                                    q.command == "MONITOR");
+
         std::cout << "\033[1;33m+--[ Agent Query Language (AQL) Execution ]-------------------------+\033[0m\n";
         std::cout << "\033[1;36m|  Query:   " << q.rawQuery << "\033[0m\n";
         std::cout << "\033[1;36m|  Command: " << q.command;
@@ -322,6 +328,54 @@ public:
         if (q.minSizeBytes > 0) std::cout << "  |  RAM Cutoff > " << Cleaner::FormatSize(q.minSizeBytes);
         std::cout << "\033[0m\n";
         std::cout << "\033[1;33m+------------------------------------------------------------------+\033[0m\n\n";
+
+        if (isFutureCronTrigger) {
+            std::cout << "\033[1;36m[AQL CRON DAEMON ACTIVATED] Query contains future trigger 'WHEN' -> Registered as continuous Cron Daemon Job.\033[0m\n";
+            TaskHistory::Instance().UpdateProgress(taskId, "Cron Daemon Watching: " + q.rawQuery);
+            Logger::Instance().Info("[AQL Cron Daemon] Activated future trigger for: " + q.rawQuery);
+
+            std::thread cronThread([q, cleanerCopy = cleaner, dryRun, taskId]() mutable {
+                while (true) {
+                    TaskInfo currentTask;
+                    if (!TaskHistory::Instance().GetTask(taskId, currentTask) ||
+                        currentTask.status == TaskStatus::Cancelled ||
+                        currentTask.status == TaskStatus::Failed) {
+                        break;
+                    }
+
+                    bool conditionMet = false;
+                    if (q.ramThresholdPercent > 0.0) {
+                        double curRam = SmartScheduler::GetMemoryUsagePercent();
+                        if (curRam >= q.ramThresholdPercent) conditionMet = true;
+                    }
+                    if (q.diskFreeBelowBytes > 0) {
+                        uintmax_t curFree = SmartScheduler::GetDiskFreeBytes(q.drive);
+                        if (curFree <= q.diskFreeBelowBytes) conditionMet = true;
+                    }
+
+                    if (conditionMet) {
+                        Logger::Instance().Info("[AQL CRON TRIGGER MATCHED] Executing action for: " + q.rawQuery);
+                        if (q.command == "KILL") {
+                            if (!q.targetPaths.empty()) {
+                                for (const auto& tp : q.targetPaths) {
+                                    GTLIBC::GTLibc::KillProcessByName(tp.string(), !dryRun, true);
+                                }
+                            }
+                        } else if (q.command == "CLEAN") {
+                            cleanerCopy.Clean();
+                        } else if (q.command == "PURGE" || q.command == "EMPTY") {
+                            cleanerCopy.EmptyWindowsRecycleBin();
+                        }
+                        TaskHistory::Instance().MarkCompleted(taskId, "Cron trigger executed for: " + q.rawQuery);
+                        break;
+                    }
+
+                    std::this_thread::sleep_for(std::chrono::seconds(q.intervalSeconds > 0 ? q.intervalSeconds : 3));
+                }
+            });
+            cronThread.detach();
+            return;
+        }
 
         if (q.command == "SELECT" || q.command == "SCAN") {
             if (!q.targetPaths.empty()) {

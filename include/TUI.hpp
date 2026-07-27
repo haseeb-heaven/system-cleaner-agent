@@ -28,6 +28,8 @@ struct TUISettings {
     bool pathProtection = true;     // ON by default
     bool dryRun = false;            // OFF allows real deletion as requested!
     bool killLocks = true;          // ON by default
+    bool enableLogging = true;      // File output logging ON/OFF
+    std::string logLevel = "INFO";  // INFO, WARN, ERROR, VERBOSE
     int monitorIntervalSec = 5;     // 5 seconds refresh interval
     size_t ramThresholdMB = 200;    // 200 MB high RAM process cutoff
     std::string customPathsStr = "C:\\Users\\hasee\\AppData\\Local\\Temp";
@@ -42,6 +44,8 @@ struct TUISettings {
         pathProtection = cfg.pathProtection;
         dryRun = cfg.dryRun;
         killLocks = cfg.killLocks;
+        enableLogging = cfg.enableLogging;
+        logLevel = cfg.logLevel;
         monitorIntervalSec = cfg.monitorIntervalSec;
         ramThresholdMB = cfg.ramThresholdMB;
         customPathsStr = cfg.customPathsStr;
@@ -58,6 +62,8 @@ struct TUISettings {
         cfg.pathProtection = pathProtection;
         cfg.dryRun = dryRun;
         cfg.killLocks = killLocks;
+        cfg.enableLogging = enableLogging;
+        cfg.logLevel = logLevel;
         cfg.monitorIntervalSec = monitorIntervalSec;
         cfg.ramThresholdMB = ramThresholdMB;
         cfg.customPathsStr = customPathsStr;
@@ -319,86 +325,13 @@ public:
     }
 
     static void ShowTaskLibrary() {
-        std::vector<std::string> options = {
-            "Live Task List (auto-refresh)",
-            "All Tasks (chronological)",
-            "Running Tasks Only",
-            "Completed Tasks Only",
-            "Failed Tasks Only",
-            "Manage Task (Kill / Pause / Resume / Details)",
-            "Clear All History",
-            "Back to Main Menu"
-        };
-
-        OpenTUI::Menu libMenu("TASK LIBRARY / PROCESS HISTORY", options, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-        libMenu.SetPreRenderCallback([]() { PrintBanner(); });
+        int selectedRow = 0;
 
         while (true) {
-            libMenu.SetTheme(g_tuiSettings.tuiThemeEngine);
-            libMenu.SetColorScheme(g_tuiSettings.tuiColorScheme);
-            libMenu.SetFgColor(g_tuiSettings.tuiFgColor);
-            libMenu.SetBgColor(g_tuiSettings.tuiBgColor);
-
-            std::string headerLine = TaskHistory::Instance().HeaderSummary();
-            libMenu.SetHeaderLines({headerLine});
-            libMenu.SetStatusLine("[TASK LIB] Use UP/DOWN to navigate, ENTER to select, ESC to return");
-            int sel = libMenu.Show();
-            if (sel < 0 || sel == 7) break;
-
             auto style = OpenTUI::GetThemeStyle(g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             OpenTUI::TerminalEngine::ClearScreen(style.panelBg);
             PrintBanner();
 
-            if (sel == 0) {
-                ShowTaskListView(true, -1);
-            } else if (sel == 1) {
-                ShowTaskListView(false, -1);
-            } else if (sel == 2) {
-                ShowTaskListView(false, (int)TaskStatus::Running);
-            } else if (sel == 3) {
-                ShowTaskListView(false, (int)TaskStatus::Completed);
-            } else if (sel == 4) {
-                ShowTaskListView(false, (int)TaskStatus::Failed);
-            } else if (sel == 5) {
-                std::string tidStr = OpenTUI::TextInput::ReadLine("Enter Task ID to Manage (#): ", "1");
-                try {
-                    uint64_t tid = std::stoull(tidStr);
-                    ShowTaskActionDialog(tid);
-                } catch (...) {
-                    std::cout << "\033[1;31m[ERROR] Invalid Task ID entered.\033[0m\n";
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
-                }
-            } else if (sel == 6) {
-                std::string confirm = OpenTUI::TextInput::ReadLine("Clear all task history? [y/N]: ", "n");
-                if (confirm == "y" || confirm == "Y") {
-                    TaskHistory::Instance().Clear();
-                    std::cout << "\033[1;32m[OK] Task library cleared.\033[0m" << std::endl;
-                    std::this_thread::sleep_for(std::chrono::seconds(1));
-                }
-            }
-        }
-    }
-
-    static void ShowTaskListView(bool liveAutoRefresh, int statusFilter) {
-        static int spinIdx = 0;
-        static const char* spinChars[] = {"|","/","-","\\","|","/","-","\\","|","/"};
-
-        auto renderOnce = [statusFilter]() {
-            std::cout << std::setfill(' ');
-            OpenTUI::TerminalEngine::ClearScreen();
-            PrintBanner();
-
-            std::string filterLabel = "ALL TASKS";
-            if (statusFilter == (int)TaskStatus::Running)    filterLabel = "RUNNING TASKS";
-            else if (statusFilter == (int)TaskStatus::Completed) filterLabel = "COMPLETED TASKS";
-            else if (statusFilter == (int)TaskStatus::Failed)    filterLabel = "FAILED TASKS";
-            else if (statusFilter == (int)TaskStatus::Cancelled) filterLabel = "CANCELLED TASKS";
-
-            std::cout << "\033[1;36m╔══════════════════════════════════════════════════════════════════════════════════════════╗\033[0m\n";
-            std::cout << "\033[1;36m║\033[1;97m   ◈  TASK LIBRARY  ─  " << std::left << std::setw(66) << filterLabel << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m╠══════════════════════════════════════════════════════════════════════════════════════════╣\033[0m\n";
-
-            // Summary stats row
             auto tasks = TaskHistory::Instance().Snapshot();
             int nRunning = 0, nDone = 0, nFailed = 0;
             uintmax_t totalFreed = 0;
@@ -407,127 +340,84 @@ public:
                 else if (t.status == TaskStatus::Completed) { ++nDone; totalFreed += t.bytesFreed; }
                 else if (t.status == TaskStatus::Failed || t.status == TaskStatus::Cancelled) ++nFailed;
             }
-            const char* spin = spinChars[spinIdx % 10];
-            spinIdx = (spinIdx + 1) % 10;
-            std::cout << "\033[1;36m║  \033[0m";
-            std::cout << "\033[1;32m● " << nDone << " done\033[0m  ";
-            std::cout << "\033[1;33m" << spin << " " << nRunning << " running\033[0m  ";
-            std::cout << "\033[1;31m✗ " << nFailed << " failed\033[0m  ";
-            std::cout << "\033[90m│  freed: \033[1;36m" << Cleaner::FormatSize(totalFreed) << "\033[0m  ";
-            std::cout << "\033[90m│  total: " << tasks.size() << "\033[0m";
-            std::cout << "\033[1;36m\033[0m\n";
-            std::cout << "\033[1;36m╠══════════════════════════════════════════════════════════════════════════════════════════╣\033[0m\n";
+
+            if (!tasks.empty()) {
+                if (selectedRow < 0) selectedRow = static_cast<int>(tasks.size()) - 1;
+                if (selectedRow >= static_cast<int>(tasks.size())) selectedRow = 0;
+            } else {
+                selectedRow = 0;
+            }
+
+            std::ostringstream ss;
+            ss << OpenTUI::Box::DrawBorder(80, "INTERACTIVE TASK MANAGER", g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+
+            std::string hotkeyBar = "[HOTKEYS] K: Kill │ P: Pause │ R: Resume │ D: Details │ C: Clear Finished │ ESC: Exit";
+            ss << OpenTUI::Box::DrawLine(80, hotkeyBar, false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+            ss << OpenTUI::Box::DrawDivider(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+
+            std::ostringstream summaryLine;
+            summaryLine << "Tasks: " << nDone << " Done │ " << nRunning << " Running │ " << nFailed << " Failed │ Freed: " << Cleaner::FormatSize(totalFreed) << " │ Total: " << tasks.size();
+            ss << OpenTUI::Box::DrawLine(80, summaryLine.str(), false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+            ss << OpenTUI::Box::DrawDivider(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
 
             if (tasks.empty()) {
-                std::cout << "\033[1;36m║\033[0m\n";
-                std::cout << "\033[1;36m║  \033[1;33m⚠  No tasks recorded yet.\033[0m\n";
-                std::cout << "\033[1;36m║  \033[90m   Run any clean / scan / shred / AQL / agent / daemon operation to populate.\033[0m\n";
-                std::cout << "\033[1;36m║\033[0m\n";
-                std::cout << "\033[1;36m╚══════════════════════════════════════════════════════════════════════════════════════════╝\033[0m\n";
-                return;
-            }
-            std::reverse(tasks.begin(), tasks.end());
+                ss << OpenTUI::Box::DrawLine(80, "No tasks recorded yet. Run a clean/scan/AQL query to populate.", false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+            } else {
+                for (size_t i = 0; i < tasks.size(); ++i) {
+                    const auto& t = tasks[i];
+                    bool isSelected = (static_cast<int>(i) == selectedRow);
+                    bool isLive = (t.status == TaskStatus::Running || t.status == TaskStatus::Queued);
 
-            // Header row
-            std::cout << "\033[1;37m  ";
-            std::cout << std::left << std::setw(5)  << "ID";
-            std::cout << std::setw(11) << "STATUS";
-            std::cout << std::setw(9)  << "CAT";
-            std::cout << std::setw(11) << "TIME";
-            std::cout << std::setw(8)  << "DUR";
-            std::cout << std::setw(25) << "NAME";
-            std::cout << std::setw(30) << "DETAIL / RESULT";
-            std::cout << "PROGRESS\033[0m\n";
-            std::cout << "\033[90m  " << std::string(95, '-') << "\033[0m\n";
+                    std::string statusStr = isLive ? "RUNNING" : TaskHistoryNS::StatusLabel(t.status);
+                    std::string detail = isLive
+                        ? (t.progressMsg.empty() ? statusStr : t.progressMsg)
+                        : (t.resultSummary.empty() ? statusStr : t.resultSummary);
 
-            size_t shown = 0;
-            for (auto& t : tasks) {
-                if (statusFilter >= 0 && (int)t.status != statusFilter) continue;
+                    std::ostringstream rowSS;
+                    rowSS << "[" << std::setfill('0') << std::setw(3) << t.id << std::setfill(' ') << "] "
+                          << std::left << std::setw(10) << statusStr << " "
+                          << std::setw(8)  << t.category << " "
+                          << std::setw(18) << (t.name.size() > 18 ? t.name.substr(0, 15) + "..." : t.name) << " "
+                          << (detail.size() > 22 ? detail.substr(0, 19) + "..." : detail);
 
-                auto now     = std::chrono::system_clock::now();
-                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(now - t.startedAt);
-                bool isLive  = (t.status == TaskStatus::Running || t.status == TaskStatus::Queued);
-
-                std::string timeStr = TaskHistoryNS::FormatTimestamp(isLive ? t.startedAt : t.finishedAt);
-                std::string durStr  = TaskHistoryNS::FormatDuration(elapsed);
-
-                std::string name = t.name;
-                if (name.size() > 23) name = name.substr(0, 20) + "...";
-
-                std::string detail = isLive
-                    ? (t.progressMsg.empty() ? TaskHistoryNS::StatusLabel(t.status) : t.progressMsg)
-                    : (t.resultSummary.empty() ? TaskHistoryNS::StatusLabel(t.status) : t.resultSummary);
-                if (detail.size() > 28) detail = detail.substr(0, 25) + "...";
-
-                // Row prefix with live spinner for running tasks
-                std::cout << "  ";
-                std::cout << "\033[90m[" << std::setfill('0') << std::setw(3) << t.id << std::setfill(' ') << "]\033[0m ";
-
-                // Status badge
-                std::string statusBadge;
-                if (isLive) {
-                    const char* sp = spinChars[(spinIdx + t.id) % 10];
-                    statusBadge = std::string("\033[1;33m") + sp + " RUNNING  \033[0m";
-                } else {
-                    std::string lbl = TaskHistoryNS::StatusLabel(t.status);
-                    // Pad label to 10 chars
-                    while (lbl.size() < 10) lbl += ' ';
-                    statusBadge = std::string(TaskHistoryNS::StatusColor(t.status)) + lbl + "\033[0m";
-                }
-                std::cout << statusBadge << " ";
-
-                std::cout << "\033[90m" << std::left << std::setw(8) << t.category << "\033[0m ";
-                std::cout << "\033[1;33m" << std::setw(10) << timeStr << "\033[0m ";
-                std::cout << "\033[90m" << std::setw(7) << durStr << "\033[0m ";
-                std::cout << "\033[1;97m" << std::setw(24) << name << "\033[0m ";
-                std::cout << "\033[1;36m" << std::setw(29) << detail << "\033[0m";
-
-                // Inline progress bar for running, freed amount for done
-                if (isLive && t.percent > 0.0 && t.percent < 100.0) {
-                    int barW = 10;
-                    int filled = static_cast<int>((t.percent / 100.0) * barW);
-                    std::cout << " \033[1;32m";
-                    for (int i = 0; i < filled; ++i) std::cout << "█";
-                    std::cout << "\033[90m";
-                    for (int i = filled; i < barW; ++i) std::cout << "░";
-                    std::cout << "\033[0m \033[1;33m" << static_cast<int>(t.percent) << "%\033[0m";
-                } else if (t.bytesFreed > 0) {
-                    std::cout << " \033[1;32m↓ " << Cleaner::FormatSize(t.bytesFreed) << "\033[0m";
-                } else if (t.filesProcessed > 0) {
-                    std::cout << " \033[1;36m" << t.filesProcessed << " files\033[0m";
-                } else if (t.processesHandled > 0) {
-                    std::cout << " \033[1;36m" << t.processesHandled << " procs\033[0m";
-                }
-                std::cout << std::right << "\n";
-                ++shown;
-            }
-
-            if (shown == 0) {
-                std::cout << "\033[1;36m║  \033[1;33m(no tasks match this filter)\033[0m\n";
-            }
-            std::cout << "\033[1;36m╚══════════════════════════════════════════════════════════════════════════════════════════╝\033[0m\n";
-        };
-
-        if (liveAutoRefresh) {
-            int refreshSec = 2;
-            for (int tick = 0; tick < 1000; ++tick) {
-                renderOnce();
-                std::cout << "\033[90mLive refresh every " << refreshSec << "s.  Press ESC or 'q' to return...\033[0m";
-                std::cout.flush();
-                for (int s = 0; s < refreshSec * 10; ++s) {
-#ifdef _WIN32
-                    if (_kbhit()) {
-                        int c = _getch();
-                        if (c == 27 || c == 'q' || c == 'Q') return;
-                    }
-#endif
-                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                    ss << OpenTUI::Box::DrawLine(80, rowSS.str(), isSelected, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
                 }
             }
-        } else {
-            renderOnce();
+
+            ss << OpenTUI::Box::DrawDivider(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+            std::string footerHint = "Use UP/DOWN to select task · Press K/P/R/D/C hotkeys · ESC to return";
+            ss << OpenTUI::Box::DrawLine(80, footerHint, false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+            ss << OpenTUI::Box::DrawFooter(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+
+            OpenTUI::TerminalEngine::MoveCursorToHome();
+            std::cout << style.panelBg << ss.str() << style.panelBg << "\033[J" << std::flush;
+
+            OpenTUI::KeyEvent ev = OpenTUI::TerminalEngine::ReadKey();
+            if (ev.key == OpenTUI::Key::Up) {
+                if (!tasks.empty()) selectedRow = (selectedRow > 0) ? selectedRow - 1 : static_cast<int>(tasks.size()) - 1;
+            } else if (ev.key == OpenTUI::Key::Down) {
+                if (!tasks.empty()) selectedRow = (selectedRow + 1) % static_cast<int>(tasks.size());
+            } else if (ev.key == OpenTUI::Key::Escape || (ev.key == OpenTUI::Key::Char && (ev.ch == 'q' || ev.ch == 'Q'))) {
+                break;
+            } else if (ev.key == OpenTUI::Key::Char && !tasks.empty() && selectedRow >= 0 && selectedRow < static_cast<int>(tasks.size())) {
+                uint64_t targetId = tasks[selectedRow].id;
+                char c = static_cast<char>(std::tolower(ev.ch));
+                if (c == 'k') {
+                    TaskHistory::Instance().KillTask(targetId);
+                } else if (c == 'p') {
+                    TaskHistory::Instance().PauseTask(targetId);
+                } else if (c == 'r') {
+                    TaskHistory::Instance().ResumeTask(targetId);
+                } else if (c == 'd') {
+                    ShowTaskActionDialog(targetId);
+                } else if (c == 'c') {
+                    TaskHistory::Instance().Clear();
+                    selectedRow = 0;
+                }
+            }
         }
     }
+
     static void ShowSettingsMenu(Cleaner& cleaner) {
         int currentSelected = 0;
         while (true) {
@@ -543,6 +433,8 @@ public:
                 std::string("TUI Color Palette: [") + g_tuiSettings.tuiColorScheme + "]",
                 std::string("Foreground Color:  [") + g_tuiSettings.tuiFgColor + "]",
                 std::string("Background Color:  [") + g_tuiSettings.tuiBgColor + "]",
+                std::string("Logs File Output:  [") + (g_tuiSettings.enableLogging ? "ON  - system-cleaner-agent.log" : "OFF - Disabled") + "]",
+                std::string("Log Level:         [") + g_tuiSettings.logLevel + "]",
                 std::string("Sandbox Mode:      [") + (g_tuiSettings.sandboxMode ? "ON  - Preview Only" : "OFF - REAL DELETION ALLOWED") + "]",
                 std::string("Path Protection:   [") + (g_tuiSettings.pathProtection ? "ON  - System Dir Guard" : "OFF - Disabled") + "]",
                 std::string("Dry-Run Mode:      [") + (g_tuiSettings.dryRun ? "ON  - Preview Only" : "OFF - REAL CLEAN") + "]",
@@ -561,7 +453,7 @@ public:
                 currentSelected = sel.index;
             }
 
-            if (sel.index == -1 || sel.index == 11) {
+            if (sel.index == -1 || sel.index == 13) {
                 cleaner.SetSandbox(g_tuiSettings.sandboxMode);
                 cleaner.SetDangerousPathProtection(g_tuiSettings.pathProtection);
                 cleaner.SetDryRun(g_tuiSettings.dryRun);
@@ -591,6 +483,9 @@ public:
             };
             static const std::vector<std::string> bgColors = {
                 "Default", "Black", "Navy Blue", "Electric Magenta", "Amber Gold", "Emerald Green", "Dark Slate", "Charcoal Gray"
+            };
+            static const std::vector<std::string> logLevels = {
+                "INFO", "WARN", "ERROR", "VERBOSE"
             };
 
             switch (sel.index) {
@@ -638,11 +533,24 @@ public:
                     g_tuiSettings.tuiBgColor = bgColors[idx];
                     break;
                 }
-                case 4: g_tuiSettings.sandboxMode = !g_tuiSettings.sandboxMode; break;
-                case 5: g_tuiSettings.pathProtection = !g_tuiSettings.pathProtection; break;
-                case 6: g_tuiSettings.dryRun = !g_tuiSettings.dryRun; break;
-                case 7: g_tuiSettings.killLocks = !g_tuiSettings.killLocks; break;
-                case 8: { // Monitor Interval
+                case 4: g_tuiSettings.enableLogging = !g_tuiSettings.enableLogging; break;
+                case 5: { // Log Level
+                    auto it = std::find(logLevels.begin(), logLevels.end(), g_tuiSettings.logLevel);
+                    int idx = (it != logLevels.end()) ? static_cast<int>(std::distance(logLevels.begin(), it)) : 0;
+                    if (sel.actionKey == OpenTUI::Key::Left) {
+                        idx = (idx > 0) ? idx - 1 : static_cast<int>(logLevels.size()) - 1;
+                    } else {
+                        idx = (idx + 1) % static_cast<int>(logLevels.size());
+                    }
+                    g_tuiSettings.logLevel = logLevels[idx];
+                    Logger::Instance().SetVerbose(g_tuiSettings.logLevel == "VERBOSE");
+                    break;
+                }
+                case 6: g_tuiSettings.sandboxMode = !g_tuiSettings.sandboxMode; break;
+                case 7: g_tuiSettings.pathProtection = !g_tuiSettings.pathProtection; break;
+                case 8: g_tuiSettings.dryRun = !g_tuiSettings.dryRun; break;
+                case 9: g_tuiSettings.killLocks = !g_tuiSettings.killLocks; break;
+                case 10: { // Monitor Interval
                     static const std::vector<int> intervals = { 3, 5, 10, 15, 30, 60 };
                     auto it = std::find(intervals.begin(), intervals.end(), g_tuiSettings.monitorIntervalSec);
                     int idx = (it != intervals.end()) ? static_cast<int>(std::distance(intervals.begin(), it)) : 1;
@@ -654,14 +562,14 @@ public:
                     g_tuiSettings.monitorIntervalSec = intervals[idx];
                     break;
                 }
-                case 9: { // Target Folders
+                case 11: { // Target Folders
                     OpenTUI::TerminalEngine::ClearScreen();
                     PrintBanner();
                     std::string newPath = OpenTUI::TextInput::ReadLine("Enter target PATH folders (comma-separated): ", g_tuiSettings.customPathsStr);
                     if (!newPath.empty()) g_tuiSettings.customPathsStr = newPath;
                     break;
                 }
-                case 10: { // Reset to OS Defaults
+                case 12: { // Reset to OS Defaults
                     g_tuiSettings.customPathsStr = SecurityGuard::GetDefaultCleanPathsStr();
                     std::cout << "\033[1;32m[OK] Target folders reset to OS-default safe temp/cache paths.\033[0m\n";
                     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -673,8 +581,10 @@ public:
     }
 
     static std::string SelectAgentQuery() {
+        static std::vector<std::string> aqlHistory;
+
         std::vector<std::string> queryMenuOptions = {
-            "[Custom Query]",
+            "[Custom Query / Interactive Console]",
             "CLEAN WHERE FREE_DISK < 500MB",
             "KILL PROCESS WHERE RAM > 200MB",
             "MONITOR WHERE RAM > 80%",
@@ -683,7 +593,7 @@ public:
             "SCAN WHERE AGE > 24H"
         };
 
-        OpenTUI::Menu agentMenu("AGENT QUERY", queryMenuOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme);
+        OpenTUI::Menu agentMenu("AGENT QUERY CONSOLE", queryMenuOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
         int choice = agentMenu.Show();
 
         static const std::vector<std::string> suggestions = {
@@ -696,7 +606,10 @@ public:
             "SCAN 'C:\\' WHERE AGE > 24H"
         };
 
-        auto showHelp = []() {
+        std::string lastErr = "";
+        std::string lastHint = "";
+
+        auto showHelp = [&]() {
             OpenTUI::TerminalEngine::ClearScreen();
             PrintBanner();
             std::cout << "\033[1;36m╔══════════════════════════════════════════════════════════════════════════════╗\033[0m\n";
@@ -713,49 +626,56 @@ public:
             std::cout << "\033[1;36m║  \033[1;32mPURGE\033[0m   RECYCLE_BIN                \033[90mEmpty OS Recycle Bin / Linux Trash\033[0m\n";
             std::cout << "\033[1;36m║\033[0m\n";
             std::cout << "\033[1;36m╠══════════════════════════════════════════════════════════════════════════════╣\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m║\033[1;33m  CONDITIONS\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m║  \033[1;35mFREE_DISK < 500MB\033[0m | \033[1;35m2GB\033[0m       \033[90mTrigger when free disk space below threshold\033[0m\n";
-            std::cout << "\033[1;36m║  \033[1;35mRAM > 80%\033[0m | \033[1;35mRAM > 200MB\033[0m      \033[90mTrigger when RAM usage exceeds threshold\033[0m\n";
-            std::cout << "\033[1;36m║  \033[1;35mSIZE > 10MB\033[0m | \033[1;35m1GB\033[0m            \033[90mOnly match files larger than given size\033[0m\n";
-            std::cout << "\033[1;36m║  \033[1;35mAGE > 24H\033[0m | \033[1;35m7D\033[0m | \033[1;35m30D\033[0m         \033[90mOnly match files older than given age\033[0m\n";
-            std::cout << "\033[1;36m║  \033[1;35mEXT IN ('.log','.tmp')\033[0m         \033[90mFilter by file extension list\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m╠══════════════════════════════════════════════════════════════════════════════╣\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m║\033[1;33m  EXAMPLES\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m║  \033[1;97mCLEAN 'C:/Users/hasee/AppData/Local/Temp' WHERE FREE_DISK < 1GB\033[0m\n";
-            std::cout << "\033[1;36m║  \033[1;97mSCAN 'C:/Windows/Temp' WHERE AGE > 1H\033[0m\n";
-            std::cout << "\033[1;36m║  \033[1;97mSHRED 'D:/Temp' WHERE SIZE > 10MB\033[0m\n";
-            std::cout << "\033[1;36m║  \033[1;97mKILL PROCESS WHERE RAM > 200MB\033[0m\n";
-            std::cout << "\033[1;36m║  \033[1;97mMONITOR WHERE RAM > 80% EVERY 15S\033[0m\n";
-            std::cout << "\033[1;36m║  \033[1;97mPURGE RECYCLE_BIN\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m╠══════════════════════════════════════════════════════════════════════════════╣\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m║\033[1;33m  NATURAL LANGUAGE TASKS (ReAct Agent)\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m║  \033[90m\"Clean temp files older than 7 days\"\033[0m\n";
-            std::cout << "\033[1;36m║  \033[90m\"Kill all processes using more than 300MB of RAM\"\033[0m\n";
-            std::cout << "\033[1;36m║  \033[90m\"Free up disk space on C: drive\"\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m╠══════════════════════════════════════════════════════════════════════════════╣\033[0m\n";
-            std::cout << "\033[1;36m║  \033[90mTIP: TAB auto-completes · ESC cancels · Enter runs · 'help' shows this\033[0m\n";
+            std::cout << "\033[1;36m║  \033[90mTIP: TAB auto-completes · UP/DOWN for history · ESC cancels · Enter runs\033[0m\n";
             std::cout << "\033[1;36m╚══════════════════════════════════════════════════════════════════════════════╝\033[0m\n\n";
+
+            if (!lastErr.empty()) {
+                std::cout << "\033[1;31m[AQL SYNTAX ERROR] " << lastErr << "\033[0m\n";
+                std::cout << "\033[1;33m[STRICT AQL GRAMMAR RULES & EXAMPLES]\n" << lastHint << "\033[0m\n\n";
+            }
         };
 
         if (choice <= 0) {
-            // Custom query input loop — intercept 'help'/'?' before launching
+            // Custom query input loop — stays in same page on syntax error!
             while (true) {
                 showHelp();
-                std::string q = OpenTUI::TextInput::ReadLine("Query: ", "CLEAN 'C:/Users/hasee/AppData/Local/Temp' WHERE FREE_DISK < 500MB", suggestions);
+                std::string q = OpenTUI::TextInput::ReadLine("Query: ", "CLEAN 'C:/Users/hasee/AppData/Local/Temp' WHERE FREE_DISK < 500MB", suggestions, aqlHistory);
+                if (q.empty()) return "";
+
                 std::string qLower = q;
                 std::transform(qLower.begin(), qLower.end(), qLower.begin(), ::tolower);
                 if (qLower == "help" || qLower == "?" || qLower == "h") {
-                    // Re-show help on next iteration
+                    lastErr = "";
+                    lastHint = "";
                     continue;
+                }
+
+                // Check if query is AQL and validate grammar
+                std::string sqUpper = q;
+                std::transform(sqUpper.begin(), sqUpper.end(), sqUpper.begin(), ::toupper);
+                static const std::vector<std::string> aqlVerbs = {
+                    "KILL", "SELECT", "CLEAN", "SCAN", "SHRED", "PURGE", "MONITOR", "WIPE", "EMPTY"
+                };
+                bool isAQL = false;
+                for (const auto& verb : aqlVerbs) {
+                    if (sqUpper.find(verb) == 0 || sqUpper.find(" " + verb + " ") != std::string::npos || sqUpper.find(verb + " ") == 0) {
+                        isAQL = true;
+                        break;
+                    }
+                }
+
+                if (isAQL) {
+                    AQLEngine::ValidationResult val = AQLEngine::Validate(q);
+                    if (!val.isValid) {
+                        lastErr = val.errorMessage;
+                        lastHint = val.suggestedHint;
+                        continue; // Stay in same AQL Console page!
+                    }
+                }
+
+                // Valid query — save to history and return!
+                if (aqlHistory.empty() || aqlHistory.back() != q) {
+                    aqlHistory.push_back(q);
                 }
                 return q;
             }
@@ -774,6 +694,7 @@ public:
     }
 
     static void RunInteractiveMenu(Cleaner& cleaner) {
+        Logger::Instance().SetTUIActive(true);
         LoadTUISettings();
 
         std::vector<std::string> options = {

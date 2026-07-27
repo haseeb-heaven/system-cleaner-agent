@@ -20,6 +20,8 @@ struct AppConfig {
     bool pathProtection = true;
     bool dryRun = false;
     bool killLocks = true;
+    bool enableLogging = true;
+    std::string logLevel = "INFO"; // INFO, WARN, ERROR, VERBOSE
     int monitorIntervalSec = 5;
     size_t ramThresholdMB = 200;
     std::string customPathsStr = "C:\\Users\\hasee\\AppData\\Local\\Temp";
@@ -116,6 +118,8 @@ public:
         cfg.pathProtection = getJsonBool("pathProtection", true);
         cfg.dryRun = getJsonBool("dryRun", false);
         cfg.killLocks = getJsonBool("killLocks", true);
+        cfg.enableLogging = getJsonBool("enableLogging", true);
+        cfg.logLevel = getJsonString("logLevel", "INFO");
         cfg.monitorIntervalSec = getJsonInt("monitorIntervalSec", 5);
         cfg.ramThresholdMB = static_cast<size_t>(getJsonInt("ramThresholdMB", 200));
         cfg.customPathsStr = getJsonString("customPathsStr", "C:\\Users\\hasee\\AppData\\Local\\Temp");
@@ -165,6 +169,8 @@ public:
         json << "  \"pathProtection\": " << (cfg.pathProtection ? "true" : "false") << ",\n";
         json << "  \"dryRun\": " << (cfg.dryRun ? "true" : "false") << ",\n";
         json << "  \"killLocks\": " << (cfg.killLocks ? "true" : "false") << ",\n";
+        json << "  \"enableLogging\": " << (cfg.enableLogging ? "true" : "false") << ",\n";
+        json << "  \"logLevel\": \"" << cfg.logLevel << "\",\n";
         json << "  \"monitorIntervalSec\": " << cfg.monitorIntervalSec << ",\n";
         json << "  \"ramThresholdMB\": " << cfg.ramThresholdMB << ",\n";
         

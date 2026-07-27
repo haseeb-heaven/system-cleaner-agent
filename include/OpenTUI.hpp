@@ -590,13 +590,12 @@ public:
     }
 
     MenuSelection ShowExtended() {
-        auto style = GetThemeStyle(themeName, colorScheme, fgColor, bgColor);
         TerminalEngine::EnableVirtualTerminal();
         TerminalEngine::HideCursor();
-        TerminalEngine::ClearScreen(style.panelBg);
 
         while (true) {
-            style = GetThemeStyle(themeName, colorScheme, fgColor, bgColor);
+            auto style = GetThemeStyle(themeName, colorScheme, fgColor, bgColor);
+            TerminalEngine::ClearScreen(style.panelBg);
             std::ostringstream frame;
 
             if (onPreRender) {
@@ -606,31 +605,97 @@ public:
             }
 
             frame << style.panelBg;
-            frame << Box::DrawBorder(80, title, themeName, colorScheme, fgColor, bgColor);
 
-            if (!headerLines.empty()) {
-                for (const auto& h : headerLines) {
-                    frame << Box::DrawLine(80, h, false, themeName, colorScheme, fgColor, bgColor);
+            if (themeName == "TermOx") {
+                // =============================================================
+                // TERMOX C++20 REACTIVE WIDGET TREE & WINDOW LAYOUT ENGINE
+                // =============================================================
+                std::string topRibbon = "╭─ [File] ── [Scan] ── [Tools] ── [AQL Console] ── [Settings] ── [Help] ─╮";
+                frame << style.secondaryColor << topRibbon << style.panelBg << "\033[K\n";
+                frame << Box::DrawBorder(80, title, themeName, colorScheme, fgColor, bgColor);
+
+                if (!headerLines.empty()) {
+                    for (const auto& h : headerLines) {
+                        frame << Box::DrawLine(80, h, false, themeName, colorScheme, fgColor, bgColor);
+                    }
+                    frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
                 }
+
+                for (size_t i = 0; i < options.size(); ++i) {
+                    bool isSelected = (static_cast<int>(i) == selectedIndex);
+                    frame << Box::DrawLine(80, options[i], isSelected, themeName, colorScheme, fgColor, bgColor);
+                }
+
+                if (!statusLine.empty()) {
+                    frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
+                    std::string animatedStatus = spinner.GetNextFrame() + " " + statusLine;
+                    frame << Box::DrawLine(80, animatedStatus, false, themeName, colorScheme, fgColor, bgColor);
+                }
+
                 frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
-            }
+                std::string navHint = "[TermOx Widget] ↑/↓: Move │ ←/→/Enter: Select/Toggle │ ESC/'q': Exit";
+                frame << Box::DrawLine(80, navHint, false, themeName, colorScheme, fgColor, bgColor);
+                frame << Box::DrawFooter(80, themeName, colorScheme, fgColor, bgColor);
 
-            for (size_t i = 0; i < options.size(); ++i) {
-                bool isSelected = (static_cast<int>(i) == selectedIndex);
-                frame << Box::DrawLine(80, options[i], isSelected, themeName, colorScheme, fgColor, bgColor);
-            }
+            } else if (themeName == "FTXUI") {
+                // =============================================================
+                // FTXUI FUNCTIONAL GRAPHICAL DOM COMPONENT TREE RENDERER
+                // =============================================================
+                frame << Box::DrawBorder(80, "SYSTEM-CLEANER-AGENT DOM TREE", themeName, colorScheme, fgColor, bgColor);
 
-            if (!statusLine.empty()) {
+                if (!headerLines.empty()) {
+                    for (const auto& h : headerLines) {
+                        frame << Box::DrawLine(80, h, false, themeName, colorScheme, fgColor, bgColor);
+                    }
+                    frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
+                }
+
+                for (size_t i = 0; i < options.size(); ++i) {
+                    bool isSelected = (static_cast<int>(i) == selectedIndex);
+                    frame << Box::DrawLine(80, options[i], isSelected, themeName, colorScheme, fgColor, bgColor);
+                }
+
+                if (!statusLine.empty()) {
+                    frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
+                    std::string animatedStatus = spinner.GetNextFrame() + " " + statusLine;
+                    frame << Box::DrawLine(80, animatedStatus, false, themeName, colorScheme, fgColor, bgColor);
+                }
+
                 frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
-                std::string animatedStatus = spinner.GetNextFrame() + " " + statusLine;
-                frame << Box::DrawLine(80, animatedStatus, false, themeName, colorScheme, fgColor, bgColor);
+                std::string tabStrip = "[Tab 1: Dashboard]   [Tab 2: AQL Console]   [Tab 3: Settings]";
+                frame << Box::DrawLine(80, tabStrip, false, themeName, colorScheme, fgColor, bgColor);
+                frame << Box::DrawFooter(80, themeName, colorScheme, fgColor, bgColor);
+
+            } else {
+                // =============================================================
+                // OPENTUI CLASSIC REACTIVE DASHBOARD ENGINE
+                // =============================================================
+                frame << Box::DrawBorder(80, title, themeName, colorScheme, fgColor, bgColor);
+
+                if (!headerLines.empty()) {
+                    for (const auto& h : headerLines) {
+                        frame << Box::DrawLine(80, h, false, themeName, colorScheme, fgColor, bgColor);
+                    }
+                    frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
+                }
+
+                for (size_t i = 0; i < options.size(); ++i) {
+                    bool isSelected = (static_cast<int>(i) == selectedIndex);
+                    frame << Box::DrawLine(80, options[i], isSelected, themeName, colorScheme, fgColor, bgColor);
+                }
+
+                if (!statusLine.empty()) {
+                    frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
+                    std::string animatedStatus = spinner.GetNextFrame() + " " + statusLine;
+                    frame << Box::DrawLine(80, animatedStatus, false, themeName, colorScheme, fgColor, bgColor);
+                }
+
+                frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
+                std::string navHint = "Use UP/DOWN to navigate, LEFT/RIGHT or Enter to toggle/select, ESC/'q' to exit.";
+                frame << Box::DrawLine(80, navHint, false, themeName, colorScheme, fgColor, bgColor);
+
+                frame << Box::DrawFooter(80, themeName, colorScheme, fgColor, bgColor);
             }
-
-            frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
-            std::string navHint = "Use UP/DOWN to navigate, LEFT/RIGHT or Enter to toggle/select, ESC/'q' to exit.";
-            frame << Box::DrawLine(80, navHint, false, themeName, colorScheme, fgColor, bgColor);
-
-            frame << Box::DrawFooter(80, themeName, colorScheme, fgColor, bgColor);
 
             TerminalEngine::MoveCursorToHome();
             std::cout << style.panelBg << frame.str() << style.panelBg << "\033[J" << std::flush;
@@ -659,12 +724,13 @@ public:
 // =============================================================================
 class TextInput {
 public:
-    static std::string ReadLine(const std::string& promptStr, const std::string& defaultVal = "", const std::vector<std::string>& suggestions = {}) {
+    static std::string ReadLine(const std::string& promptStr, const std::string& defaultVal = "", const std::vector<std::string>& suggestions = {}, const std::vector<std::string>& history = {}) {
         TerminalEngine::EnableVirtualTerminal();
         TerminalEngine::ShowCursor();
 
         std::string input = "";
         std::string ghost = "";
+        int historyIdx = static_cast<int>(history.size());
 
         auto updateDisplay = [&](const std::string& newInput) {
             std::cout << "\r\033[K" << Color::BrightCyan << Color::Bold << promptStr << Color::Reset << newInput;
@@ -698,6 +764,22 @@ public:
             } else if (ev.key == Key::Escape) {
                 std::cout << "\n";
                 return "";
+            } else if (ev.key == Key::Up) {
+                if (!history.empty() && historyIdx > 0) {
+                    historyIdx--;
+                    input = history[historyIdx];
+                    updateDisplay(input);
+                }
+            } else if (ev.key == Key::Down) {
+                if (!history.empty() && historyIdx < static_cast<int>(history.size()) - 1) {
+                    historyIdx++;
+                    input = history[historyIdx];
+                    updateDisplay(input);
+                } else if (historyIdx == static_cast<int>(history.size()) - 1) {
+                    historyIdx = static_cast<int>(history.size());
+                    input = "";
+                    updateDisplay(input);
+                }
             } else if (ev.key == Key::Char) {
                 if (ev.ch == 9) { // TAB key autocompletes ghost text!
                     if (!ghost.empty()) {
