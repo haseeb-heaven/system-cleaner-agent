@@ -240,30 +240,56 @@ public:
         if (queryStr.empty()) {
             result.isValid = false;
             result.errorMessage = "Empty AQL query string.";
-            result.suggestedHint = "SELECT chrome.exe FROM PROCESS | KILL notepad.exe FROM PROCESS WHERE RAM > 200MB | CLEAN TEMP_C WHERE DISK_C < 500MB";
+            result.suggestedHint = "Examples:\n  - SELECT chrome.exe FROM PROCESS\n  - KILL notepad.exe FROM PROCESS WHERE RAM > 200MB\n  - CLEAN TEMP_C WHERE DISK_C < 500MB";
             return result;
         }
 
         std::string upper = queryStr;
         std::transform(upper.begin(), upper.end(), upper.begin(), ::toupper);
 
-        static const std::vector<std::string> validCmds = {
+        std::stringstream ss(upper);
+        std::string firstWord;
+        ss >> firstWord;
+
+        static const std::set<std::string> validCmds = {
             "CLEAN", "SCAN", "SHRED", "MONITOR", "PURGE", "KILL", "SELECT", "WIPE", "WATCH", "EMPTY"
         };
 
-        bool cmdFound = false;
-        for (const auto& cmd : validCmds) {
-            if (upper.find(cmd) != std::string::npos) {
-                cmdFound = true;
-                break;
-            }
+        if (validCmds.count(firstWord) == 0) {
+            result.isValid = false;
+            result.errorMessage = "Unrecognized AQL command verb '" + firstWord + "'. Query MUST start with CLEAN, SCAN, SHRED, PURGE, KILL, SELECT, MONITOR, or WIPE.";
+            result.suggestedHint = "Correct Syntax:\n  - SELECT chrome.exe FROM PROCESS\n  - KILL notepad.exe FROM PROCESS WHERE RAM > 200MB\n  - CLEAN TEMP_C WHERE DISK_C < 500MB";
+            return result;
         }
 
-        if (!cmdFound) {
-            result.isValid = false;
-            result.errorMessage = "Unrecognized AQL command in query: '" + queryStr + "'";
-            result.suggestedHint = "Valid AQL Examples:\n  - SELECT chrome.exe FROM PROCESS\n  - KILL notepad.exe FROM PROCESS WHERE RAM > 200MB\n  - CLEAN TEMP_C WHERE DISK_C < 500MB\n  - CLEAN APPDATA WHERE DISK_FREE < 1GB";
-            return result;
+        if (firstWord == "KILL") {
+            bool hasTargetProc = (upper.find(".EXE") != std::string::npos || upper.find("'") != std::string::npos || upper.find("PROCESS") != std::string::npos);
+            if (!hasTargetProc) {
+                result.isValid = false;
+                result.errorMessage = "Invalid AQL KILL query. Target process (e.g. chrome.exe or 'notepad.exe') or 'FROM PROCESS' clause missing.";
+                result.suggestedHint = "Correct Syntax:\n  - KILL chrome.exe WHERE RAM > 200MB\n  - KILL notepad.exe FROM PROCESS WHERE RAM > 80%";
+                return result;
+            }
+        } else if (firstWord == "SELECT") {
+            bool hasSource = (upper.find("FROM") != std::string::npos || upper.find(".EXE") != std::string::npos || upper.find("'") != std::string::npos);
+            if (!hasSource) {
+                result.isValid = false;
+                result.errorMessage = "Invalid AQL SELECT query. Source clause (FROM PROCESS or FROM STORAGE) missing.";
+                result.suggestedHint = "Correct Syntax:\n  - SELECT chrome.exe FROM PROCESS\n  - SELECT 'C:\\Temp' FROM STORAGE";
+                return result;
+            }
+        } else if (firstWord == "CLEAN" || firstWord == "SHRED" || firstWord == "WIPE") {
+            bool hasPathOrAlias = (upper.find("'") != std::string::npos ||
+                                   upper.find("TEMP") != std::string::npos ||
+                                   upper.find("APPDATA") != std::string::npos ||
+                                   upper.find("CACHE") != std::string::npos ||
+                                   upper.find("RECYCLE") != std::string::npos);
+            if (!hasPathOrAlias) {
+                result.isValid = false;
+                result.errorMessage = "Invalid AQL CLEAN query. Single-quoted path '...' or valid alias (TEMP_C, APPDATA, CACHE) missing.";
+                result.suggestedHint = "Correct Syntax:\n  - CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB\n  - CLEAN TEMP_C WHERE DISK_C < 500MB\n  - CLEAN APPDATA WHERE DISK_FREE < 1GB";
+                return result;
+            }
         }
 
         return result;
@@ -293,21 +319,48 @@ public:
         std::cout << "\033[1;36m|  Command: " << q.command;
         if (q.diskFreeBelowBytes > 0) std::cout << "  |  FREE_DISK < " << Cleaner::FormatSize(q.diskFreeBelowBytes);
         if (q.ramThresholdPercent > 0) std::cout << "  |  RAM > " << static_cast<int>(q.ramThresholdPercent) << "%";
-        if (q.minSizeBytes > 0) std::cout << "  |  SIZE > " << Cleaner::FormatSize(q.minSizeBytes);
+        if (q.minSizeBytes > 0) std::cout << "  |  RAM Cutoff > " << Cleaner::FormatSize(q.minSizeBytes);
         std::cout << "\033[0m\n";
         std::cout << "\033[1;33m+------------------------------------------------------------------+\033[0m\n\n";
 
-        if (!q.targetPaths.empty()) {
-            cleaner.SetCustomPaths(q.targetPaths);
-        }
-
-        if (q.command == "SCAN") {
-            cleaner.SetDryRun(true);
-            cleaner.Scan();
+        if (q.command == "SELECT" || q.command == "SCAN") {
+            if (!q.targetPaths.empty()) {
+                for (const auto& tp : q.targetPaths) {
+                    std::string target = tp.string();
+                    std::string tLower = target;
+                    std::transform(tLower.begin(), tLower.end(), tLower.begin(), ::tolower);
+                    if (tLower.find(".exe") != std::string::npos || q.rawQuery.find("PROCESS") != std::string::npos) {
+                        auto groups = ProcessManager::GetAggregatedProcessGroups(0);
+                        bool found = false;
+                        for (const auto& grp : groups) {
+                            std::string gLower = grp.processName;
+                            std::transform(gLower.begin(), gLower.end(), gLower.begin(), ::tolower);
+                            if (gLower.find(tLower) != std::string::npos || tLower.find(gLower) != std::string::npos) {
+                                found = true;
+                                std::cout << "\033[1;32m[AQL SELECT PROCESS] " << grp.processName << " (" << grp.instanceCount << " procs) - Total RAM: " << Cleaner::FormatSize(grp.totalMemoryUsageBytes) << "\033[0m\n";
+                            }
+                        }
+                        if (!found) {
+                            std::cout << "\033[1;33m[AQL SELECT PROCESS] No running process matching '" << target << "' detected.\033[0m\n";
+                        }
+                    } else {
+                        cleaner.SetCustomPaths({tp});
+                        cleaner.SetDryRun(true);
+                        cleaner.Scan();
+                    }
+                }
+            } else {
+                cleaner.SetDryRun(true);
+                cleaner.Scan();
+            }
+            TaskHistory::Instance().MarkCompleted(taskId, "AQL " + q.command + " finished.", 0, 0, 0, 0);
         } else if (q.command == "CLEAN") {
+            if (!q.targetPaths.empty()) {
+                cleaner.SetCustomPaths(q.targetPaths);
+            }
             if (q.diskFreeBelowBytes > 0) {
                 uintmax_t curFree = SmartScheduler::GetDiskFreeBytes(q.drive);
-                std::cout << "\033[1;32m[AQL] Evaluating FREE_DISK condition on " << q.drive.string()
+                std::cout << "\033[1;32m[AQL] Evaluating DISK_FREE condition on " << q.drive.string()
                           << ": Available free space = " << Cleaner::FormatSize(curFree)
                           << " (Trigger threshold = " << Cleaner::FormatSize(q.diskFreeBelowBytes) << ")\033[0m\n";
                 if (curFree <= q.diskFreeBelowBytes) {
@@ -321,16 +374,53 @@ public:
             } else {
                 cleaner.Clean();
             }
-        } else if (q.command == "SHRED") {
+            TaskHistory::Instance().MarkCompleted(taskId, "AQL CLEAN finished.", 0, 0, 0, 0);
+        } else if (q.command == "SHRED" || q.command == "WIPE") {
+            if (!q.targetPaths.empty()) cleaner.SetCustomPaths(q.targetPaths);
             cleaner.SetMode(CleanMode::Shred);
             cleaner.Clean();
-        } else if (q.command == "PURGE") {
+            TaskHistory::Instance().MarkCompleted(taskId, "AQL SHRED finished.", 0, 0, 0, 0);
+        } else if (q.command == "PURGE" || q.command == "EMPTY") {
             cleaner.SetEmptyRecycleBin(true);
             cleaner.EmptyWindowsRecycleBin();
+            TaskHistory::Instance().MarkCompleted(taskId, "AQL PURGE finished.", 0, 0, 0, 0);
         } else if (q.command == "KILL") {
             if (!q.targetPaths.empty()) {
                 for (const auto& tp : q.targetPaths) {
                     std::string targetProc = tp.string();
+                    std::string tpLower = targetProc;
+                    std::transform(tpLower.begin(), tpLower.end(), tpLower.begin(), ::tolower);
+
+                    // Check per-process RAM threshold (WHERE RAM > 200MB)
+                    if (q.minSizeBytes > 0) {
+                        auto groups = ProcessManager::GetAggregatedProcessGroups(0);
+                        uintmax_t procRam = 0;
+                        for (const auto& grp : groups) {
+                            std::string gLower = grp.processName;
+                            std::transform(gLower.begin(), gLower.end(), gLower.begin(), ::tolower);
+                            if (gLower.find(tpLower) != std::string::npos || tpLower.find(gLower) != std::string::npos) {
+                                procRam += grp.totalMemoryUsageBytes;
+                            }
+                        }
+                        if (procRam < q.minSizeBytes) {
+                            std::cout << "\033[1;33m[AQL RAM GUARD] Process '" << targetProc << "' RAM (" << Cleaner::FormatSize(procRam)
+                                      << ") is below threshold (" << Cleaner::FormatSize(q.minSizeBytes) << "). Skipped.\033[0m\n";
+                            TaskHistory::Instance().MarkCompleted(taskId, "RAM " + Cleaner::FormatSize(procRam) + " < " + Cleaner::FormatSize(q.minSizeBytes) + ". Skipped.", 0, 0, 0, 0);
+                            return;
+                        }
+                    }
+
+                    // Check system RAM percentage threshold (WHERE RAM > 80%)
+                    if (q.ramThresholdPercent > 0.0) {
+                        double curRam = SmartScheduler::GetMemoryUsagePercent();
+                        if (curRam < q.ramThresholdPercent) {
+                            std::cout << "\033[1;33m[AQL RAM GUARD] System RAM (" << static_cast<int>(curRam)
+                                      << "%) is below threshold (" << static_cast<int>(q.ramThresholdPercent) << "%). Skipped.\033[0m\n";
+                            TaskHistory::Instance().MarkCompleted(taskId, "RAM " + std::to_string((int)curRam) + "% < " + std::to_string((int)q.ramThresholdPercent) + "%. Skipped.", 0, 0, 0, 0);
+                            return;
+                        }
+                    }
+
                     std::cout << "\033[1;36m[AQL PROCESS KILL] Terminating target process: " << targetProc << "...\033[0m\n";
                     size_t kCount = GTLIBC::GTLibc::KillProcessByName(targetProc, !dryRun, true);
                     if (kCount > 0) {
@@ -341,35 +431,21 @@ public:
                         TaskHistory::Instance().MarkCompleted(taskId, "No active processes matched " + targetProc, 0, 0, 0, 0);
                     }
                 }
-                return;
             } else {
-                uintmax_t ramCutoff = 0;
-                if (q.ramThresholdPercent > 0) {
-                    uintmax_t totalRam = SmartScheduler::GetTotalMemoryBytes();
-                    ramCutoff = static_cast<uintmax_t>((q.ramThresholdPercent / 100.0) * totalRam);
-                    std::cout << "\033[1;32m[AQL] Evaluating RAM % threshold: " << static_cast<int>(q.ramThresholdPercent)
-                              << "% of " << Cleaner::FormatSize(totalRam) << " = " << Cleaner::FormatSize(ramCutoff) << "\033[0m\n";
-                } else if (q.minSizeBytes > 0) {
-                    ramCutoff = q.minSizeBytes;
-                } else {
-                    ramCutoff = 200ULL * 1024 * 1024;
-                }
-
+                uintmax_t ramCutoff = (q.minSizeBytes > 0) ? q.minSizeBytes : (200ULL * 1024 * 1024);
                 auto candidates = ProcessManager::GetHighMemoryCandidates(ramCutoff);
                 std::cout << "\033[1;36m[AQL PROCESS SCAN] Found " << candidates.size() << " process(es) matching RAM threshold.\033[0m\n";
                 for (const auto& proc : candidates) {
                     std::string statusStr = proc.isProtected ? "\033[1;32m[PROTECTED APP - PRESERVED]\033[0m" : "\033[1;33m[PERMISSION REQUIRED]\033[0m";
                     std::cout << "  - " << proc.processName << " (PID: " << proc.pid << ", RAM: " << Cleaner::FormatSize(proc.memoryUsageBytes) << ") -> " << statusStr << "\n";
                 }
-
-                bool allowKill = false; // Require explicit permission / interactive selection
+                bool allowKill = false;
                 ProcessManager::KillHighMemoryProcesses(ramCutoff, !dryRun, allowKill);
+                TaskHistory::Instance().MarkCompleted(taskId, "AQL KILL high-RAM scan finished.", 0, 0, 0, 0);
             }
         } else if (q.command == "MONITOR") {
             SmartScheduler::RunDaemonService(cleaner, {}, q.ramThresholdPercent, q.diskThresholdPercent, q.intervalSeconds, dryRun, q.diskFreeBelowBytes, q.drive);
+            TaskHistory::Instance().MarkCompleted(taskId, "AQL MONITOR service finished.", 0, 0, 0, 0);
         }
-
-        // Mark the AQL task as completed in the unified Task Library
-        TaskHistory::Instance().MarkCompleted(taskId, "AQL " + q.command + " finished.", 0, 0, 0, 0);
     }
 };

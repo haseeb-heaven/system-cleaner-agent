@@ -921,26 +921,54 @@ public:
                 }
                 case 5: {
                     std::string selectedQuery = SelectAgentQuery();
-                    // Guard: skip if empty or the user just typed 'help'
-                    if (selectedQuery.empty()) break;
-                    std::string sqLower = selectedQuery;
-                    std::transform(sqLower.begin(), sqLower.end(), sqLower.begin(), ::tolower);
-                    if (sqLower == "help" || sqLower == "?" || sqLower == "h") break;
+                    if (selectedQuery.empty()) {
+                        std::cout << "\033[1;33m[AQL CANCELLED] Operation cancelled by user.\033[0m\n";
+                        std::this_thread::sleep_for(std::chrono::seconds(1));
+                        break;
+                    }
+                    std::string sqUpper = selectedQuery;
+                    std::transform(sqUpper.begin(), sqUpper.end(), sqUpper.begin(), ::toupper);
+                    if (sqUpper == "HELP" || sqUpper == "?" || sqUpper == "H") break;
 
-                    std::cout << "\033[1;33mLaunching background Agent Task: " << selectedQuery << "\033[0m\n";
-                    {
-                        uint64_t tid = TaskHistory::Instance().Register("AGENT", "Agent: " + selectedQuery, selectedQuery, "OpenTUI Menu");
+                    static const std::vector<std::string> aqlVerbs = {
+                        "KILL", "SELECT", "CLEAN", "SCAN", "SHRED", "PURGE", "MONITOR", "WIPE", "EMPTY"
+                    };
+                    bool isAQL = false;
+                    for (const auto& verb : aqlVerbs) {
+                        if (sqUpper.find(verb) == 0 || sqUpper.find(" " + verb + " ") != std::string::npos || sqUpper.find(verb + " ") == 0) {
+                            isAQL = true;
+                            break;
+                        }
+                    }
+
+                    if (isAQL) {
+                        AQLQuery parsed = AQLEngine::Parse(selectedQuery);
+                        AQLEngine::ValidationResult val = AQLEngine::Validate(selectedQuery);
+                        if (!val.isValid) {
+                            std::cout << "\033[1;31m[AQL SYNTAX ERROR] " << val.errorMessage << "\033[0m\n";
+                            std::cout << "\033[1;33m[STRICT AQL GRAMMAR RULES & EXAMPLES]\n" << val.suggestedHint << "\033[0m\n\n";
+                            std::cout << "\033[90mPress Enter to return...\033[0m";
+                            std::cin.get();
+                            break;
+                        }
                         bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
-                        std::thread worker([selectedQuery, currentDryRun, tid]() {
-                            TaskHistory::Instance().MarkRunning(tid);
-                            TaskHistory::Instance().UpdateProgress(tid, "ReAct agent reasoning...");
-                            g_tuiStatus.SetActive("Agent Task: " + selectedQuery);
-                            AgentEngine agent(selectedQuery);
-                            agent.RunReActLoop(currentDryRun);
-                            g_tuiStatus.SetCompleted("Agent Task finished: " + selectedQuery);
-                            TaskHistory::Instance().MarkCompleted(tid, "Agent loop finished for: " + selectedQuery);
-                        });
-                        worker.detach();
+                        AQLEngine::Execute(parsed, cleaner, currentDryRun);
+                    } else {
+                        std::cout << "\033[1;33mLaunching background Agent Task: " << selectedQuery << "\033[0m\n";
+                        {
+                            uint64_t tid = TaskHistory::Instance().Register("AGENT", "Agent: " + selectedQuery, selectedQuery, "OpenTUI Menu");
+                            bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
+                            std::thread worker([selectedQuery, currentDryRun, tid]() {
+                                TaskHistory::Instance().MarkRunning(tid);
+                                TaskHistory::Instance().UpdateProgress(tid, "ReAct agent reasoning...");
+                                g_tuiStatus.SetActive("Agent Task: " + selectedQuery);
+                                AgentEngine agent(selectedQuery);
+                                agent.RunReActLoop(currentDryRun);
+                                g_tuiStatus.SetCompleted("Agent Task finished: " + selectedQuery);
+                                TaskHistory::Instance().MarkCompleted(tid, "Agent loop finished for: " + selectedQuery);
+                            });
+                            worker.detach();
+                        }
                     }
                     break;
                 }
