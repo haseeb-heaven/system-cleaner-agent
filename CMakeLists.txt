@@ -15,6 +15,7 @@ set(HEADERS
     include/OpenTUI.hpp
     include/TUI.hpp
     include/AgentEngine.hpp
+    include/SmartScheduler.hpp
 )
 
 # Single Canonical Target Executable

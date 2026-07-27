@@ -3,6 +3,7 @@
 #include "Logger.hpp"
 #include "ProcessManager.hpp"
 #include "ContentInspector.hpp"
+#include "SmartScheduler.hpp"
 
 #include <iostream>
 #include <string>
@@ -30,6 +31,8 @@ class AgentEngine {
     std::string userGoal;
     std::vector<fs::path> targetCustomPaths;
     std::vector<ReActStep> trajectory;
+    double memThreshold = 0.0;
+    double diskThreshold = 0.0;
     bool verbose = true;
 
     std::string GetCurrentTimestamp() {
@@ -78,6 +81,11 @@ class AgentEngine {
             } else if (token.size() >= 2 && token[0] == '/' && std::isalnum(static_cast<unsigned char>(token[1]))) {
                 fs::path p(token);
                 targetCustomPaths.push_back(p);
+            } else if (token.find("mem>") != std::string::npos || token.find("ram>") != std::string::npos) {
+                size_t pos = token.find('>');
+                std::string val = token.substr(pos + 1);
+                if (val.back() == '%') val.pop_back();
+                try { memThreshold = std::stod(val); } catch (...) {}
             }
         }
     }
@@ -90,6 +98,8 @@ public:
 
     void SetVerbose(bool v) { verbose = v; }
     void SetCustomTargetPaths(const std::vector<fs::path>& paths) { targetCustomPaths = paths; }
+    void SetMemThreshold(double t) { memThreshold = t; }
+    void SetDiskThreshold(double t) { diskThreshold = t; }
 
     const std::vector<ReActStep>& GetTrajectory() const { return trajectory; }
 
@@ -113,6 +123,13 @@ public:
         }
         std::cout << "================================================================================\n"
                   << "\033[0m\n";
+
+        // STEP 0: System Resource & Memory Threshold Inspection
+        double curMem = SmartScheduler::GetMemoryUsagePercent();
+        double curDisk = SmartScheduler::GetDiskUsagePercent();
+        AddStep(AgentStepType::Thought, "Evaluating system memory (RAM: " + std::to_string(curMem) + "%) and disk storage (" + std::to_string(curDisk) + "%)...");
+        AddStep(AgentStepType::Action, "INSPECT_SYSTEM_RESOURCES()");
+        AddStep(AgentStepType::Observation, "System metrics observed: Memory=" + std::to_string(curMem) + "%, Disk=" + std::to_string(curDisk) + "%");
 
         // STEP 1: Reason about system state & target paths
         std::string targetDesc = targetCustomPaths.empty() ? "system target drives and cache locations" : "specified target path(s)";

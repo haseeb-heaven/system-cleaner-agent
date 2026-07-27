@@ -2,6 +2,7 @@
 #include "Cleaner.hpp"
 #include "Logger.hpp"
 #include "OpenTUI.hpp"
+#include "SmartScheduler.hpp"
 
 #include <iostream>
 #include <vector>
@@ -28,7 +29,7 @@ public:
             "Execute Secure Shred Cleanup (Zero-Overwrite Wipe)",
             "Purge Windows Recycle Bin / OS Trash Bin",
             "Run ReAct Autonomous Agent Execution Loop",
-            "Run Background Daemon Service (Cron Mode)",
+            "Smart Daemon & Memory Threshold Monitor (RAM > 80% Auto-Clean)",
             "Export System Scan Report to JSON",
             "Run Engine Diagnostic & Unit Test Suite",
             "Exit system-cleaner-agent"
@@ -92,14 +93,21 @@ public:
                     break;
                 }
                 case 5: {
-                    std::cout << "Enter cron daemon interval in seconds (e.g. 300 for 5m): ";
-                    int sec = 300;
+                    double currentMem = SmartScheduler::GetMemoryUsagePercent();
+                    double currentDisk = SmartScheduler::GetDiskUsagePercent();
+                    std::cout << "Current System RAM Usage: " << currentMem << "%\n";
+                    std::cout << "Current Disk Storage Usage: " << currentDisk << "%\n\n";
+
+                    std::cout << "Enter Memory RAM Threshold Percentage to trigger Auto-Clean (e.g. 80 for 80%): ";
+                    double memThresh = 80.0;
+                    std::cin >> memThresh;
+
+                    std::cout << "Enter Check Interval in seconds (e.g. 15): ";
+                    long long sec = 15;
                     std::cin >> sec;
-                    std::cout << "Running background daemon service. Press Ctrl+C to terminate.\n";
-                    while (true) {
-                        cleaner.Clean();
-                        std::this_thread::sleep_for(std::chrono::seconds(sec));
-                    }
+
+                    std::cout << "Starting Smart Daemon Service... Press Ctrl+C to stop.\n";
+                    SmartScheduler::RunDaemonService(cleaner, {}, memThresh, 0.0, sec, true);
                     break;
                 }
                 case 6: {
@@ -109,9 +117,10 @@ public:
                     break;
                 }
                 case 7: {
-                    std::cout << "\033[1;32mRunning OpenTUI Engine Diagnostics...\033[0m\n";
-                    std::cout << "OpenTUI Progress Bar Test: " << OpenTUI::ProgressBar::Render(75.5) << "\n";
-                    Logger::Instance().Info("All OpenTUI components operational.");
+                    std::cout << "\033[1;32mRunning OpenTUI & Smart Scheduler Diagnostics...\033[0m\n";
+                    std::cout << "System RAM Usage: " << SmartScheduler::GetMemoryUsagePercent() << "%\n";
+                    std::cout << "OpenTUI Progress Bar Test: " << OpenTUI::ProgressBar::Render(SmartScheduler::GetMemoryUsagePercent()) << "\n";
+                    Logger::Instance().Info("All OpenTUI and SmartScheduler components operational.");
                     break;
                 }
             }

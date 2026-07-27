@@ -4,6 +4,7 @@
 #include "include/ContentInspector.hpp"
 #include "include/TUI.hpp"
 #include "include/AgentEngine.hpp"
+#include "include/SmartScheduler.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -24,6 +25,7 @@ void PrintHelp() {
               << "  system-cleaner-agent [COMMAND] [FLAGS]\n\n"
               << "\033[1mCOMMANDS:\033[0m\n"
               << "  \033[36magent\033[0m        Launch Autonomous ReAct Agent Loop (Thought->Action->Observation).\n"
+              << "  \033[36mdaemon\033[0m       Run Smart Background Scheduler & Memory Threshold Monitoring Daemon.\n"
               << "  \033[36mscan\033[0m         Analyze system/drive targets and report cleanable storage.\n"
               << "  \033[36mclean\033[0m        Execute multi-threaded cleanup using active policy rules.\n"
               << "  \033[36mdeep-clean\033[0m   Perform full system cache cleanup + empty OS Recycle Bin / Trash.\n"
@@ -31,6 +33,11 @@ void PrintHelp() {
               << "  \033[36mtest\033[0m         Execute automated engine diagnostic & unit test suite.\n"
               << "  \033[36mversion\033[0m      Display version, engine build, and architecture details.\n"
               << "  \033[36mhelp\033[0m         Show this help and usage specification.\n\n"
+              << "\033[1mSMART SCHEDULER & THRESHOLD MONITORING:\033[0m\n"
+              << "  \033[33m--mem-threshold <pct>\033[0m Automatic cleanup trigger when system RAM exceeds percentage (e.g. 80%).\n"
+              << "  \033[33m--disk-threshold <pct>\033[0m Automatic cleanup trigger when Disk space exceeds percentage (e.g. 90%).\n"
+              << "  \033[33m--schedule <rule>\033[0m     Set folder-specific rule (e.g. \"D:/Temp:15m:mem>80%\").\n"
+              << "  \033[33m--interval <dur>\033[0m      Check interval duration for daemon monitor (default: 15s).\n\n"
               << "\033[1mAGENTIC REACT OPTIONS:\033[0m\n"
               << "  \033[33m--task <goal>\033[0m        Specify custom natural language goal for ReAct loop.\n"
               << "  \033[33m--agent\033[0m              Enable autonomous reasoning and action trajectory.\n\n"
@@ -57,8 +64,8 @@ void PrintHelp() {
               << "  \033[33m--cron <duration>\033[0m      Run daemon service on recurring schedule (e.g. 10m, 1h).\n"
               << "  \033[33m--verbose\033[0m              Enable detailed trace logging.\n\n"
               << "\033[1mPRODUCTION EXAMPLES:\033[0m\n"
-              << "  system-cleaner-agent\n"
-              << "  system-cleaner-agent agent --task \"Perform clean code on D:/Temp\"\n"
+              << "  system-cleaner-agent daemon --mem-threshold 80% --interval 15s\n"
+              << "  system-cleaner-agent agent --task \"Perform clean code on D:/Temp when mem>80%\"\n"
               << "  system-cleaner-agent scan --dry-run\n"
               << "  system-cleaner-agent deep-clean --recycle-bin\n";
 }
@@ -131,7 +138,6 @@ int main(int argc, char* argv[]) {
 
     Cleaner cleaner;
 
-    // Running with no arguments defaults to OpenTUI Interactive Dashboard
     if (argc < 2) {
         TUI::RunInteractiveMenu(cleaner);
         return 0;
@@ -162,10 +168,16 @@ int main(int argc, char* argv[]) {
     bool recycleBin = false;
     bool killLocks = true;
     long long cronIntervalSeconds = 0;
+    long long daemonCheckIntervalSeconds = 15;
+    double memThresholdPercent = 0.0;
+    double diskThresholdPercent = 0.0;
+    std::vector<ScheduleRule> scheduleRules;
+
     size_t threadCount = 0;
     std::string jsonReportPath = "";
     std::string agentTaskGoal = "Perform autonomous system optimization and storage cleanup";
     bool runAgentLoop = (cmd == "agent" || cmd == "--agent" || cmd == "-a");
+    bool runDaemon = (cmd == "daemon" || cmd == "--daemon");
 
     std::vector<fs::path> customPaths;
     std::vector<fs::path> targetDrives;
@@ -182,6 +194,19 @@ int main(int argc, char* argv[]) {
         } else if (lowerArg == "--task" && i + 1 < argc) {
             agentTaskGoal = argv[++i];
             runAgentLoop = true;
+        } else if (lowerArg == "--mem-threshold" && i + 1 < argc) {
+            std::string val = argv[++i];
+            if (val.back() == '%') val.pop_back();
+            try { memThresholdPercent = std::stod(val); } catch (...) {}
+        } else if (lowerArg == "--disk-threshold" && i + 1 < argc) {
+            std::string val = argv[++i];
+            if (val.back() == '%') val.pop_back();
+            try { diskThresholdPercent = std::stod(val); } catch (...) {}
+        } else if (lowerArg == "--schedule" && i + 1 < argc) {
+            scheduleRules.push_back(SmartScheduler::ParseRuleString(argv[++i]));
+        } else if (lowerArg == "--interval" && i + 1 < argc) {
+            daemonCheckIntervalSeconds = ParseDuration(argv[++i]);
+            if (daemonCheckIntervalSeconds <= 0) daemonCheckIntervalSeconds = 15;
         } else if (lowerArg == "--recycle-bin") {
             recycleBin = true;
         } else if (lowerArg == "--kill-locks" && i + 1 < argc) {
@@ -256,11 +281,27 @@ int main(int argc, char* argv[]) {
         return 0;
     }
 
+    cleaner.SetMode(cleanMode);
+    cleaner.SetDryRun(dryRun);
+    cleaner.SetEmptyRecycleBin(recycleBin);
+    cleaner.SetKillLockingProcesses(killLocks);
+    cleaner.SetCustomPaths(customPaths);
+    cleaner.SetTargetDrives(targetDrives);
+    cleaner.SetInspectionConfig(cfg);
+    if (threadCount > 0) cleaner.SetMaxThreads(threadCount);
+
+    if (runDaemon) {
+        SmartScheduler::RunDaemonService(cleaner, scheduleRules, memThresholdPercent, diskThresholdPercent, daemonCheckIntervalSeconds, dryRun);
+        return 0;
+    }
+
     if (runAgentLoop) {
         AgentEngine agent(agentTaskGoal);
         if (!customPaths.empty()) {
             agent.SetCustomTargetPaths(customPaths);
         }
+        if (memThresholdPercent > 0.0) agent.SetMemThreshold(memThresholdPercent);
+        if (diskThresholdPercent > 0.0) agent.SetDiskThreshold(diskThresholdPercent);
         agent.RunReActLoop(dryRun);
         return 0;
     }
@@ -270,15 +311,6 @@ int main(int argc, char* argv[]) {
         cleanMode = CleanMode::Deep;
         cmd = "clean";
     }
-
-    cleaner.SetMode(cleanMode);
-    cleaner.SetDryRun(dryRun);
-    cleaner.SetEmptyRecycleBin(recycleBin);
-    cleaner.SetKillLockingProcesses(killLocks);
-    cleaner.SetCustomPaths(customPaths);
-    cleaner.SetTargetDrives(targetDrives);
-    cleaner.SetInspectionConfig(cfg);
-    if (threadCount > 0) cleaner.SetMaxThreads(threadCount);
 
     PrintHeader();
     Logger::Instance().Info("Execution mode: " + cmd + (dryRun ? " [DRY-RUN]" : ""));

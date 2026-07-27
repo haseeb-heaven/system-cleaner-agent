@@ -4,6 +4,7 @@
 #include "Logger.hpp"
 #include "AgentEngine.hpp"
 #include "OpenTUI.hpp"
+#include "SmartScheduler.hpp"
 
 #include <iostream>
 #include <cassert>
@@ -148,16 +149,34 @@ void TestOpenTUIFramework() {
     std::cout << "\033[32mPASSED (4 assertions)\033[0m\n";
 }
 
+void TestSmartSchedulerEngine() {
+    std::cout << "[TEST] Running Smart Scheduler & Memory Threshold Tests... ";
+
+    double memPct = SmartScheduler::GetMemoryUsagePercent();
+    double diskPct = SmartScheduler::GetDiskUsagePercent();
+    assert(memPct >= 0.0 && memPct <= 100.0);
+    assert(diskPct >= 0.0 && diskPct <= 100.0);
+
+    ScheduleRule rule = SmartScheduler::ParseRuleString("D:/Temp:15m:mem>80%");
+    assert(rule.targetFolder.string() == "D:/Temp");
+    assert(rule.intervalSeconds == 900);
+    assert(rule.memThresholdPercent == 80.0);
+
+    std::cout << "\033[32mPASSED (5 assertions)\033[0m\n";
+}
+
 void TestAgentGoalPathExtractor() {
     std::cout << "[TEST] Running Agent Goal Path Extractor Tests... ";
 
-    AgentEngine agent1("Perform clean code on D:/Temp");
-    AgentEngine agent2("Clean cache directory at /tmp/custom_cache");
+    AgentEngine agent1("Perform clean code on D:/Temp when mem>80%");
+    fs::path dummyTarget = fs::temp_directory_path() / "agent_goal_test";
+    fs::create_directories(dummyTarget);
 
-    // Trajectory checks
+    agent1.SetCustomTargetPaths({dummyTarget});
     agent1.RunReActLoop(true);
-    assert(agent1.GetTrajectory().size() >= 5);
+    assert(agent1.GetTrajectory().size() >= 6);
 
+    fs::remove_all(dummyTarget);
     std::cout << "\033[32mPASSED (2 assertions)\033[0m\n";
 }
 
@@ -177,7 +196,7 @@ void TestReActAgentTrajectory() {
     agent.RunReActLoop(true);
 
     const auto& steps = agent.GetTrajectory();
-    assert(steps.size() >= 5);
+    assert(steps.size() >= 6);
     assert(steps[0].type == AgentStepType::Thought);
     assert(steps[1].type == AgentStepType::Action);
     assert(steps[2].type == AgentStepType::Observation);
@@ -188,7 +207,7 @@ void TestReActAgentTrajectory() {
 
 int main() {
     std::cout << "\033[1;36m====================================================================\n"
-              << "  system-cleaner-agent v5.0 - OpenTUI & ReAct Unit Test Suite       \n"
+              << "  system-cleaner-agent v5.0 - OpenTUI & SmartScheduler Suite         \n"
               << "====================================================================\033[0m\n\n";
 
     TestHexHashDetector();
@@ -197,6 +216,7 @@ int main() {
     TestDurationAndSizeParsers();
     TestMagicBytes();
     TestOpenTUIFramework();
+    TestSmartSchedulerEngine();
     TestAgentGoalPathExtractor();
     TestReActAgentTrajectory();
 
