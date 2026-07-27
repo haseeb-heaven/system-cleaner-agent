@@ -12,10 +12,22 @@
 #include <thread>
 #include <atomic>
 #include <mutex>
+#include <sstream>
 
 #ifdef _WIN32
 #include <conio.h>
 #endif
+
+// Global TUI Settings State
+struct TUISettings {
+    bool sandboxMode = false;        // OFF allows real deletion as requested!
+    bool pathProtection = true;     // ON by default
+    bool dryRun = false;            // OFF allows real deletion as requested!
+    bool killLocks = true;          // ON by default
+    std::string customPathsStr = "C:\\Users\\hasee\\AppData\\Local\\Temp";
+};
+
+static TUISettings g_tuiSettings;
 
 // Background Task State for Non-Blocking TUI Interface
 struct TUITaskStatus {
@@ -39,10 +51,11 @@ struct TUITaskStatus {
 
     std::string GetStatusLine() {
         std::lock_guard<std::mutex> lock(mtx);
+        std::string modeStr = g_tuiSettings.sandboxMode ? " [SANDBOX]" : " [REAL CLEAN]";
         if (isRunning) {
-            return "[STATUS] 🟢 ACTIVE: " + taskName;
+            return "[STATUS] 🟢 ACTIVE: " + taskName + modeStr;
         } else {
-            return "[STATUS] ⚪ READY | " + lastMessage;
+            return "[STATUS] ⚪ READY | " + lastMessage + modeStr;
         }
     }
 };
@@ -68,6 +81,56 @@ public:
 #ifdef _WIN32
         while (_kbhit()) { (void)_getch(); }
 #endif
+    }
+
+    static void ShowSettingsMenu(Cleaner& cleaner) {
+        while (true) {
+            std::vector<std::string> settingsOptions = {
+                std::string("Sandbox Mode:     [") + (g_tuiSettings.sandboxMode ? "ON  - Preview Only" : "OFF - REAL DELETION ALLOWED") + "]",
+                std::string("Path Protection:  [") + (g_tuiSettings.pathProtection ? "ON  - System Dir Guard" : "OFF - Disabled") + "]",
+                std::string("Dry-Run Mode:     [") + (g_tuiSettings.dryRun ? "ON  - Preview Only" : "OFF - REAL CLEAN") + "]",
+                std::string("Kill Locks:       [") + (g_tuiSettings.killLocks ? "ON" : "OFF") + "]",
+                std::string("Target Folders:   [") + g_tuiSettings.customPathsStr + "]",
+                "Save & Return to Dashboard"
+            };
+
+            OpenTUI::Menu settingsMenu("TUI SETTINGS & SECURITY TOGGLES", settingsOptions);
+            int sel = settingsMenu.Show();
+
+            if (sel == -1 || sel == 5) {
+                cleaner.SetSandbox(g_tuiSettings.sandboxMode);
+                cleaner.SetDangerousPathProtection(g_tuiSettings.pathProtection);
+                cleaner.SetDryRun(g_tuiSettings.dryRun);
+                cleaner.SetKillLockingProcesses(g_tuiSettings.killLocks);
+
+                if (!g_tuiSettings.customPathsStr.empty()) {
+                    std::vector<fs::path> paths;
+                    std::stringstream ss(g_tuiSettings.customPathsStr);
+                    std::string item;
+                    while (std::getline(ss, item, ',')) {
+                        while (!item.empty() && (item.front() == ' ' || item.front() == '"')) item.erase(0, 1);
+                        while (!item.empty() && (item.back() == ' ' || item.back() == '"')) item.pop_back();
+                        if (!item.empty()) paths.push_back(fs::path(item));
+                    }
+                    cleaner.SetCustomPaths(paths);
+                }
+                break;
+            }
+
+            switch (sel) {
+                case 0: g_tuiSettings.sandboxMode = !g_tuiSettings.sandboxMode; break;
+                case 1: g_tuiSettings.pathProtection = !g_tuiSettings.pathProtection; break;
+                case 2: g_tuiSettings.dryRun = !g_tuiSettings.dryRun; break;
+                case 3: g_tuiSettings.killLocks = !g_tuiSettings.killLocks; break;
+                case 4: {
+                    OpenTUI::TerminalEngine::ClearScreen();
+                    PrintBanner();
+                    std::string newPath = OpenTUI::TextInput::ReadLine("Enter target PATH folders (comma-separated): ", g_tuiSettings.customPathsStr);
+                    if (!newPath.empty()) g_tuiSettings.customPathsStr = newPath;
+                    break;
+                }
+            }
+        }
     }
 
     static std::string SelectAgentQuery() {
@@ -108,6 +171,7 @@ public:
             "Empty Recycle Bin",
             "Agent & AQL Query",
             "Daemon Monitor",
+            "Settings & Security Toggles",
             "Export JSON Report",
             "Engine Unit Tests",
             "Exit Agent"
@@ -119,7 +183,7 @@ public:
             menu.SetStatusLine(g_tuiStatus.GetStatusLine());
             int selected = menu.Show();
 
-            if (selected == -1 || selected == 8) {
+            if (selected == -1 || selected == 9) {
                 std::cout << "\n\033[32mExiting system-cleaner-agent OpenTUI Suite. Goodbye!\033[0m\n";
                 break;
             }
@@ -146,7 +210,8 @@ public:
                     std::cout << "\033[1;36mLaunching background Smart Deep Clean...\033[0m\n";
                     std::thread worker([&cleaner]() {
                         g_tuiStatus.SetActive("Smart Deep Clean");
-                        cleaner.SetDryRun(false);
+                        cleaner.SetSandbox(g_tuiSettings.sandboxMode);
+                        cleaner.SetDryRun(g_tuiSettings.dryRun);
                         cleaner.Clean();
                         g_tuiStatus.SetCompleted("Deep Clean finished.");
                     });
@@ -158,7 +223,8 @@ public:
                     std::thread worker([&cleaner]() {
                         g_tuiStatus.SetActive("Secure Shred Wipe");
                         cleaner.SetMode(CleanMode::Shred);
-                        cleaner.SetDryRun(false);
+                        cleaner.SetSandbox(g_tuiSettings.sandboxMode);
+                        cleaner.SetDryRun(g_tuiSettings.dryRun);
                         cleaner.Clean();
                         g_tuiStatus.SetCompleted("Shred Wipe finished.");
                     });
@@ -179,10 +245,11 @@ public:
                 case 4: {
                     std::string selectedQuery = SelectAgentQuery();
                     std::cout << "\033[1;33mLaunching background Agent Task: " << selectedQuery << "\033[0m\n";
-                    std::thread worker([selectedQuery]() {
+                    bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
+                    std::thread worker([selectedQuery, currentDryRun]() {
                         g_tuiStatus.SetActive("Agent Task: " + selectedQuery);
                         AgentEngine agent(selectedQuery);
-                        agent.RunReActLoop(true);
+                        agent.RunReActLoop(currentDryRun);
                         g_tuiStatus.SetCompleted("Agent Task finished: " + selectedQuery);
                     });
                     worker.detach();
@@ -190,20 +257,25 @@ public:
                 }
                 case 5: {
                     std::cout << "\033[1;36mLaunching background Smart Daemon Service...\033[0m\n";
-                    std::thread worker([&cleaner]() {
+                    bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
+                    std::thread worker([&cleaner, currentDryRun]() {
                         g_tuiStatus.SetActive("Smart Daemon (RAM > 80% / Free Disk < 500MB)");
-                        SmartScheduler::RunDaemonService(cleaner, {}, 80.0, 0.0, 15, true, 500ULL * 1024 * 1024, "C:\\");
+                        SmartScheduler::RunDaemonService(cleaner, {}, 80.0, 0.0, 15, currentDryRun, 500ULL * 1024 * 1024, "C:\\");
                     });
                     worker.detach();
                     break;
                 }
                 case 6: {
+                    ShowSettingsMenu(cleaner);
+                    break;
+                }
+                case 7: {
                     cleaner.SetDryRun(true);
                     auto reports = cleaner.Scan();
                     std::cout << "\nReport complete. Total targets scanned: " << reports.size() << "\n";
                     break;
                 }
-                case 7: {
+                case 8: {
                     std::cout << "\033[1;32mRunning OpenTUI & Smart Scheduler Diagnostics...\033[0m\n";
                     std::cout << "System RAM Usage: " << SmartScheduler::GetMemoryUsagePercent() << "%\n";
                     std::cout << "OpenTUI Progress Bar Test: " << OpenTUI::ProgressBar::Render(SmartScheduler::GetMemoryUsagePercent()) << "\n";
