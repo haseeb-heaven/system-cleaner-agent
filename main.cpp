@@ -2,6 +2,7 @@
 #include "include/Logger.hpp"
 #include "include/ProcessManager.hpp"
 #include "include/ContentInspector.hpp"
+#include "include/TUI.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -13,11 +14,7 @@
 #include <sstream>
 
 void PrintHeader() {
-    std::cout << "\033[1;36m"
-              << "================================================================================\n"
-              << "  GEMINI SYSTEM CLEANER v3.0 (Enterprise Edition - C++17 Multi-Platform Engine) \n"
-              << "================================================================================\n"
-              << "\033[0m";
+    TUI::PrintBanner();
 }
 
 void PrintHelp() {
@@ -28,6 +25,8 @@ void PrintHelp() {
               << "  \033[36mscan\033[0m         Analyze system/drive targets and report cleanable storage.\n"
               << "  \033[36mclean\033[0m        Execute multi-threaded cleanup using active policy rules.\n"
               << "  \033[36mdeep-clean\033[0m   Perform full system cache cleanup + empty OS Recycle Bin / Trash.\n"
+              << "  \033[36mtui\033[0m          Launch interactive Terminal User Interface (TUI).\n"
+              << "  \033[36mtest\033[0m         Execute automated engine diagnostic & unit test suite.\n"
               << "  \033[36mversion\033[0m      Display version, engine build, and architecture details.\n"
               << "  \033[36mhelp\033[0m         Show this help and usage specification.\n\n"
               << "\033[1mFILTERING & TARGET SELECTION (WHAT):\033[0m\n"
@@ -53,6 +52,7 @@ void PrintHelp() {
               << "  \033[33m--cron <duration>\033[0m      Run daemon service on recurring schedule (e.g. 10m, 1h).\n"
               << "  \033[33m--verbose\033[0m              Enable detailed trace logging.\n\n"
               << "\033[1mPRODUCTION EXAMPLES:\033[0m\n"
+              << "  gemini-sys-cleaner tui\n"
               << "  gemini-sys-cleaner scan --dry-run\n"
               << "  gemini-sys-cleaner deep-clean --recycle-bin\n"
               << "  gemini-sys-cleaner clean --path \"D:\\tmp\" --older-than 24h\n"
@@ -75,7 +75,7 @@ void ExportJsonReport(const std::string& jsonPath, const std::vector<TargetRepor
         if (!jsonFile.is_open()) return;
 
         jsonFile << "{\n";
-        jsonFile << "  \"engine\": \"Gemini Enterprise System Cleaner v3.0 (C++17)\",\n";
+        jsonFile << "  \"engine\": \"Gemini Enterprise System Cleaner v3.5 (C++17)\",\n";
         jsonFile << "  \"targets\": [\n";
 
         uintmax_t grandTotal = 0;
@@ -139,13 +139,28 @@ int main(int argc, char* argv[]) {
     }
 
     if (cmd == "version" || cmd == "--version" || cmd == "-v") {
-        std::cout << "Gemini System Cleaner v3.0.0 (C++17 Enterprise Engine - 64-bit Architecture)\n";
+        std::cout << "Gemini System Cleaner v3.5.0 (C++17 Enterprise Engine - 64-bit Architecture)\n";
         return 0;
     }
 
     Cleaner cleaner;
     InspectionConfig cfg;
     CleanMode cleanMode = CleanMode::Light;
+
+    if (cmd == "tui" || cmd == "--interactive" || cmd == "-i") {
+        TUI::RunInteractiveMenu(cleaner);
+        return 0;
+    }
+
+    if (cmd == "test" || cmd == "--test") {
+        std::cout << "Executing Engine Unit Tests...\n";
+#ifdef _WIN32
+        system("unit_tests.exe");
+#else
+        system("./unit_tests");
+#endif
+        return 0;
+    }
 
     bool dryRun = false;
     bool recycleBin = false;
