@@ -24,6 +24,7 @@ struct AppConfig {
     size_t ramThresholdMB = 200;
     std::string customPathsStr = "C:\\Users\\hasee\\AppData\\Local\\Temp";
     std::string tuiThemeEngine = "OpenTUI"; // OpenTUI, TermOx, FTXUI
+    std::string tuiColorScheme = "Cyan Matrix"; // Cyan Matrix, Electric Magenta, Amber Gold, Emerald Cyber, Neon Cyberpunk, Monochrome Slate
     std::vector<std::string> customProtectedProcesses;
 };
 
@@ -117,6 +118,7 @@ public:
         cfg.ramThresholdMB = static_cast<size_t>(getJsonInt("ramThresholdMB", 200));
         cfg.customPathsStr = getJsonString("customPathsStr", "C:\\Users\\hasee\\AppData\\Local\\Temp");
         cfg.tuiThemeEngine = getJsonString("tuiThemeEngine", "OpenTUI");
+        cfg.tuiColorScheme = getJsonString("tuiColorScheme", "Cyan Matrix");
 
         // Parse customProtectedProcesses array
         size_t arrayPos = content.find("\"customProtectedProcesses\"");
@@ -170,6 +172,7 @@ public:
         }
         json << "  \"customPathsStr\": \"" << escapedPath << "\",\n";
         json << "  \"tuiThemeEngine\": \"" << cfg.tuiThemeEngine << "\",\n";
+        json << "  \"tuiColorScheme\": \"" << cfg.tuiColorScheme << "\",\n";
 
         json << "  \"customProtectedProcesses\": [";
         for (size_t i = 0; i < cfg.customProtectedProcesses.size(); ++i) {

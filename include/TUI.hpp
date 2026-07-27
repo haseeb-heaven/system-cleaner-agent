@@ -32,6 +32,7 @@ struct TUISettings {
     size_t ramThresholdMB = 200;    // 200 MB high RAM process cutoff
     std::string customPathsStr = "C:\\Users\\hasee\\AppData\\Local\\Temp";
     std::string tuiThemeEngine = "OpenTUI"; // OpenTUI, TermOx, FTXUI
+    std::string tuiColorScheme = "Cyan Matrix"; // Cyan Matrix, Electric Magenta, Amber Gold, Emerald Cyber, Neon Cyberpunk, Monochrome Slate
     std::vector<std::string> customProtectedProcesses;
 
     void SyncFromAppConfig(const AppConfig& cfg) {
@@ -43,6 +44,7 @@ struct TUISettings {
         ramThresholdMB = cfg.ramThresholdMB;
         customPathsStr = cfg.customPathsStr;
         tuiThemeEngine = cfg.tuiThemeEngine;
+        tuiColorScheme = cfg.tuiColorScheme;
         customProtectedProcesses = cfg.customProtectedProcesses;
     }
 
@@ -56,6 +58,7 @@ struct TUISettings {
         cfg.ramThresholdMB = ramThresholdMB;
         cfg.customPathsStr = customPathsStr;
         cfg.tuiThemeEngine = tuiThemeEngine;
+        cfg.tuiColorScheme = tuiColorScheme;
         cfg.customProtectedProcesses = customProtectedProcesses;
         return cfg;
     }
@@ -518,21 +521,22 @@ public:
             static const std::string osName = "Linux";
 #endif
             std::vector<std::string> settingsOptions = {
-                std::string("TUI Engine Theme: [") + g_tuiSettings.tuiThemeEngine + " - OpenTUI / TermOx / FTXUI]",
-                std::string("Sandbox Mode:     [") + (g_tuiSettings.sandboxMode ? "ON  - Preview Only" : "OFF - REAL DELETION ALLOWED") + "]",
-                std::string("Path Protection:  [") + (g_tuiSettings.pathProtection ? "ON  - System Dir Guard" : "OFF - Disabled") + "]",
-                std::string("Dry-Run Mode:     [") + (g_tuiSettings.dryRun ? "ON  - Preview Only" : "OFF - REAL CLEAN") + "]",
-                std::string("Kill Locks:       [") + (g_tuiSettings.killLocks ? "ON" : "OFF") + "]",
-                std::string("Monitor Interval: [") + std::to_string(g_tuiSettings.monitorIntervalSec) + " seconds]",
-                std::string("Target Folders:   [") + g_tuiSettings.customPathsStr.substr(0, 50) + (g_tuiSettings.customPathsStr.size() > 50 ? "..." : "") + "]",
+                std::string("TUI Engine Theme:  [") + g_tuiSettings.tuiThemeEngine + " - OpenTUI / TermOx / FTXUI]",
+                std::string("TUI Color Palette: [") + g_tuiSettings.tuiColorScheme + "]",
+                std::string("Sandbox Mode:      [") + (g_tuiSettings.sandboxMode ? "ON  - Preview Only" : "OFF - REAL DELETION ALLOWED") + "]",
+                std::string("Path Protection:   [") + (g_tuiSettings.pathProtection ? "ON  - System Dir Guard" : "OFF - Disabled") + "]",
+                std::string("Dry-Run Mode:      [") + (g_tuiSettings.dryRun ? "ON  - Preview Only" : "OFF - REAL CLEAN") + "]",
+                std::string("Kill Locks:        [") + (g_tuiSettings.killLocks ? "ON" : "OFF") + "]",
+                std::string("Monitor Interval:  [") + std::to_string(g_tuiSettings.monitorIntervalSec) + " seconds]",
+                std::string("Target Folders:    [") + g_tuiSettings.customPathsStr.substr(0, 45) + (g_tuiSettings.customPathsStr.size() > 45 ? "..." : "") + "]",
                 std::string("Reset to OS Defaults (" + osName + " safe temp/cache paths)"),
                 "Save & Return to Dashboard"
             };
 
-            OpenTUI::Menu settingsMenu("SETTINGS & THEMES", settingsOptions);
+            OpenTUI::Menu settingsMenu("SETTINGS & THEMES", settingsOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme);
             OpenTUI::MenuSelection sel = settingsMenu.ShowExtended();
 
-            if (sel.index == -1 || sel.index == 8) {
+            if (sel.index == -1 || sel.index == 9) {
                 cleaner.SetSandbox(g_tuiSettings.sandboxMode);
                 cleaner.SetDangerousPathProtection(g_tuiSettings.pathProtection);
                 cleaner.SetDryRun(g_tuiSettings.dryRun);
@@ -553,19 +557,39 @@ public:
                 break;
             }
 
+            static const std::vector<std::string> engines = { "OpenTUI", "TermOx", "FTXUI" };
+            static const std::vector<std::string> schemes = {
+                "Cyan Matrix", "Electric Magenta", "Amber Gold", "Emerald Cyber", "Neon Cyberpunk", "Monochrome Slate"
+            };
+
             switch (sel.index) {
-                case 0: {
-                    if (g_tuiSettings.tuiThemeEngine == "OpenTUI") g_tuiSettings.tuiThemeEngine = "TermOx";
-                    else if (g_tuiSettings.tuiThemeEngine == "TermOx") g_tuiSettings.tuiThemeEngine = "FTXUI";
-                    else g_tuiSettings.tuiThemeEngine = "OpenTUI";
-                    SaveTUISettings();
+                case 0: { // Engine Theme
+                    auto it = std::find(engines.begin(), engines.end(), g_tuiSettings.tuiThemeEngine);
+                    int idx = (it != engines.end()) ? static_cast<int>(std::distance(engines.begin(), it)) : 0;
+                    if (sel.actionKey == OpenTUI::Key::Left) {
+                        idx = (idx > 0) ? idx - 1 : static_cast<int>(engines.size()) - 1;
+                    } else {
+                        idx = (idx + 1) % static_cast<int>(engines.size());
+                    }
+                    g_tuiSettings.tuiThemeEngine = engines[idx];
                     break;
                 }
-                case 1: g_tuiSettings.sandboxMode = !g_tuiSettings.sandboxMode; break;
-                case 2: g_tuiSettings.pathProtection = !g_tuiSettings.pathProtection; break;
-                case 3: g_tuiSettings.dryRun = !g_tuiSettings.dryRun; break;
-                case 4: g_tuiSettings.killLocks = !g_tuiSettings.killLocks; break;
-                case 5: {
+                case 1: { // Color Scheme Palette
+                    auto it = std::find(schemes.begin(), schemes.end(), g_tuiSettings.tuiColorScheme);
+                    int idx = (it != schemes.end()) ? static_cast<int>(std::distance(schemes.begin(), it)) : 0;
+                    if (sel.actionKey == OpenTUI::Key::Left) {
+                        idx = (idx > 0) ? idx - 1 : static_cast<int>(schemes.size()) - 1;
+                    } else {
+                        idx = (idx + 1) % static_cast<int>(schemes.size());
+                    }
+                    g_tuiSettings.tuiColorScheme = schemes[idx];
+                    break;
+                }
+                case 2: g_tuiSettings.sandboxMode = !g_tuiSettings.sandboxMode; break;
+                case 3: g_tuiSettings.pathProtection = !g_tuiSettings.pathProtection; break;
+                case 4: g_tuiSettings.dryRun = !g_tuiSettings.dryRun; break;
+                case 5: g_tuiSettings.killLocks = !g_tuiSettings.killLocks; break;
+                case 6: { // Monitor Interval
                     static const std::vector<int> intervals = { 3, 5, 10, 15, 30, 60 };
                     auto it = std::find(intervals.begin(), intervals.end(), g_tuiSettings.monitorIntervalSec);
                     int idx = (it != intervals.end()) ? static_cast<int>(std::distance(intervals.begin(), it)) : 1;
@@ -577,15 +601,14 @@ public:
                     g_tuiSettings.monitorIntervalSec = intervals[idx];
                     break;
                 }
-                case 6: {
+                case 7: { // Target Folders
                     OpenTUI::TerminalEngine::ClearScreen();
                     PrintBanner();
                     std::string newPath = OpenTUI::TextInput::ReadLine("Enter target PATH folders (comma-separated): ", g_tuiSettings.customPathsStr);
                     if (!newPath.empty()) g_tuiSettings.customPathsStr = newPath;
                     break;
                 }
-                case 7: {
-                    // Reset to OS-aware safe default temp/cache paths
+                case 8: { // Reset to OS Defaults
                     g_tuiSettings.customPathsStr = SecurityGuard::GetDefaultCleanPathsStr();
                     std::cout << "\033[1;32m[OK] Target folders reset to OS-default safe temp/cache paths.\033[0m\n";
                     std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -607,7 +630,7 @@ public:
             "SCAN WHERE AGE > 24H"
         };
 
-        OpenTUI::Menu agentMenu("AGENT QUERY", queryMenuOptions);
+        OpenTUI::Menu agentMenu("AGENT QUERY", queryMenuOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme);
         int choice = agentMenu.Show();
 
         static const std::vector<std::string> suggestions = {
@@ -714,12 +737,13 @@ public:
             "Exit Agent"
         };
 
-        OpenTUI::Menu menu("SYSTEM-CLEANER-AGENT", options, g_tuiSettings.tuiThemeEngine);
+        OpenTUI::Menu menu("SYSTEM-CLEANER-AGENT", options, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme);
         menu.SetPreRenderCallback([]() { PrintBanner(); });
         bool firstRender = true;
 
         while (true) {
             menu.SetTheme(g_tuiSettings.tuiThemeEngine);
+            menu.SetColorScheme(g_tuiSettings.tuiColorScheme);
             if (firstRender) {
                 firstRender = false;
             } else {
@@ -847,7 +871,7 @@ public:
                             "Return to Dashboard"
                         };
 
-                        OpenTUI::Menu ramMenu("RAM CLEANER PERMISSIONS", ramMenuOptions);
+                        OpenTUI::Menu ramMenu("RAM CLEANER PERMISSIONS", ramMenuOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme);
                         int ramChoice = ramMenu.Show();
 
                         if (ramChoice == -1 || ramChoice == 3) break;

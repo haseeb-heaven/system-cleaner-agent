@@ -247,50 +247,48 @@ struct ThemeStyle {
     std::string bannerSubtitle;
 };
 
-inline ThemeStyle GetThemeStyle(const std::string& themeName) {
+inline ThemeStyle GetThemeStyle(const std::string& themeName, const std::string& colorScheme = "Default (Engine Native)") {
+    std::string bTL = "╔", bTR = "╗", bBL = "╚", bBR = "╝", bH = "═", bV = "║", bSL = "╠", bSR = "╣", sel = "► ", banner = "[ AUTONOMOUS REACT AGENT | C++17 OPENTUI | AQL ENGINE ]";
+    
+    // Default Engine Native Color Palettes
+    std::string pri = Color::BrightCyan + Color::Bold;
+    std::string sec = Color::BrightCyan;
+    std::string hdr = Color::BrightWhite + Color::Bold;
+    std::string acc = Color::BrightGreen;
+    std::string st  = Color::BrightGreen;
+    std::string bg  = Color::BgBlue + Color::BrightWhite + Color::Bold;
+
     if (themeName == "TermOx") {
-        return {
-            "TermOx Widget Engine",
-            Color::BrightCyan + Color::Bold,
-            "\033[1;95m",                      // Electric Magenta
-            "\033[1;95m",                      // Magenta Header
-            "\033[1;94m",                      // Deep Blue Accent
-            "\033[1;92m",                      // Green Status
-            "\033[45m\033[1;97m",              // Magenta Background Highlight
-            "╭", "╮", "╰", "╯",                // Smooth Rounded Corners
-            "─", "│", "├", "┤",
-            "◆ ",
-            "[ TERMOX RECT WIDGET ENGINE | C++20 LAYOUT CONTAINER ]"
-        };
+        bTL = "╭"; bTR = "╮"; bBL = "╰"; bBR = "╯"; bH = "─"; bV = "│"; bSL = "├"; bSR = "┤"; sel = "◆ ";
+        banner = "[ TERMOX RECT WIDGET ENGINE | C++20 LAYOUT CONTAINER ]";
+        // TermOx signature Electric Magenta & Deep Blue theme colors
+        pri = "\033[1;95m"; sec = "\033[1;95m"; hdr = "\033[1;95m"; acc = "\033[1;94m"; st = "\033[1;92m"; bg = "\033[45m\033[1;97m";
     } else if (themeName == "FTXUI") {
-        return {
-            "FTXUI Graphical DOM Engine",
-            Color::BrightYellow + Color::Bold, // Gold
-            "\033[1;35m",                      // Royal Purple
-            "\033[1;35m",                      // Purple Header
-            "\033[1;93m",                      // Amber Accent
-            "\033[1;96m",                      // Cyan Status
-            "\033[43m\033[1;30m",              // Gold Background Highlight
-            "┏", "┓", "┗", "┛",                // Heavy Block Borders
-            "━", "┃", "┣", "┫",
-            "▶ ",
-            "[ FTXUI GRAPHICAL DOM ENGINE | COMPONENT TREE RENDERER ]"
-        };
-    } else { // OpenTUI
-        return {
-            "OpenTUI Native Engine",
-            Color::BrightCyan + Color::Bold,
-            Color::BrightCyan,
-            Color::BrightWhite + Color::Bold,
-            Color::BrightGreen,
-            Color::BrightGreen,
-            Color::BgBlue + Color::BrightWhite + Color::Bold,
-            "╔", "╗", "╚", "╝",                // Unicode Double Lines
-            "═", "║", "╠", "╣",
-            "► ",
-            "[ AUTONOMOUS REACT AGENT | C++17 OPENTUI | AQL ENGINE ]"
-        };
+        bTL = "┏"; bTR = "┓"; bBL = "┗"; bBR = "┛"; bH = "━"; bV = "┃"; bSL = "┣"; bSR = "┫"; sel = "▶ ";
+        banner = "[ FTXUI GRAPHICAL DOM ENGINE | COMPONENT TREE RENDERER ]";
+        // FTXUI signature Amber Gold & Royal Purple DOM theme colors
+        pri = "\033[1;93m"; sec = "\033[1;35m"; hdr = "\033[1;35m"; acc = "\033[1;93m"; st = "\033[1;96m"; bg = "\033[43m\033[1;30m";
     }
+
+    // Explicit Color Scheme Overrides (when user picks specific color palette)
+    if (colorScheme == "Cyan Matrix") {
+        pri = Color::BrightCyan + Color::Bold; sec = Color::BrightCyan; hdr = Color::BrightWhite + Color::Bold; acc = Color::BrightGreen; st = Color::BrightGreen; bg = Color::BgBlue + Color::BrightWhite + Color::Bold;
+    } else if (colorScheme == "Electric Magenta") {
+        pri = "\033[1;95m"; sec = "\033[1;95m"; hdr = "\033[1;95m"; acc = "\033[1;94m"; st = "\033[1;92m"; bg = "\033[45m\033[1;97m";
+    } else if (colorScheme == "Amber Gold") {
+        pri = "\033[1;93m"; sec = "\033[1;35m"; hdr = "\033[1;35m"; acc = "\033[1;33m"; st = "\033[1;96m"; bg = "\033[43m\033[1;30m";
+    } else if (colorScheme == "Emerald Cyber") {
+        pri = "\033[1;92m"; sec = "\033[1;32m"; hdr = "\033[1;97m"; acc = "\033[1;36m"; st = "\033[1;92m"; bg = "\033[42m\033[1;97m";
+    } else if (colorScheme == "Neon Cyberpunk") {
+        pri = "\033[1;95m"; sec = "\033[1;96m"; hdr = "\033[1;93m"; acc = "\033[1;96m"; st = "\033[1;95m"; bg = "\033[46m\033[1;30m";
+    } else if (colorScheme == "Monochrome Slate") {
+        pri = "\033[1;97m"; sec = "\033[1;90m"; hdr = "\033[1;97m"; acc = "\033[1;37m"; st = "\033[1;97m"; bg = "\033[47m\033[1;30m";
+    }
+
+    return {
+        themeName, pri, sec, hdr, acc, st, bg,
+        bTL, bTR, bBL, bBR, bH, bV, bSL, bSR, sel, banner
+    };
 }
 
 // =============================================================================
@@ -298,8 +296,8 @@ inline ThemeStyle GetThemeStyle(const std::string& themeName) {
 // =============================================================================
 class Box {
 public:
-    static std::string DrawBorder(int width, const std::string& title = "", const std::string& themeName = "OpenTUI") {
-        auto style = GetThemeStyle(themeName);
+    static std::string DrawBorder(int width, const std::string& title = "", const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Cyan Matrix") {
+        auto style = GetThemeStyle(themeName, colorScheme);
         std::ostringstream ss;
         ss << style.secondaryColor << style.borderTL;
         int titleLen = static_cast<int>(title.length());
@@ -316,8 +314,8 @@ public:
         return ss.str();
     }
 
-    static std::string DrawDivider(int width, const std::string& themeName = "OpenTUI") {
-        auto style = GetThemeStyle(themeName);
+    static std::string DrawDivider(int width, const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Cyan Matrix") {
+        auto style = GetThemeStyle(themeName, colorScheme);
         std::ostringstream ss;
         ss << style.secondaryColor << style.borderSplitL;
         for (int i = 0; i < width - 2; ++i) ss << style.borderHoriz;
@@ -325,8 +323,8 @@ public:
         return ss.str();
     }
 
-    static std::string DrawFooter(int width, const std::string& themeName = "OpenTUI") {
-        auto style = GetThemeStyle(themeName);
+    static std::string DrawFooter(int width, const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Cyan Matrix") {
+        auto style = GetThemeStyle(themeName, colorScheme);
         std::ostringstream ss;
         ss << style.secondaryColor << style.borderBL;
         for (int i = 0; i < width - 2; ++i) ss << style.borderHoriz;
@@ -411,8 +409,8 @@ public:
         return res;
     }
 
-    static std::string DrawLine(int width, const std::string& text, bool highlight = false, const std::string& themeName = "OpenTUI") {
-        auto style = GetThemeStyle(themeName);
+    static std::string DrawLine(int width, const std::string& text, bool highlight = false, const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Cyan Matrix") {
+        auto style = GetThemeStyle(themeName, colorScheme);
         std::ostringstream ss;
         ss << style.secondaryColor << style.borderVert << " " << Color::Reset;
         std::string safeText = TruncateVisibleText(text, width - 7);
@@ -525,15 +523,18 @@ class Menu {
     std::string statusLine;
     std::vector<std::string> headerLines;
     std::string themeName = "OpenTUI";
+    std::string colorScheme = "Cyan Matrix";
     SpinnerAnimation spinner;
     std::function<void()> onPreRender = nullptr;
 
 public:
-    Menu(const std::string& t, const std::vector<std::string>& opts, const std::string& theme = "OpenTUI")
-        : title(t), options(opts), themeName(theme) {}
+    Menu(const std::string& t, const std::vector<std::string>& opts, const std::string& theme = "OpenTUI", const std::string& scheme = "Cyan Matrix")
+        : title(t), options(opts), themeName(theme), colorScheme(scheme) {}
 
     void SetTheme(const std::string& t) { themeName = t; }
     std::string GetTheme() const { return themeName; }
+    void SetColorScheme(const std::string& s) { colorScheme = s; }
+    std::string GetColorScheme() const { return colorScheme; }
     void SetPreRenderCallback(std::function<void()> cb) { onPreRender = cb; }
     void SetStatusLine(const std::string& status) { statusLine = status; }
     void SetHeaderLines(const std::vector<std::string>& headers) { headerLines = headers; }
@@ -557,27 +558,27 @@ public:
                 std::cout.rdbuf(oldBuf);
             }
 
-            frame << Box::DrawBorder(80, title, themeName);
+            frame << Box::DrawBorder(80, title, themeName, colorScheme);
 
             if (!headerLines.empty()) {
                 for (const auto& h : headerLines) {
-                    frame << Box::DrawLine(80, h, false, themeName);
+                    frame << Box::DrawLine(80, h, false, themeName, colorScheme);
                 }
-                frame << Box::DrawDivider(80, themeName);
+                frame << Box::DrawDivider(80, themeName, colorScheme);
             }
 
             for (size_t i = 0; i < options.size(); ++i) {
                 bool isSelected = (static_cast<int>(i) == selectedIndex);
-                frame << Box::DrawLine(80, options[i], isSelected, themeName);
+                frame << Box::DrawLine(80, options[i], isSelected, themeName, colorScheme);
             }
 
             if (!statusLine.empty()) {
-                frame << Box::DrawDivider(80, themeName);
+                frame << Box::DrawDivider(80, themeName, colorScheme);
                 std::string animatedStatus = spinner.GetNextFrame() + " " + statusLine;
-                frame << Box::DrawLine(80, animatedStatus, false, themeName);
+                frame << Box::DrawLine(80, animatedStatus, false, themeName, colorScheme);
             }
 
-            frame << Box::DrawFooter(80, themeName);
+            frame << Box::DrawFooter(80, themeName, colorScheme);
             frame << "\033[90m Use UP/DOWN to navigate, LEFT/RIGHT or Enter to toggle/select, ESC/'q' to exit.\033[0m\n";
 
             TerminalEngine::MoveCursorToHome();
