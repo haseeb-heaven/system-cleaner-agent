@@ -31,6 +31,7 @@ struct TUISettings {
     int monitorIntervalSec = 5;     // 5 seconds refresh interval
     size_t ramThresholdMB = 200;    // 200 MB high RAM process cutoff
     std::string customPathsStr = "C:\\Users\\hasee\\AppData\\Local\\Temp";
+    std::string tuiThemeEngine = "OpenTUI"; // OpenTUI, TermOx, FTXUI
     std::vector<std::string> customProtectedProcesses;
 
     void SyncFromAppConfig(const AppConfig& cfg) {
@@ -41,6 +42,7 @@ struct TUISettings {
         monitorIntervalSec = cfg.monitorIntervalSec;
         ramThresholdMB = cfg.ramThresholdMB;
         customPathsStr = cfg.customPathsStr;
+        tuiThemeEngine = cfg.tuiThemeEngine;
         customProtectedProcesses = cfg.customProtectedProcesses;
     }
 
@@ -53,6 +55,7 @@ struct TUISettings {
         cfg.monitorIntervalSec = monitorIntervalSec;
         cfg.ramThresholdMB = ramThresholdMB;
         cfg.customPathsStr = customPathsStr;
+        cfg.tuiThemeEngine = tuiThemeEngine;
         cfg.customProtectedProcesses = customProtectedProcesses;
         return cfg;
     }
@@ -103,7 +106,24 @@ struct TUITaskStatus {
     std::string GetStatusLine() {
         std::lock_guard<std::mutex> lock(mtx);
         std::string modeStr = g_tuiSettings.sandboxMode ? " [SANDBOX]" : " [REAL CLEAN]";
-        if (isRunning) {
+        auto tasks = TaskHistory::Instance().Snapshot();
+        size_t runningCount = 0;
+        std::string runningName = "";
+        std::string runningDetail = "";
+        for (const auto& t : tasks) {
+            if (t.status == TaskStatus::Running || t.status == TaskStatus::Queued) {
+                runningCount++;
+                if (runningName.empty()) {
+                    runningName = t.name;
+                    runningDetail = t.progressMsg;
+                }
+            }
+        }
+
+        if (runningCount > 0) {
+            std::string detailStr = runningDetail.empty() ? runningName : runningDetail;
+            return "[STATUS] 🟢 ACTIVE (" + std::to_string(runningCount) + " task" + (runningCount > 1 ? "s" : "") + "): " + detailStr + modeStr;
+        } else if (isRunning) {
             return "[STATUS] 🟢 ACTIVE: " + taskName + modeStr;
         } else {
             return "[STATUS] ⚪ READY | " + lastMessage + modeStr;
@@ -115,14 +135,16 @@ static TUITaskStatus g_tuiStatus;
 
 class TUI {
 public:
-    static void PrintBanner() {
-        std::cout << "\033[1;36m"
+    static void PrintBanner(const std::string& themeOverride = "") {
+        std::string theme = themeOverride.empty() ? g_tuiSettings.tuiThemeEngine : themeOverride;
+        auto style = OpenTUI::GetThemeStyle(theme);
+        std::cout << style.primaryColor
                   << "    _/_\\_      ____  _  _  ____  ____  ____  _  _   \n"
                   << "   /     \\    / ___)( \\/ )( ___)(_  _)(  __)( \\/ )  \n"
                   << "  |   *   |   \\___ \\ )  /  )__)   )(   ) _) / \\/ \\  \n"
                   << "   \\     /    (____/(__/  (____) (__) (____)\\_/\\_/  \n"
                   << "    \\___/     \033[1;33mSYSTEM-CLEANER-AGENT \033[1;32mv5.5.0\033[0m\n"
-                  << "\033[90m  [ Autonomous ReAct Agent | C++17 OpenTUI | AQL Engine ]\033[0m\n\n";
+                  << style.secondaryColor << "  " << style.bannerSubtitle << "\033[0m\n";
     }
 
     static void FlushInputBuffer() {
@@ -145,6 +167,30 @@ public:
             ss << ds.driveName << " " << diskBar << " (Free: " << Cleaner::FormatSize(ds.freeBytes) << " / " << Cleaner::FormatSize(ds.capacityBytes) << ")";
             headers.push_back(ss.str());
         }
+
+        auto tasks = TaskHistory::Instance().Snapshot();
+        size_t runningCount = 0;
+        std::string activeName = "";
+        std::string activeProgress = "";
+        for (const auto& t : tasks) {
+            if (t.status == TaskStatus::Running || t.status == TaskStatus::Queued) {
+                runningCount++;
+                if (activeName.empty()) {
+                    activeName = t.name;
+                    activeProgress = t.progressMsg;
+                }
+            }
+        }
+        std::ostringstream taskSs;
+        if (runningCount > 0) {
+            taskSs << "Tasks: \033[1;36m" << runningCount << " RUNNING\033[0m (" << activeName;
+            if (!activeProgress.empty()) taskSs << " - " << activeProgress;
+            taskSs << ") | Total Recorded: " << tasks.size();
+        } else {
+            taskSs << "Tasks: \033[1;32mIDLE\033[0m (0 Running) | Total Recorded: " << tasks.size();
+        }
+        headers.push_back(taskSs.str());
+
         return headers;
     }
 
@@ -189,9 +235,71 @@ public:
     }
 
 
-    // =================================================================
-    //  Task Library / History Viewer
-    // =================================================================
+    static void ShowTaskActionDialog(uint64_t tid) {
+        TaskEntry t;
+        if (!TaskHistory::Instance().GetTask(tid, t)) {
+            std::cout << "\033[1;31m[ERROR] Task ID #" << tid << " not found in Task Library.\033[0m\n";
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+            return;
+        }
+
+        while (true) {
+            OpenTUI::TerminalEngine::ClearScreen();
+            PrintBanner();
+            bool isLive = (t.status == TaskStatus::Running || t.status == TaskStatus::Queued);
+            std::string timeStr = TaskHistoryNS::FormatTimestamp(isLive ? t.startedAt : t.finishedAt);
+            std::string durStr  = TaskHistoryNS::FormatDuration(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - t.startedAt));
+
+            std::cout << "\033[1;36m╔══════════════════════════════════════════════════════════════════════════════════════════╗\033[0m\n";
+            std::cout << "\033[1;36m║\033[1;97m   ◈  TASK ACTION CONTROL  ─  Task #" << std::left << std::setw(55) << std::to_string(t.id) << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m╠══════════════════════════════════════════════════════════════════════════════════════════╣\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m  ID:          #" << std::setw(6) << t.id << "                                                                 \033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m  Name:        " << std::left << std::setw(70) << t.name << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m  Category:    " << std::left << std::setw(70) << t.category << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m  Command:     " << std::left << std::setw(70) << t.command << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m  Source:      " << std::left << std::setw(70) << t.source << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m  Status:      " << TaskHistoryNS::StatusColor(t.status) << std::left << std::setw(60) << TaskHistoryNS::StatusLabel(t.status) << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m  Progress:    " << std::left << std::setw(70) << (t.progressMsg.empty() ? t.resultSummary : t.progressMsg) << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m  Runtime:     " << std::left << std::setw(70) << (timeStr + " (" + durStr + ")") << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m║\033[0m  Bytes Freed: " << std::left << std::setw(70) << Cleaner::FormatSize(t.bytesFreed) << "\033[1;36m║\033[0m\n";
+            std::cout << "\033[1;36m╚══════════════════════════════════════════════════════════════════════════════════════════╝\033[0m\n\n";
+
+            std::vector<std::string> actionOpts = {
+                "Pause / Stop Task",
+                "Resume Task",
+                "Kill / Terminate Task",
+                "Return to Task Library"
+            };
+            OpenTUI::Menu actMenu("TASK ACTIONS (#" + std::to_string(t.id) + ")", actionOpts);
+            int aSel = actMenu.Show();
+            if (aSel == -1 || aSel == 3) break;
+
+            if (aSel == 0) {
+                if (TaskHistory::Instance().PauseTask(t.id)) {
+                    std::cout << "\033[1;35m[OK] Task #" << t.id << " paused.\033[0m\n";
+                } else {
+                    std::cout << "\033[1;31m[WARN] Could not pause Task #" << t.id << " (Task not in running state).\033[0m\n";
+                }
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            } else if (aSel == 1) {
+                if (TaskHistory::Instance().ResumeTask(t.id)) {
+                    std::cout << "\033[1;32m[OK] Task #" << t.id << " resumed.\033[0m\n";
+                } else {
+                    std::cout << "\033[1;31m[WARN] Could not resume Task #" << t.id << " (Task not in paused state).\033[0m\n";
+                }
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            } else if (aSel == 2) {
+                if (TaskHistory::Instance().KillTask(t.id)) {
+                    std::cout << "\033[1;31m[OK] Task #" << t.id << " killed / terminated.\033[0m\n";
+                } else {
+                    std::cout << "\033[1;31m[WARN] Could not kill Task #" << t.id << ".\033[0m\n";
+                }
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+            }
+            TaskHistory::Instance().GetTask(t.id, t);
+        }
+    }
+
     static void ShowTaskLibrary() {
         std::vector<std::string> options = {
             "Live Task List (auto-refresh)",
@@ -199,6 +307,7 @@ public:
             "Running Tasks Only",
             "Completed Tasks Only",
             "Failed Tasks Only",
+            "Manage Task (Kill / Pause / Resume / Details)",
             "Clear All History",
             "Back to Main Menu"
         };
@@ -211,7 +320,7 @@ public:
             libMenu.SetHeaderLines({headerLine});
             libMenu.SetStatusLine("[TASK LIB] Use UP/DOWN to navigate, ENTER to select, ESC to return");
             int sel = libMenu.Show();
-            if (sel < 0 || sel == 6) break;
+            if (sel < 0 || sel == 7) break;
 
             OpenTUI::TerminalEngine::ClearScreen();
             PrintBanner();
@@ -227,6 +336,15 @@ public:
             } else if (sel == 4) {
                 ShowTaskListView(false, (int)TaskStatus::Failed);
             } else if (sel == 5) {
+                std::string tidStr = OpenTUI::TextInput::ReadLine("Enter Task ID to Manage (#): ", "1");
+                try {
+                    uint64_t tid = std::stoull(tidStr);
+                    ShowTaskActionDialog(tid);
+                } catch (...) {
+                    std::cout << "\033[1;31m[ERROR] Invalid Task ID entered.\033[0m\n";
+                    std::this_thread::sleep_for(std::chrono::seconds(1));
+                }
+            } else if (sel == 6) {
                 std::string confirm = OpenTUI::TextInput::ReadLine("Clear all task history? [y/N]: ", "n");
                 if (confirm == "y" || confirm == "Y") {
                     TaskHistory::Instance().Clear();
@@ -246,6 +364,7 @@ public:
         static const char* spinChars[] = {"|","/","-","\\","|","/","-","\\","|","/"};
 
         auto renderOnce = [statusFilter]() {
+            std::cout << std::setfill(' ');
             OpenTUI::TerminalEngine::ClearScreen();
             PrintBanner();
 
@@ -322,8 +441,7 @@ public:
 
                 // Row prefix with live spinner for running tasks
                 std::cout << "  ";
-                std::cout << "\033[90m[" << std::setfill('0') << std::setw(3) << t.id << "]\033[0m ";
-                std::setfill(' ');
+                std::cout << "\033[90m[" << std::setfill('0') << std::setw(3) << t.id << std::setfill(' ') << "]\033[0m ";
 
                 // Status badge
                 std::string statusBadge;
@@ -400,20 +518,21 @@ public:
             static const std::string osName = "Linux";
 #endif
             std::vector<std::string> settingsOptions = {
+                std::string("TUI Engine Theme: [") + g_tuiSettings.tuiThemeEngine + " - OpenTUI / TermOx / FTXUI]",
                 std::string("Sandbox Mode:     [") + (g_tuiSettings.sandboxMode ? "ON  - Preview Only" : "OFF - REAL DELETION ALLOWED") + "]",
                 std::string("Path Protection:  [") + (g_tuiSettings.pathProtection ? "ON  - System Dir Guard" : "OFF - Disabled") + "]",
                 std::string("Dry-Run Mode:     [") + (g_tuiSettings.dryRun ? "ON  - Preview Only" : "OFF - REAL CLEAN") + "]",
                 std::string("Kill Locks:       [") + (g_tuiSettings.killLocks ? "ON" : "OFF") + "]",
                 std::string("Monitor Interval: [") + std::to_string(g_tuiSettings.monitorIntervalSec) + " seconds]",
-                std::string("Target Folders:   [") + g_tuiSettings.customPathsStr.substr(0, 60) + (g_tuiSettings.customPathsStr.size() > 60 ? "..." : "") + "]",
+                std::string("Target Folders:   [") + g_tuiSettings.customPathsStr.substr(0, 50) + (g_tuiSettings.customPathsStr.size() > 50 ? "..." : "") + "]",
                 std::string("Reset to OS Defaults (" + osName + " safe temp/cache paths)"),
                 "Save & Return to Dashboard"
             };
 
-            OpenTUI::Menu settingsMenu("SETTINGS", settingsOptions);
+            OpenTUI::Menu settingsMenu("SETTINGS & THEMES", settingsOptions);
             OpenTUI::MenuSelection sel = settingsMenu.ShowExtended();
 
-            if (sel.index == -1 || sel.index == 7) {
+            if (sel.index == -1 || sel.index == 8) {
                 cleaner.SetSandbox(g_tuiSettings.sandboxMode);
                 cleaner.SetDangerousPathProtection(g_tuiSettings.pathProtection);
                 cleaner.SetDryRun(g_tuiSettings.dryRun);
@@ -430,15 +549,23 @@ public:
                     }
                     cleaner.SetCustomPaths(paths);
                 }
+                SaveTUISettings();
                 break;
             }
 
             switch (sel.index) {
-                case 0: g_tuiSettings.sandboxMode = !g_tuiSettings.sandboxMode; break;
-                case 1: g_tuiSettings.pathProtection = !g_tuiSettings.pathProtection; break;
-                case 2: g_tuiSettings.dryRun = !g_tuiSettings.dryRun; break;
-                case 3: g_tuiSettings.killLocks = !g_tuiSettings.killLocks; break;
-                case 4: {
+                case 0: {
+                    if (g_tuiSettings.tuiThemeEngine == "OpenTUI") g_tuiSettings.tuiThemeEngine = "TermOx";
+                    else if (g_tuiSettings.tuiThemeEngine == "TermOx") g_tuiSettings.tuiThemeEngine = "FTXUI";
+                    else g_tuiSettings.tuiThemeEngine = "OpenTUI";
+                    SaveTUISettings();
+                    break;
+                }
+                case 1: g_tuiSettings.sandboxMode = !g_tuiSettings.sandboxMode; break;
+                case 2: g_tuiSettings.pathProtection = !g_tuiSettings.pathProtection; break;
+                case 3: g_tuiSettings.dryRun = !g_tuiSettings.dryRun; break;
+                case 4: g_tuiSettings.killLocks = !g_tuiSettings.killLocks; break;
+                case 5: {
                     static const std::vector<int> intervals = { 3, 5, 10, 15, 30, 60 };
                     auto it = std::find(intervals.begin(), intervals.end(), g_tuiSettings.monitorIntervalSec);
                     int idx = (it != intervals.end()) ? static_cast<int>(std::distance(intervals.begin(), it)) : 1;
@@ -450,14 +577,14 @@ public:
                     g_tuiSettings.monitorIntervalSec = intervals[idx];
                     break;
                 }
-                case 5: {
+                case 6: {
                     OpenTUI::TerminalEngine::ClearScreen();
                     PrintBanner();
                     std::string newPath = OpenTUI::TextInput::ReadLine("Enter target PATH folders (comma-separated): ", g_tuiSettings.customPathsStr);
                     if (!newPath.empty()) g_tuiSettings.customPathsStr = newPath;
                     break;
                 }
-                case 6: {
+                case 7: {
                     // Reset to OS-aware safe default temp/cache paths
                     g_tuiSettings.customPathsStr = SecurityGuard::GetDefaultCleanPathsStr();
                     std::cout << "\033[1;32m[OK] Target folders reset to OS-default safe temp/cache paths.\033[0m\n";
@@ -582,16 +709,17 @@ public:
             "Agent & AQL Query",
             "Daemon Monitor",
             "System Resource Monitor",
-            "Task Library / History",
+            "Task Library",
             "Settings",
             "Exit Agent"
         };
 
-        OpenTUI::Menu menu("SYSTEM-CLEANER-AGENT", options);
+        OpenTUI::Menu menu("SYSTEM-CLEANER-AGENT", options, g_tuiSettings.tuiThemeEngine);
         menu.SetPreRenderCallback([]() { PrintBanner(); });
         bool firstRender = true;
 
         while (true) {
+            menu.SetTheme(g_tuiSettings.tuiThemeEngine);
             if (firstRender) {
                 firstRender = false;
             } else {

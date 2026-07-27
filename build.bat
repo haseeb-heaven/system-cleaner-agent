@@ -14,9 +14,17 @@ if %ERRORLEVEL% EQU 0 (
     if %ERRORLEVEL% EQU 0 (
         echo.
         echo Build successful! Executable built.
-        copy Release\system-cleaner-agent.exe ..\system-cleaner-agent.exe /Y >nul 2>nul
-        copy Release\system-cleaner-agent.exe "D:\Software\bin\system-cleaner-agent.exe" /Y >nul 2>nul
-        echo Deployed to: D:\Software\bin\system-cleaner-agent.exe (global PATH)
+        if exist system-cleaner-agent.exe (
+            copy system-cleaner-agent.exe ..\system-cleaner-agent.exe /Y >nul
+            copy system-cleaner-agent.exe "D:\Software\bin\system-cleaner-agent.exe" /Y >nul
+            copy system-cleaner-agent.exe "C:\Users\hasee\AppData\Local\agy\bin\system-cleaner-agent.exe" /Y >nul 2>nul
+        )
+        if exist Release\system-cleaner-agent.exe (
+            copy Release\system-cleaner-agent.exe ..\system-cleaner-agent.exe /Y >nul
+            copy Release\system-cleaner-agent.exe "D:\Software\bin\system-cleaner-agent.exe" /Y >nul
+            copy Release\system-cleaner-agent.exe "C:\Users\hasee\AppData\Local\agy\bin\system-cleaner-agent.exe" /Y >nul 2>nul
+        )
+        echo Deployed to: D:\Software\bin\system-cleaner-agent.exe & C:\Users\hasee\AppData\Local\agy\bin\system-cleaner-agent.exe
     ) else (
         echo Build failed.
     )

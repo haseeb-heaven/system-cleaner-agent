@@ -30,6 +30,7 @@ namespace TaskHistoryNS {
 enum class Status {
     Queued,
     Running,
+    Paused,
     Completed,
     Failed,
     Cancelled,
@@ -40,9 +41,10 @@ inline std::string StatusLabel(Status s) {
     switch (s) {
         case Status::Queued:    return "QUEUED";
         case Status::Running:   return "RUNNING";
+        case Status::Paused:    return "PAUSED";
         case Status::Completed: return "OK";
         case Status::Failed:    return "FAILED";
-        case Status::Cancelled: return "CANCEL";
+        case Status::Cancelled: return "KILLED";
         default:                return "?";
     }
 }
@@ -51,9 +53,10 @@ inline const char* StatusColor(Status s) {
     switch (s) {
         case Status::Queued:    return "\033[1;33m";
         case Status::Running:   return "\033[1;36m";
+        case Status::Paused:    return "\033[1;35m";
         case Status::Completed: return "\033[1;32m";
         case Status::Failed:    return "\033[1;31m";
-        case Status::Cancelled: return "\033[1;35m";
+        case Status::Cancelled: return "\033[1;90m";
         default:                return "\033[1;37m";
     }
 }
@@ -186,6 +189,45 @@ public:
         e->resultSummary = "Cancelled by user/system.";
     }
 
+    bool PauseTask(uint64_t id) {
+        std::lock_guard<std::mutex> lock(mtx_);
+        auto* e = Find(id);
+        if (!e || (e->status != Status::Running && e->status != Status::Queued)) return false;
+        e->status = Status::Paused;
+        e->progressMsg = "Paused by user action.";
+        return true;
+    }
+
+    bool ResumeTask(uint64_t id) {
+        std::lock_guard<std::mutex> lock(mtx_);
+        auto* e = Find(id);
+        if (!e || e->status != Status::Paused) return false;
+        e->status = Status::Running;
+        e->progressMsg = "Resumed running...";
+        return true;
+    }
+
+    bool KillTask(uint64_t id) {
+        std::lock_guard<std::mutex> lock(mtx_);
+        auto* e = Find(id);
+        if (!e) return false;
+        e->status        = Status::Cancelled;
+        e->finishedAt    = std::chrono::system_clock::now();
+        e->resultSummary = "Killed / Terminated by user.";
+        return true;
+    }
+
+    bool GetTask(uint64_t id, TaskEntry& outTask) const {
+        std::lock_guard<std::mutex> lock(mtx_);
+        for (const auto& t : tasks) {
+            if (t.id == id) {
+                outTask = t;
+                return true;
+            }
+        }
+        return false;
+    }
+
     std::vector<TaskEntry> Snapshot() const {
         std::lock_guard<std::mutex> lock(mtx_);
         return tasks;
@@ -234,7 +276,7 @@ public:
         std::string timeStr = FormatTimestamp(isLive ? t.startedAt : t.finishedAt);
         std::string durStr  = FormatDuration(elapsed);
 
-        ss << "[" << std::setw(3) << std::setfill('0') << t.id << "] "
+        ss << "[" << std::setw(3) << std::setfill('0') << t.id << std::setfill(' ') << "] "
            << StatusColor(t.status) << StatusLabel(t.status) << " "
            << "\033[0m"
            << t.category << " "

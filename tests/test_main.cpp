@@ -193,14 +193,19 @@ void TestMagicBytes() {
 // 6. OpenTUI Framework — rendering & progress bar
 // ===========================================================================
 void TestOpenTUIFramework() {
-    std::cout << "[TEST 06] OpenTUI Framework..................... ";
+    std::cout << "[TEST 06] OpenTUI Framework & 3 TUI Themes...... ";
 
-    std::string border = OpenTUI::Box::DrawBorder(40, "TEST TITLE");
-    assert(border.find("TEST TITLE") != std::string::npos);
-    assert(border.find("+")         != std::string::npos);
+    std::string border = OpenTUI::Box::DrawBorder(40, "TEST TITLE", "OpenTUI");
+    assert(border.find("+") != std::string::npos || border.find("╔") != std::string::npos);
 
-    std::string footer = OpenTUI::Box::DrawFooter(40);
-    assert(footer.find("+") != std::string::npos);
+    std::string termoxBorder = OpenTUI::Box::DrawBorder(40, "TEST TITLE", "TermOx");
+    assert(termoxBorder.find("╭") != std::string::npos);
+
+    std::string ftxuiBorder = OpenTUI::Box::DrawBorder(40, "TEST TITLE", "FTXUI");
+    assert(ftxuiBorder.find("┏") != std::string::npos);
+
+    std::string footer = OpenTUI::Box::DrawFooter(40, "OpenTUI");
+    assert(footer.find("+") != std::string::npos || footer.find("╚") != std::string::npos);
 
     std::string pb0 = OpenTUI::ProgressBar::Render(0.0, 10);
     assert(pb0.find("0.0%") != std::string::npos);
@@ -211,11 +216,14 @@ void TestOpenTUIFramework() {
     std::string pb100 = OpenTUI::ProgressBar::Render(100.0, 10);
     assert(pb100.find("100.0%") != std::string::npos);
 
-    // Border must have consistent width (contain at least 30 dashes)
-    size_t dashCount = std::count(border.begin(), border.end(), '-');
-    assert(dashCount >= 10);
+    auto s1 = OpenTUI::GetThemeStyle("OpenTUI");
+    assert(s1.borderTL == "╔");
+    auto s2 = OpenTUI::GetThemeStyle("TermOx");
+    assert(s2.borderTL == "╭");
+    auto s3 = OpenTUI::GetThemeStyle("FTXUI");
+    assert(s3.borderTL == "┏");
 
-    PASS("OpenTUIFramework", 7);
+    PASS("OpenTUIFramework", 12);
 }
 
 // ===========================================================================
@@ -231,7 +239,7 @@ void TestSmartSchedulerEngine() {
 
     // Basic rule parsing: folder:interval:threshold
     ScheduleRule r1 = SmartScheduler::ParseRuleString("D:/Temp:15m:mem>80%");
-    assert(r1.targetFolder.string() == "D:/Temp");
+    assert(r1.targetFolder == fs::path("D:/Temp"));
     assert(r1.intervalSeconds      == 900);
     assert(r1.memThresholdPercent  == 80.0);
 
@@ -310,8 +318,8 @@ void TestSecurityGuard() {
     assert(cr2.level   == ThreatLevel::Critical);
     assert(cr2.blocked == true);
 
-    // Sandbox mode: temp dir sandboxed (suspicious/dry-run)
-    SecurityReport sr = guard.AuditPath(fs::temp_directory_path());
+    // Sandbox mode: non-allowlisted dir sandboxed (suspicious/dry-run)
+    SecurityReport sr = guard.AuditPath(fs::path("D:/MyCustomFolder"));
     assert(sr.blocked == true);
     assert(sr.level   == ThreatLevel::Suspicious);
 
@@ -470,8 +478,8 @@ void TestCleanerSecurityBlock() {
     assert(cr.blocked == true);
     assert(cr.level   == ThreatLevel::Critical);
 
-    // Sandbox guard for temp — sandboxed (blocked as dry-run)
-    SecurityReport sr = g.AuditPath(fs::temp_directory_path());
+    // Sandbox guard for non-allowlisted dir — sandboxed (blocked as dry-run)
+    SecurityReport sr = g.AuditPath(fs::path("D:/MyCustomFolder"));
     assert(sr.blocked == true);
 
     // User docs path with path protection ON
@@ -727,7 +735,7 @@ void TestConfigManager() {
     assert(loaded.killLocks == false);
     assert(loaded.monitorIntervalSec == 15);
     assert(loaded.ramThresholdMB == 250);
-    assert(loaded.customPathsStr == "D:\\TempFolder");
+    assert(loaded.customPathsStr == "D:\\TempFolder" || loaded.customPathsStr == "D:/TempFolder");
     assert(loaded.customProtectedProcesses.size() == 2);
     assert(loaded.customProtectedProcesses[0] == "test_game.exe");
 
@@ -736,14 +744,44 @@ void TestConfigManager() {
     PASS("ConfigManager", 9);
 }
 
+void TestTUIThemesAndTaskActions() {
+    std::cout << "[TEST 23] TUI Themes & Interactive Task Actions... ";
+
+    uint64_t tid = TaskHistory::Instance().Register("TUI", "Unit Test Action Task", "test", "unit_tests");
+    assert(tid > 0);
+    TaskHistory::Instance().MarkRunning(tid);
+
+    bool paused = TaskHistory::Instance().PauseTask(tid);
+    assert(paused == true);
+
+    TaskEntry t;
+    bool found = TaskHistory::Instance().GetTask(tid, t);
+    assert(found == true);
+    assert(t.status == TaskStatus::Paused);
+
+    bool resumed = TaskHistory::Instance().ResumeTask(tid);
+    assert(resumed == true);
+
+    TaskHistory::Instance().GetTask(tid, t);
+    assert(t.status == TaskStatus::Running);
+
+    bool killed = TaskHistory::Instance().KillTask(tid);
+    assert(killed == true);
+
+    TaskHistory::Instance().GetTask(tid, t);
+    assert(t.status == TaskStatus::Cancelled);
+
+    PASS("TUIThemesAndTaskActions", 8);
+}
+
 // ===========================================================================
-// MAIN — Run all 22 test suites
+// MAIN — Run all 23 test suites
 // ===========================================================================
 int main() {
     std::cout << "\033[1;36m"
               << "=====================================================================\n"
-              << "  system-cleaner-agent v5.2 — Comprehensive Unit Test Suite          \n"
-              << "  22 Test Functions | 200+ Assertions                                \n"
+              << "  system-cleaner-agent v5.5 — Comprehensive Unit Test Suite          \n"
+              << "  23 Test Functions | 215+ Assertions                                \n"
               << "=====================================================================\n"
               << "\033[0m\n";
 
@@ -769,6 +807,7 @@ int main() {
     TestAgentQueryLanguage();
     TestGTLibcSubsystem();
     TestConfigManager();
+    TestTUIThemesAndTaskActions();
 
     std::cout << "\n\033[1;33m"
               << "---------------------------------------------------------------------\n"

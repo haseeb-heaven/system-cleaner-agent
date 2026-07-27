@@ -259,10 +259,11 @@ public:
     const SecurityGuard& GetSecurity() const { return security; }
 
     static std::string FormatSize(uintmax_t bytes) {
+        if (bytes == 0) return "0 B";
         std::ostringstream ss;
         ss << std::fixed << std::setprecision(2);
         if (bytes < 1024) {
-            ss << bytes << " B";
+            ss << static_cast<double>(bytes) << " B";
         } else if (bytes < 1024 * 1024) {
             ss << (bytes / 1024.0) << " KB";
         } else if (bytes < 1024 * 1024 * 1024) {

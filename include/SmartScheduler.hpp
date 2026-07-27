@@ -186,6 +186,12 @@ public:
         int idx = 0;
         while (std::getline(ss, part, ':')) {
             if (idx == 0) {
+                if (part.length() == 1 && std::isalpha(static_cast<unsigned char>(part[0]))) {
+                    std::string rest;
+                    if (std::getline(ss, rest, ':')) {
+                        part = part + ":" + rest;
+                    }
+                }
                 rule.targetFolder = fs::path(part);
             } else if (idx == 1) {
                 rule.intervalSeconds = ContentInspector::ParseDurationToMinutes(part) * 60;

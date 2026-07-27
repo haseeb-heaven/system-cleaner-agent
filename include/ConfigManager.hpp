@@ -23,6 +23,7 @@ struct AppConfig {
     int monitorIntervalSec = 5;
     size_t ramThresholdMB = 200;
     std::string customPathsStr = "C:\\Users\\hasee\\AppData\\Local\\Temp";
+    std::string tuiThemeEngine = "OpenTUI"; // OpenTUI, TermOx, FTXUI
     std::vector<std::string> customProtectedProcesses;
 };
 
@@ -95,7 +96,17 @@ public:
             if (startQuote == std::string::npos) return defaultVal;
             size_t endQuote = content.find('"', startQuote + 1);
             if (endQuote == std::string::npos) return defaultVal;
-            return content.substr(startQuote + 1, endQuote - startQuote - 1);
+            std::string strVal = content.substr(startQuote + 1, endQuote - startQuote - 1);
+            std::string unescaped = "";
+            for (size_t i = 0; i < strVal.length(); ++i) {
+                if (strVal[i] == '\\' && i + 1 < strVal.length() && strVal[i+1] == '\\') {
+                    unescaped += '\\';
+                    i++;
+                } else {
+                    unescaped += strVal[i];
+                }
+            }
+            return unescaped;
         };
 
         cfg.sandboxMode = getJsonBool("sandboxMode", false);
@@ -105,6 +116,7 @@ public:
         cfg.monitorIntervalSec = getJsonInt("monitorIntervalSec", 5);
         cfg.ramThresholdMB = static_cast<size_t>(getJsonInt("ramThresholdMB", 200));
         cfg.customPathsStr = getJsonString("customPathsStr", "C:\\Users\\hasee\\AppData\\Local\\Temp");
+        cfg.tuiThemeEngine = getJsonString("tuiThemeEngine", "OpenTUI");
 
         // Parse customProtectedProcesses array
         size_t arrayPos = content.find("\"customProtectedProcesses\"");
@@ -157,6 +169,7 @@ public:
             else escapedPath += c;
         }
         json << "  \"customPathsStr\": \"" << escapedPath << "\",\n";
+        json << "  \"tuiThemeEngine\": \"" << cfg.tuiThemeEngine << "\",\n";
 
         json << "  \"customProtectedProcesses\": [";
         for (size_t i = 0; i < cfg.customProtectedProcesses.size(); ++i) {

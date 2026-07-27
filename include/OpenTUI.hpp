@@ -1,5 +1,12 @@
 #pragma once
 
+// =============================================================================
+// OpenTUI.hpp - TermOx-Style Reactive C++ Widget & Layout Engine
+// =============================================================================
+// Zero-Dependency, Cross-Platform ANSI Virtual Terminal User Interface Engine
+// Inspired by TermOx (CPPurses) Widget & Layout Architecture.
+// =============================================================================
+
 #include <iostream>
 #include <string>
 #include <vector>
@@ -9,6 +16,9 @@
 #include <thread>
 #include <functional>
 #include <iomanip>
+#include <memory>
+#include <mutex>
+#include <map>
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -27,6 +37,9 @@
 
 namespace OpenTUI {
 
+// =============================================================================
+// ANSI Color Palette & Styling System
+// =============================================================================
 namespace Color {
     inline const std::string Reset       = "\033[0m";
     inline const std::string Bold        = "\033[1m";
@@ -47,10 +60,13 @@ namespace Color {
     inline const std::string BrightGreen = "\033[92m";
     inline const std::string BrightWhite = "\033[97m";
     inline const std::string BrightYellow= "\033[93m";
+    inline const std::string BrightRed   = "\033[91m";
+    inline const std::string BrightBlue  = "\033[94m";
     
     inline const std::string BgBlue      = "\033[44m";
     inline const std::string BgCyan      = "\033[46m";
     inline const std::string BgDarkGray  = "\033[100m";
+    inline const std::string BgBlack     = "\033[40m";
 }
 
 enum class Key {
@@ -61,6 +77,7 @@ enum class Key {
     Right,
     Enter,
     Escape,
+    Tab,
     Char
 };
 
@@ -69,6 +86,20 @@ struct KeyEvent {
     char ch = 0;
 };
 
+struct Rect {
+    int x = 0;
+    int y = 0;
+    int width = 0;
+    int height = 0;
+
+    bool Contains(int px, int py) const {
+        return px >= x && px < x + width && py >= y && py < y + height;
+    }
+};
+
+// =============================================================================
+// Low-Level Terminal Engine & ANSI Control
+// =============================================================================
 class TerminalEngine {
 public:
     static void EnableVirtualTerminal() {
@@ -87,21 +118,40 @@ public:
 #endif
     }
 
+    static void MoveCursorToHome() {
+#ifdef _WIN32
+        HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (hOut != INVALID_HANDLE_VALUE) {
+            COORD coord = { 0, 0 };
+            SetConsoleCursorPosition(hOut, coord);
+        }
+#endif
+        std::cout << "\033[H\033[1;1H" << std::flush;
+    }
+
     static void ClearScreen() {
+#ifdef _WIN32
+        HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (hOut != INVALID_HANDLE_VALUE) {
+            COORD coord = { 0, 0 };
+            SetConsoleCursorPosition(hOut, coord);
+            DWORD count;
+            CONSOLE_SCREEN_BUFFER_INFO csbi;
+            if (GetConsoleScreenBufferInfo(hOut, &csbi)) {
+                DWORD cells = csbi.dwSize.X * csbi.dwSize.Y;
+                FillConsoleOutputCharacterA(hOut, ' ', cells, coord, &count);
+                FillConsoleOutputAttribute(hOut, csbi.wAttributes, cells, coord, &count);
+                SetConsoleCursorPosition(hOut, coord);
+            }
+        }
         std::cout << "\033[2J\033[1;1H" << std::flush;
+#else
+        std::cout << "\033[2J\033[1;1H" << std::flush;
+#endif
     }
 
-    static void MoveCursor(int row, int col) {
-        std::cout << "\033[" << row << ";" << col << "H" << std::flush;
-    }
-
-    static void HideCursor() {
-        std::cout << "\033[?25l" << std::flush;
-    }
-
-    static void ShowCursor() {
-        std::cout << "\033[?25h" << std::flush;
-    }
+    static void HideCursor() { std::cout << "\033[?25l" << std::flush; }
+    static void ShowCursor() { std::cout << "\033[?25h" << std::flush; }
 
     static KeyEvent ReadKey() {
         KeyEvent event;
@@ -119,6 +169,8 @@ public:
             event.key = Key::Enter;
         } else if (c == 27) {
             event.key = Key::Escape;
+        } else if (c == 9) {
+            event.key = Key::Tab;
         } else {
             event.key = Key::Char;
             event.ch = static_cast<char>(c);
@@ -148,6 +200,8 @@ public:
                 }
             } else if (c == 10 || c == 13) {
                 event.key = Key::Enter;
+            } else if (c == 9) {
+                event.key = Key::Tab;
             } else {
                 event.key = Key::Char;
                 event.ch = c;
@@ -159,7 +213,9 @@ public:
     }
 };
 
-// Animated Spinner for Background Task Feedback
+// =============================================================================
+// Live Spinner Animation
+// =============================================================================
 class SpinnerAnimation {
     size_t frameIndex = 0;
     std::vector<std::string> frames = {
@@ -173,37 +229,108 @@ public:
     }
 };
 
-// Extended ASCII / Unicode Double-Line Box Renderer
+// =============================================================================
+// TUI Themes (OpenTUI, TermOx, FTXUI)
+// =============================================================================
+struct ThemeStyle {
+    std::string name;
+    std::string primaryColor;
+    std::string secondaryColor;
+    std::string headerColor;
+    std::string accentColor;
+    std::string statusColor;
+    std::string bgHighlight;
+    std::string borderTL, borderTR, borderBL, borderBR;
+    std::string borderHoriz, borderVert;
+    std::string borderSplitL, borderSplitR;
+    std::string selectorIcon;
+    std::string bannerSubtitle;
+};
+
+inline ThemeStyle GetThemeStyle(const std::string& themeName) {
+    if (themeName == "TermOx") {
+        return {
+            "TermOx Widget Engine",
+            Color::BrightCyan + Color::Bold,
+            "\033[1;95m",                      // Electric Magenta
+            "\033[1;95m",                      // Magenta Header
+            "\033[1;94m",                      // Deep Blue Accent
+            "\033[1;92m",                      // Green Status
+            "\033[45m\033[1;97m",              // Magenta Background Highlight
+            "╭", "╮", "╰", "╯",                // Smooth Rounded Corners
+            "─", "│", "├", "┤",
+            "◆ ",
+            "[ TERMOX RECT WIDGET ENGINE | C++20 LAYOUT CONTAINER ]"
+        };
+    } else if (themeName == "FTXUI") {
+        return {
+            "FTXUI Graphical DOM Engine",
+            Color::BrightYellow + Color::Bold, // Gold
+            "\033[1;35m",                      // Royal Purple
+            "\033[1;35m",                      // Purple Header
+            "\033[1;93m",                      // Amber Accent
+            "\033[1;96m",                      // Cyan Status
+            "\033[43m\033[1;30m",              // Gold Background Highlight
+            "┏", "┓", "┗", "┛",                // Heavy Block Borders
+            "━", "┃", "┣", "┫",
+            "▶ ",
+            "[ FTXUI GRAPHICAL DOM ENGINE | COMPONENT TREE RENDERER ]"
+        };
+    } else { // OpenTUI
+        return {
+            "OpenTUI Native Engine",
+            Color::BrightCyan + Color::Bold,
+            Color::BrightCyan,
+            Color::BrightWhite + Color::Bold,
+            Color::BrightGreen,
+            Color::BrightGreen,
+            Color::BgBlue + Color::BrightWhite + Color::Bold,
+            "╔", "╗", "╚", "╝",                // Unicode Double Lines
+            "═", "║", "╠", "╣",
+            "► ",
+            "[ AUTONOMOUS REACT AGENT | C++17 OPENTUI | AQL ENGINE ]"
+        };
+    }
+}
+
+// =============================================================================
+// Extended ASCII & Unicode Double-Box Utilities
+// =============================================================================
 class Box {
 public:
-    static std::string DrawBorder(int width, const std::string& title = "") {
+    static std::string DrawBorder(int width, const std::string& title = "", const std::string& themeName = "OpenTUI") {
+        auto style = GetThemeStyle(themeName);
         std::ostringstream ss;
-        ss << Color::BrightCyan << "╔"; // Upper-left double box
+        ss << style.secondaryColor << style.borderTL;
         int titleLen = static_cast<int>(title.length());
         int lineLen = width - 2;
         if (titleLen > 0 && titleLen < lineLen - 4) {
-            ss << "═══[ " << Color::BrightWhite << Color::Bold << title << Color::Reset << Color::BrightCyan << " ]";
-            for (int i = 0; i < lineLen - titleLen - 7; ++i) ss << "═";
+            ss << style.borderHoriz << style.borderHoriz << style.borderHoriz
+               << "[ " << style.headerColor << title << Color::Reset << style.secondaryColor << " ]";
+            int rem = lineLen - titleLen - 7;
+            for (int i = 0; i < rem; ++i) ss << style.borderHoriz;
         } else {
-            for (int i = 0; i < lineLen; ++i) ss << "═";
+            for (int i = 0; i < lineLen; ++i) ss << style.borderHoriz;
         }
-        ss << "╗" << Color::Reset << "\n"; // Upper-right double box
+        ss << style.borderTR << Color::Reset << "\n";
         return ss.str();
     }
 
-    static std::string DrawDivider(int width) {
+    static std::string DrawDivider(int width, const std::string& themeName = "OpenTUI") {
+        auto style = GetThemeStyle(themeName);
         std::ostringstream ss;
-        ss << Color::BrightCyan << "╠";
-        for (int i = 0; i < width - 2; ++i) ss << "═";
-        ss << "╣" << Color::Reset << "\n";
+        ss << style.secondaryColor << style.borderSplitL;
+        for (int i = 0; i < width - 2; ++i) ss << style.borderHoriz;
+        ss << style.borderSplitR << Color::Reset << "\n";
         return ss.str();
     }
 
-    static std::string DrawFooter(int width) {
+    static std::string DrawFooter(int width, const std::string& themeName = "OpenTUI") {
+        auto style = GetThemeStyle(themeName);
         std::ostringstream ss;
-        ss << Color::BrightCyan << "╚";
-        for (int i = 0; i < width - 2; ++i) ss << "═";
-        ss << "╝" << Color::Reset << "\n";
+        ss << style.secondaryColor << style.borderBL;
+        for (int i = 0; i < width - 2; ++i) ss << style.borderHoriz;
+        ss << style.borderBR << Color::Reset << "\n";
         return ss.str();
     }
 
@@ -211,26 +338,20 @@ public:
         int width = 0;
         size_t i = 0;
         while (i < str.length()) {
-            if (str[i] == '\033') { // Skip ANSI escape sequences
-                while (i < str.length() && str[i] != 'm') {
-                    i++;
-                }
-                if (i < str.length()) i++; // skip 'm'
+            if (str[i] == '\033') {
+                while (i < str.length() && str[i] != 'm') i++;
+                if (i < str.length()) i++;
             } else {
                 unsigned char c1 = static_cast<unsigned char>(str[i]);
                 if (c1 < 0x80) {
-                    width += 1;
-                    i += 1;
+                    width += 1; i += 1;
                 } else if ((c1 & 0xE0) == 0xC0) {
-                    width += 1;
-                    i += 2;
+                    width += 1; i += 2;
                 } else if ((c1 & 0xF0) == 0xE0) {
-                    // 3-byte UTF-8
                     if (i + 2 < str.length()) {
                         unsigned char c2 = static_cast<unsigned char>(str[i+1]);
                         unsigned char c3 = static_cast<unsigned char>(str[i+2]);
                         uint32_t codepoint = ((c1 & 0x0F) << 12) | ((c2 & 0x3F) << 6) | (c3 & 0x3F);
-                        // U+26AA (⚪), U+26AB (⚫), U+26A0-U+26FF symbols are wide in terminals
                         if (codepoint == 0x26AA || codepoint == 0x26AB || codepoint == 0x26BD || codepoint == 0x26BE || (codepoint >= 0x2600 && codepoint <= 0x26FF)) {
                             width += 2;
                         } else {
@@ -241,9 +362,7 @@ public:
                     }
                     i += 3;
                 } else if ((c1 & 0xF8) == 0xF0) {
-                    // 4-byte UTF-8 Emojis (🟢 🔴 🟡 🚀 🧹 🔒 🗑️ ⚡ etc.) are 2 columns wide
-                    width += 2;
-                    i += 4;
+                    width += 2; i += 4;
                 } else {
                     i += 1;
                 }
@@ -261,19 +380,15 @@ public:
         size_t i = 0;
         while (i < str.length() && width < maxVisible - 3) {
             if (str[i] == '\033') {
-                while (i < str.length() && str[i] != 'm') {
-                    res += str[i++];
-                }
+                while (i < str.length() && str[i] != 'm') res += str[i++];
                 if (i < str.length()) res += str[i++];
             } else {
                 unsigned char c1 = static_cast<unsigned char>(str[i]);
                 int charWidth = 1;
                 size_t charBytes = 1;
-                if (c1 < 0x80) {
-                    charWidth = 1; charBytes = 1;
-                } else if ((c1 & 0xE0) == 0xC0) {
-                    charWidth = 1; charBytes = 2;
-                } else if ((c1 & 0xF0) == 0xE0) {
+                if (c1 < 0x80) { charWidth = 1; charBytes = 1; }
+                else if ((c1 & 0xE0) == 0xC0) { charWidth = 1; charBytes = 2; }
+                else if ((c1 & 0xF0) == 0xE0) {
                     if (i + 2 < str.length()) {
                         unsigned char c2 = static_cast<unsigned char>(str[i+1]);
                         unsigned char c3 = static_cast<unsigned char>(str[i+2]);
@@ -288,9 +403,7 @@ public:
                 }
 
                 if (width + charWidth > maxVisible - 3) break;
-                for (size_t b = 0; b < charBytes && i < str.length(); ++b) {
-                    res += str[i++];
-                }
+                for (size_t b = 0; b < charBytes && i < str.length(); ++b) res += str[i++];
                 width += charWidth;
             }
         }
@@ -298,13 +411,14 @@ public:
         return res;
     }
 
-    static std::string DrawLine(int width, const std::string& text, bool highlight = false) {
+    static std::string DrawLine(int width, const std::string& text, bool highlight = false, const std::string& themeName = "OpenTUI") {
+        auto style = GetThemeStyle(themeName);
         std::ostringstream ss;
-        ss << Color::BrightCyan << "║ " << Color::Reset;
+        ss << style.secondaryColor << style.borderVert << " " << Color::Reset;
         std::string safeText = TruncateVisibleText(text, width - 7);
         int visibleWidth = GetVisibleDisplayWidth(safeText);
         if (highlight) {
-            ss << Color::BgBlue << Color::BrightWhite << Color::Bold << " ► " << safeText;
+            ss << style.bgHighlight << " " << style.selectorIcon << safeText;
             int padding = width - visibleWidth - 7;
             int fill = (std::max)(0, padding);
             for (int i = 0; i < fill; ++i) ss << " ";
@@ -315,12 +429,14 @@ public:
             int fill = (std::max)(0, padding);
             for (int i = 0; i < fill; ++i) ss << " ";
         }
-        ss << Color::BrightCyan << " ║" << Color::Reset << "\n";
+        ss << style.secondaryColor << " " << style.borderVert << Color::Reset << "\n";
         return ss.str();
     }
 };
 
-// Professional Extended ASCII Block Loading Bar
+// =============================================================================
+// Loading & Progress Bar Widget Utility
+// =============================================================================
 class ProgressBar {
 public:
     static std::string Render(double percentage, int width = 30, const std::string& unitLabel = "%") {
@@ -329,15 +445,74 @@ public:
         
         std::ostringstream ss;
         ss << Color::BrightCyan << "▕" << Color::BrightGreen;
-        for (int i = 0; i < filled; ++i) ss << "█"; // Full block
+        for (int i = 0; i < filled; ++i) ss << "█";
         ss << Color::Dim;
-        for (int i = filled; i < width; ++i) ss << "░"; // Light shade block
+        for (int i = filled; i < width; ++i) ss << "░";
         ss << Color::Reset << Color::BrightCyan << "▏ " << Color::BrightWhite << Color::Bold
            << std::fixed << std::setprecision(1) << percentage << unitLabel << Color::Reset;
         return ss.str();
     }
 };
 
+// =============================================================================
+// TermOx-Style Reactive Widget Base Class
+// =============================================================================
+class Widget {
+protected:
+    Rect bounds;
+    bool visible = true;
+    bool focused = false;
+    std::string name;
+
+public:
+    Widget(const std::string& widgetName = "Widget") : name(widgetName) {}
+    virtual ~Widget() = default;
+
+    void SetBounds(const Rect& r) { bounds = r; }
+    Rect GetBounds() const { return bounds; }
+
+    void SetVisible(bool v) { visible = v; }
+    bool IsVisible() const { return visible; }
+
+    void SetFocus(bool f) { focused = f; }
+    bool IsFocused() const { return focused; }
+
+    std::string GetName() const { return name; }
+
+    virtual void Render(std::ostringstream& ss) = 0;
+    virtual bool OnKeyEvent(const KeyEvent& ev) { (void)ev; return false; }
+};
+
+// =============================================================================
+// TermOx-Style Container Panel Widget (Titled Border Box)
+// =============================================================================
+class PanelWidget : public Widget {
+    std::string title;
+    std::vector<std::string> lines;
+
+public:
+    PanelWidget(const std::string& panelTitle = "")
+        : Widget("Panel"), title(panelTitle) {}
+
+    void SetTitle(const std::string& t) { title = t; }
+    void SetLines(const std::vector<std::string>& l) { lines = l; }
+    void AddLine(const std::string& l) { lines.push_back(l); }
+    void Clear() { lines.clear(); }
+
+    void Render(std::ostringstream& ss) override {
+        if (!visible) return;
+        int w = bounds.width > 0 ? bounds.width : 80;
+        ss << Box::DrawBorder(w, title);
+        for (const auto& l : lines) {
+            ss << Box::DrawLine(w, l, false);
+        }
+        ss << Box::DrawFooter(w);
+    }
+};
+
+// =============================================================================
+// TermOx-Style Interactive Menu Selection Component
+// =============================================================================
 struct MenuSelection {
     int index = -1;
     Key actionKey = Key::Enter;
@@ -349,13 +524,16 @@ class Menu {
     int selectedIndex = 0;
     std::string statusLine;
     std::vector<std::string> headerLines;
+    std::string themeName = "OpenTUI";
     SpinnerAnimation spinner;
     std::function<void()> onPreRender = nullptr;
 
 public:
-    Menu(const std::string& t, const std::vector<std::string>& opts)
-        : title(t), options(opts) {}
+    Menu(const std::string& t, const std::vector<std::string>& opts, const std::string& theme = "OpenTUI")
+        : title(t), options(opts), themeName(theme) {}
 
+    void SetTheme(const std::string& t) { themeName = t; }
+    std::string GetTheme() const { return themeName; }
     void SetPreRenderCallback(std::function<void()> cb) { onPreRender = cb; }
     void SetStatusLine(const std::string& status) { statusLine = status; }
     void SetHeaderLines(const std::vector<std::string>& headers) { headerLines = headers; }
@@ -368,32 +546,42 @@ public:
     MenuSelection ShowExtended() {
         TerminalEngine::EnableVirtualTerminal();
         TerminalEngine::HideCursor();
+        TerminalEngine::ClearScreen();
 
         while (true) {
-            TerminalEngine::ClearScreen();
-            if (onPreRender) onPreRender();
-            std::cout << Box::DrawBorder(80, title);
+            std::ostringstream frame;
+
+            if (onPreRender) {
+                auto* oldBuf = std::cout.rdbuf(frame.rdbuf());
+                onPreRender();
+                std::cout.rdbuf(oldBuf);
+            }
+
+            frame << Box::DrawBorder(80, title, themeName);
 
             if (!headerLines.empty()) {
                 for (const auto& h : headerLines) {
-                    std::cout << Box::DrawLine(80, h, false);
+                    frame << Box::DrawLine(80, h, false, themeName);
                 }
-                std::cout << Box::DrawDivider(80);
+                frame << Box::DrawDivider(80, themeName);
             }
 
             for (size_t i = 0; i < options.size(); ++i) {
                 bool isSelected = (static_cast<int>(i) == selectedIndex);
-                std::cout << Box::DrawLine(80, options[i], isSelected);
+                frame << Box::DrawLine(80, options[i], isSelected, themeName);
             }
 
             if (!statusLine.empty()) {
-                std::cout << Box::DrawDivider(80);
+                frame << Box::DrawDivider(80, themeName);
                 std::string animatedStatus = spinner.GetNextFrame() + " " + statusLine;
-                std::cout << Box::DrawLine(80, animatedStatus, false);
+                frame << Box::DrawLine(80, animatedStatus, false, themeName);
             }
 
-            std::cout << Box::DrawFooter(80);
-            std::cout << "\033[90m Use UP/DOWN to navigate, LEFT/RIGHT or Enter to toggle/select, ESC/'q' to exit.\033[0m\n";
+            frame << Box::DrawFooter(80, themeName);
+            frame << "\033[90m Use UP/DOWN to navigate, LEFT/RIGHT or Enter to toggle/select, ESC/'q' to exit.\033[0m\n";
+
+            TerminalEngine::MoveCursorToHome();
+            std::cout << frame.str() << "\033[J" << std::flush;
 
             KeyEvent ev = TerminalEngine::ReadKey();
             if (ev.key == Key::Up) {
@@ -414,6 +602,9 @@ public:
     }
 };
 
+// =============================================================================
+// TermOx-Style Text Prompt & Input Component
+// =============================================================================
 class TextInput {
 public:
     static std::string ReadLine(const std::string& promptStr, const std::string& defaultVal = "", const std::vector<std::string>& suggestions = {}) {
