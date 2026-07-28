@@ -190,10 +190,26 @@ public:
                 case 75: event.key = Key::Left; break;
                 case 77: event.key = Key::Right; break;
             }
+        } else if (c == 27) {
+            // CRITICAL FIX: Handle ANSI escape sequences for arrow keys.
+            // Some terminal configs send arrow keys as ESC + [ + A/B/C/D
+            // instead of Windows extended key prefix (0x00 or 0xE0).
+            // Without this, arrow keys would be interpreted as ESC
+            // and the cursor would never move.
+            int next1 = _getch();
+            if (next1 == '[' || next1 == 'O') {
+                int next2 = _getch();
+                switch (next2) {
+                    case 'A': event.key = Key::Up; break;
+                    case 'B': event.key = Key::Down; break;
+                    case 'C': event.key = Key::Right; break;
+                    case 'D': event.key = Key::Left; break;
+                }
+            } else {
+                event.key = Key::Escape;
+            }
         } else if (c == 13) {
             event.key = Key::Enter;
-        } else if (c == 27) {
-            event.key = Key::Escape;
         } else if (c == 9) {
             event.key = Key::Tab;
         } else {
@@ -798,7 +814,9 @@ public:
                         timedOutNoInput = true;
                         break;
                     }
-                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+                    // Use a shorter sleep (10ms instead of 50ms) for better
+                    // keypress responsiveness while still avoiding busy-waiting.
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
 #else
                     struct timeval tv;
                     tv.tv_sec = 0;

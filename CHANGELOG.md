@@ -2,6 +2,31 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.6.6] - 2026-07-28
+
+### Fixed
+- **TUI Main Menu Cursor Not Moving (`include/OpenTUI.hpp`, `include/TUI.hpp`)**:
+  Pressing arrow keys in the main menu did not move the cursor - it stayed
+  at position 0 and always selected "Deep Scan" (the first option).
+  The Deep Scan submenu worked correctly because it does not use auto-refresh.
+  Root cause: The Windows `ReadKey()` function only handled Windows extended
+  key codes (0x00 or 0xE0 prefix + arrow code), but some terminal
+  configurations send arrow keys as ANSI escape sequences (ESC + [ + A/B/C/D).
+  When that happened, the first byte (ESC = 27) was interpreted as the
+  Escape key, causing the TUI to return -1 and exit or re-render without
+  processing the arrow key. Additionally, `FlushInputBuffer()` was being
+  called in the main menu loop which could eat the user's keypresses.
+  Fixes:
+    1. Updated Windows `ReadKey()` to handle ANSI escape sequences. When
+       byte 27 (ESC) is received, it peeks the next two bytes and maps
+       `[A`/`[B`/`[C`/`[D` to Up/Down/Right/Left respectively. Standalone
+       ESC (not followed by `[` or `O`) is still treated as Escape key.
+    2. Removed `FlushInputBuffer()` call from the main menu loop. The
+       startup flush in `Menu::ShowExtended()` is sufficient - flushing
+       between menu renders was eating the user's keypresses.
+    3. Reduced auto-refresh loop sleep from 50ms to 10ms for better
+       keypress responsiveness (less latency between keypress and render).
+
 ## [5.6.5] - 2026-07-28
 
 ### Fixed
