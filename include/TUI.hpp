@@ -1361,6 +1361,12 @@ public:
         bool firstRender = true;
 
         while (true) {
+            // CRITICAL FIX: Flush any stray characters from stdin before showing
+            // the menu. On Windows, _kbhit() can return true for leftover \r/\n
+            // or ESC characters that would cause the menu to immediately exit
+            // or auto-select the first option.
+            FlushInputBuffer();
+
             menu.SetTheme(g_tuiSettings.tuiThemeEngine);
             menu.SetColorScheme(g_tuiSettings.tuiColorScheme);
             menu.SetFgColor(g_tuiSettings.tuiFgColor);

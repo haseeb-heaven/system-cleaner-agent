@@ -2,6 +2,30 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.6.5] - 2026-07-28
+
+### Fixed
+- **TUI Immediate Exit on Stray stdin Characters (`include/OpenTUI.hpp`, `include/TUI.hpp`)**:
+  The TUI was immediately exiting or auto-selecting the first option on
+  startup because stray characters (\r, \n, ESC, etc.) in the stdin buffer
+  were being consumed as real keypresses. On Windows, `_kbhit()` can return
+  true for leftover terminal characters from the previous command or shell
+  state. When the auto-refresh loop in `Menu::ShowExtended()` read these
+  stray characters, they were mapped to `Key::Enter` (\r = 13) or
+  `Key::Escape` (\x1B = 27), causing the TUI to either auto-select the
+  first option or print "Exiting system-cleaner-agent. Goodbye!" and exit.
+  Fix:
+    1. Added a startup flush loop in `Menu::ShowExtended()` that discards
+       up to 256 stray characters from stdin before the menu is shown.
+    2. Added `FlushInputBuffer()` call at the start of each main menu loop
+       iteration in `TUI::RunInteractiveMenu()` to discard stray chars
+       that may have accumulated between renders.
+    3. Added an unknown-key filter in the auto-refresh polling loop so that
+       if a stray character IS read (default `Key::Unknown`), it is
+       discarded and the loop continues waiting for a real keypress
+       instead of breaking out and processing it as a menu action.
+  Result: The TUI now stays open reliably regardless of stdin buffer state.
+
 ## [5.6.4] - 2026-07-28
 
 ### Removed

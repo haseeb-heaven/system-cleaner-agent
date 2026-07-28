@@ -654,6 +654,18 @@ public:
         TerminalEngine::HideCursor();
         TerminalEngine::ClearScreen();
 
+        // CRITICAL FIX: Flush any stray characters from stdin before we start.
+        // On Windows, _kbhit() can return true for leftover \r / \n / ESC / other
+        // characters from the terminal that would otherwise be consumed as a real
+        // keypress and cause the TUI to immediately exit or auto-select an option.
+        {
+            int flushed = 0;
+            while (TerminalEngine::HasKeyPending() && flushed < 256) {
+                (void)TerminalEngine::ReadKey();
+                ++flushed;
+            }
+        }
+
         while (true) {
             // Clear screen on each re-render so live refresh doesn't leave artifacts
             std::cout << "\033[2J\033[H" << std::flush;
@@ -773,7 +785,13 @@ public:
             if (refreshIntervalMs > 0) {
                 while (true) {
 #ifdef _WIN32
-                    if (_kbhit()) { ev = TerminalEngine::ReadKey(); break; }
+                    if (_kbhit()) {
+                        ev = TerminalEngine::ReadKey();
+                        // CRITICAL FIX: If the key is unknown (stray char from
+                        // stdin), discard it and keep waiting for a real keypress.
+                        if (ev.key != Key::Unknown) break;
+                        continue;
+                    }
                     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::steady_clock::now() - lastRenderTime).count();
                     if (elapsed >= refreshIntervalMs) {
@@ -789,7 +807,11 @@ public:
                     FD_ZERO(&fds);
                     FD_SET(STDIN_FILENO, &fds);
                     int rv = select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv);
-                    if (rv > 0) { ev = TerminalEngine::ReadKey(); break; }
+                    if (rv > 0) {
+                        ev = TerminalEngine::ReadKey();
+                        if (ev.key != Key::Unknown) break;
+                        continue;
+                    }
                     auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
                         std::chrono::steady_clock::now() - lastRenderTime).count();
                     if (elapsed >= refreshIntervalMs) {
