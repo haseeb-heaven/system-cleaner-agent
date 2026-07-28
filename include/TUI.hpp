@@ -1455,11 +1455,19 @@ public:
             }
             // Update refresh interval in case user changed the setting via Settings menu
             menu.SetRefreshIntervalMs(g_tuiSettings.monitorIntervalSec * 1000);
+            // Set initial header lines (will be auto-refreshed on every frame)
             {
                 auto headers = GetLiveResourceHeaders();
                 AppendTaskStatusToHeaders(headers);
                 menu.SetHeaderLines(headers);
             }
+            // CRITICAL: Set callback to re-query live data on EVERY auto-refresh tick.
+            // Without this, the auto-refresh re-renders the SAME cached data.
+            menu.SetHeaderRefreshCallback([]() -> std::vector<std::string> {
+                auto fresh = GetLiveResourceHeaders();
+                AppendTaskStatusToHeaders(fresh);
+                return fresh;
+            });
             menu.SetStatusLine(g_tuiStatus.GetStatusLine());
             int selected = menu.Show();
 

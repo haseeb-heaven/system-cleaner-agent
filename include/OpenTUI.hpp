@@ -629,6 +629,10 @@ class Menu {
     int selectedIndex = 0;
     std::string statusLine;
     std::vector<std::string> headerLines;
+    // Callback to refresh header data on each auto-refresh tick.
+    // If set, the callback is called BEFORE rendering headers, allowing
+    // live data (CPU/RAM/disk usage) to be re-queried on every frame.
+    std::function<std::vector<std::string>()> headerRefreshCallback = nullptr;
     int refreshIntervalMs = 0;                      // Auto re-render interval in ms (0 = disabled, keypress-only)
     std::chrono::steady_clock::time_point lastRenderTime;
     std::string themeName = "OpenTUI";
@@ -653,6 +657,7 @@ public:
     void SetPreRenderCallback(std::function<void()> cb) { onPreRender = cb; }
     void SetStatusLine(const std::string& status) { statusLine = status; }
     void SetHeaderLines(const std::vector<std::string>& headers) { headerLines = headers; }
+    void SetHeaderRefreshCallback(std::function<std::vector<std::string>()> cb) { headerRefreshCallback = cb; }
     void SetRefreshIntervalMs(int ms) { refreshIntervalMs = ms; }
     void SetSelectedIndex(int idx) {
         if (idx >= 0 && idx < static_cast<int>(options.size())) {
@@ -702,6 +707,12 @@ public:
                 std::string topRibbon = "╭─ [File] ── [Scan] ── [Tools] ── [AQL Console] ── [Settings] ── [Help] ─╮";
                 frame << style.secondaryColor << topRibbon << style.panelBg << "\033[K\n";
                 frame << Box::DrawBorder(80, title, themeName, colorScheme, fgColor, bgColor);
+
+                // Refresh header data on each frame for live stats (CPU/RAM/disk)
+                if (headerRefreshCallback) {
+                    auto fresh = headerRefreshCallback();
+                    if (!fresh.empty()) headerLines = fresh;
+                }
 
                 if (!headerLines.empty()) {
                     for (const auto& h : headerLines) {
@@ -760,6 +771,12 @@ public:
                 // OPENTUI CLASSIC REACTIVE DASHBOARD ENGINE
                 // =============================================================
                 frame << Box::DrawBorder(80, title, themeName, colorScheme, fgColor, bgColor);
+
+                // Refresh header data on each frame for live stats (CPU/RAM/disk)
+                if (headerRefreshCallback) {
+                    auto fresh = headerRefreshCallback();
+                    if (!fresh.empty()) headerLines = fresh;
+                }
 
                 if (!headerLines.empty()) {
                     for (const auto& h : headerLines) {
