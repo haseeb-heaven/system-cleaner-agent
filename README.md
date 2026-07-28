@@ -11,49 +11,48 @@
 
 ---
 
+> [!IMPORTANT]
+> **🛡️ Security Shield & Safety Recommendation**
+> `system-cleaner-agent` features built-in safety protection guards:
+> - **Path Protection Guard (`pathProtection: ON`)**: Prevents accidental deletion of vital system directories (`C:\Windows`, `/usr`, `/bin`), user documents, and code repositories.
+> - **Sandbox Mode (`sandboxMode: ON`)**: Previews all cleaning operations in dry-run mode without modifying actual disk state.
+> - **Dangerous Command Guard**: Risky operations and unsafe path deletions are automatically blocked for maximum data safety.
+> 
+> **💡 Recommendation**: We strongly recommend keeping **Path Protection** and **Sandbox Mode** enabled in the Settings menu (or CLI flags) to ensure all system and personal files remain 100% safe.
+
+---
+
 ## 📸 Screenshots
 
-### Main Menu - Live CPU/RAM/Disk Monitoring with Sparklines
+### Main Menu - Live CPU/RAM/Disk Monitoring Dashboard
 
 ![Main Menu](assets/screenshot-main-menu.svg)
 
 *The main menu shows real-time CPU, RAM, and disk usage with **color-coded progress bars** and **sparkline trend charts** (▁▂▃▄▅▆▇█). The headers auto-refresh based on the Monitor Interval setting (1s/3s/5s/10s/15s/30s/60s).*
 
-### Settings Menu - Configure All TUI Options
-
-![Settings](assets/screenshot-settings.svg)
-
-*Navigate with **Left/Right** arrow keys to instantly toggle settings. **1 second (LIVE)** mode is available for ultra-fast monitoring.*
-
-### Disk Cleaner Suite
+### Disk Cleaner Suite - Parallel Storage Scan & Presets
 
 ![Disk Cleaner](assets/screenshot-disk-cleaner.svg)
 
 *Multi-drive parallel scanning, deep storage hotspot analysis, smart deep clean, browser caches, developer caches, secure shred wipe, and OS Recycle Bin purge.*
 
-### RAM Cleaner - Process Management
+### RAM Cleaner - Memory Optimization & Process Manager
 
 ![RAM Cleaner](assets/screenshot-ram-cleaner.svg)
 
 *Quick RAM optimization, OS memory working set trimming, browser memory purge, and high-RAM process termination with permission management.*
 
-### AQL Console - Agent Query Language
-
-![AQL Console](assets/screenshot-aql-console.svg)
-
-*Natural language Agent Query Language (AQL) for autonomous operations. Example: `KILL chrome.exe WHEN RAM > 1GB`.*
-
-### Smart Daemon Monitor
-
-![Daemon Monitor](assets/screenshot-daemon-monitor.svg)
-
-*Background scheduler that watches RAM, disk free space, and triggers automatic cleanup when thresholds are exceeded.*
-
-### Task Library - Persistent History
+### Task Library - Unified Persistent Task History
 
 ![Task Library](assets/screenshot-task-library.svg)
 
 *All tasks (clean, scan, AQL, agent, daemon) are saved to `cleaner_config.json` and auto-resumed on startup.*
+
+### Settings Menu - Configure All TUI & Safety Options
+
+![Settings](assets/screenshot-settings.svg)
+
+*Configure Sandbox Mode, Path Protection, Process Protection Whitelist, TUI Theme Engines, and Color Schemes.*
 
 ### CLI: Storage & Drive Analysis (`scan`)
 

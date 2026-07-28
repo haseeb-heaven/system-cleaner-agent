@@ -723,6 +723,9 @@ public:
         // On Windows, _kbhit() can return true for leftover \r / \n / ESC / other
         // characters from the terminal that would otherwise be consumed as a real
         // keypress and cause the TUI to immediately exit or auto-select an option.
+#ifdef _WIN32
+        if (_isatty(_fileno(stdin)))
+#endif
         {
             int flushed = 0;
             while (TerminalEngine::HasKeyPending() && flushed < 256) {

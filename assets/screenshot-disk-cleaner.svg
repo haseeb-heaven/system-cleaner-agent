@@ -1,52 +1,105 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="338" viewBox="0 0 800 338">
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="394" viewBox="0 0 800 394">
 <defs><linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0a0e14"/><stop offset="100%" stop-color="#060a0f"/></linearGradient></defs>
-<rect width="800" height="338" fill="url(#bg)"/>
+<rect width="800" height="394" fill="url(#bg)"/>
 <text x="24" y="32" font-family="Consolas, monospace" font-size="16" font-weight="bold" fill="#88c0d0">Disk Cleaner Suite - Parallel Storage Scan &amp; Deep Clean</text>
 <text x="24" y="64" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">╭─ [File] ── [Scan] ── [Tools] ── [AQL Console] ── [Settings] ── [Help] ─╮</text>
 <text x="24" y="78" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">╭───[ </text>
-<text x="67.2" y="78" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#c0c5ce" xml:space="preserve">DISK CLEANER SUITE (Windows - C:\)</text>
-<text x="312.0" y="78" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> ]─────────────────────────────────────╮</text>
+<text x="67.2" y="78" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#c0c5ce" xml:space="preserve">SYSTEM-CLEANER-AGENT</text>
+<text x="211.2" y="78" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> ]───────────────────────────────────────────────────╮</text>
 <text x="24" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">│ </text>
-<text x="38.4" y="92" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#c0c5ce" xml:space="preserve"> ◆ Storage Scan (Preview All Cleanable Space)                               </text>
-<text x="585.6" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
+<text x="38.4" y="92" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   </text>
+<text x="60.0" y="92" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0" xml:space="preserve">CPU:</text>
+<text x="88.8" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="103.2" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#8fbcbb" xml:space="preserve">▕</text>
+<text x="110.4" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">████</text>
+<text x="139.20000000000002" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">░░░░░░░░░░░░░░</text>
+<text x="240.0" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#8fbcbb" xml:space="preserve">▍ </text>
+<text x="254.4" y="92" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#eceff4" xml:space="preserve">26.2%</text>
+<text x="290.4" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="304.79999999999995" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">▂</text>
+<text x="311.99999999999994" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">▂</text>
+<text x="319.19999999999993" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">                                     </text>
+<text x="585.5999999999999" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
 <text x="24" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">│ </text>
-<text x="38.4" y="106" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   Deep Storage Scan &amp; Hotspot Analyzer (Multi-Drive &amp; Large File Bloat)    </text>
-<text x="585.6" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
+<text x="38.4" y="106" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   </text>
+<text x="60.0" y="106" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">RAM:</text>
+<text x="88.8" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="103.2" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#8fbcbb" xml:space="preserve">▕</text>
+<text x="110.4" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">██████████████</text>
+<text x="211.2" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">░░░░</text>
+<text x="240.0" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#8fbcbb" xml:space="preserve">▍ </text>
+<text x="254.4" y="106" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#eceff4" xml:space="preserve">81.0%</text>
+<text x="290.4" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="304.79999999999995" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">▆</text>
+<text x="311.99999999999994" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">▆</text>
+<text x="319.19999999999993" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">                                     </text>
+<text x="585.5999999999999" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
 <text x="24" y="120" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">│ </text>
-<text x="38.4" y="120" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   Smart Deep Clean (Clean All Temp &amp; Cache Targets)                        </text>
+<text x="38.4" y="120" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   C:\ </text>
+<text x="88.8" y="120" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#8fbcbb" xml:space="preserve">▕</text>
+<text x="96.0" y="120" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#d08770" xml:space="preserve">█████████████</text>
+<text x="189.60000000000002" y="120" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#d08770" xml:space="preserve">░</text>
+<text x="196.8" y="120" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#8fbcbb" xml:space="preserve">▍ </text>
+<text x="211.20000000000002" y="120" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#eceff4" xml:space="preserve">99.7%</text>
+<text x="247.20000000000002" y="120" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> (F:431.37 MB / 153.91 GB)                     </text>
 <text x="585.6" y="120" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
 <text x="24" y="134" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">│ </text>
-<text x="38.4" y="134" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   Preset: C:\ System Temp &amp; Update Downloads                               </text>
+<text x="38.4" y="134" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   D:\ </text>
+<text x="88.8" y="134" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#8fbcbb" xml:space="preserve">▕</text>
+<text x="96.0" y="134" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#d08770" xml:space="preserve">████████████</text>
+<text x="182.4" y="134" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#d08770" xml:space="preserve">░░</text>
+<text x="196.8" y="134" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#8fbcbb" xml:space="preserve">▍ </text>
+<text x="211.20000000000002" y="134" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#eceff4" xml:space="preserve">86.3%</text>
+<text x="247.20000000000002" y="134" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> (F:44.00 GB / 322.19 GB)                      </text>
 <text x="585.6" y="134" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
 <text x="24" y="148" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">│ </text>
-<text x="38.4" y="148" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   Preset: C:\ Crash Dumps &amp; System Shader Logs                             </text>
+<text x="38.4" y="148" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   </text>
+<text x="60.0" y="148" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#b48ead" xml:space="preserve">TREND:</text>
+<text x="103.2" y="148" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="110.4" y="148" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#d08770" xml:space="preserve">▇</text>
+<text x="117.60000000000001" y="148" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#d08770" xml:space="preserve">▇</text>
+<text x="124.80000000000001" y="148" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="132.0" y="148" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#4c566a" xml:space="preserve">(disk usage history)</text>
+<text x="276.0" y="148" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">                                           </text>
 <text x="585.6" y="148" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
 <text x="24" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">│ </text>
-<text x="38.4" y="162" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   Preset: Web Browser Caches (Chrome/Edge/Firefox/Brave/Safari)            </text>
+<text x="38.4" y="162" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   Tasks: </text>
+<text x="110.4" y="162" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0" xml:space="preserve">3 RUNNING</text>
+<text x="175.2" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> (AQL MONITOR (node_modules) - [RESUMED ON STARTUP] MO...</text>
 <text x="585.6" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
-<text x="24" y="176" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">│ </text>
-<text x="38.4" y="176" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   Preset: Developer Cache Suite (npm/pip/cargo/gradle/uv/pnpm)             </text>
-<text x="585.6" y="176" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
+<text x="24" y="176" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">├──────────────────────────────────────────────────────────────────────────────┤</text>
 <text x="24" y="190" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">│ </text>
-<text x="38.4" y="190" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   Preset: IDE &amp; Messaging Caches (VS Code/Cursor/Discord/Telegram)         </text>
+<text x="38.4" y="190" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#c0c5ce" xml:space="preserve"> ◆ Disk Cleaner (with Deep Scan)                                            </text>
 <text x="585.6" y="190" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
 <text x="24" y="204" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">│ </text>
-<text x="38.4" y="204" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   Secure Shred Wipe                                                        </text>
+<text x="38.4" y="204" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   RAM Cleaner                                                              </text>
 <text x="585.6" y="204" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
 <text x="24" y="218" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">│ </text>
-<text x="38.4" y="218" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   Empty OS Recycle Bin / Trash                                             </text>
+<text x="38.4" y="218" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   AQL Query                                                                </text>
 <text x="585.6" y="218" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
 <text x="24" y="232" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">│ </text>
-<text x="38.4" y="232" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   Deep Scan (Interactive Tree, Hotspot Analyzer &amp; JSON Export)             </text>
+<text x="38.4" y="232" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   Daemon Monitor                                                           </text>
 <text x="585.6" y="232" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
 <text x="24" y="246" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">│ </text>
-<text x="38.4" y="246" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   Back                                                                     </text>
+<text x="38.4" y="246" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   Task Library                                                             </text>
 <text x="585.6" y="246" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
-<text x="24" y="260" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">├──────────────────────────────────────────────────────────────────────────────┤</text>
+<text x="24" y="260" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">│ </text>
+<text x="38.4" y="260" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   Settings                                                                 </text>
+<text x="585.6" y="260" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
 <text x="24" y="274" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">│ </text>
-<text x="38.4" y="274" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   [TermOx Widget] ↑/↓: Move │ ←/→/Enter: Select/Toggle │ ESC/&#x27;q&#x27;: Exit     </text>
+<text x="38.4" y="274" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   Exit                                                                     </text>
 <text x="585.6" y="274" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
-<text x="24" y="288" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">╰──────────────────────────────────────────────────────────────────────────────╯</text>
-<text x="24" y="326" font-family="Consolas, monospace" font-size="9" fill="#4c566a">system-cleaner-agent v5.7.0 | TUI Disk Cleaner</text>
+<text x="24" y="288" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">├──────────────────────────────────────────────────────────────────────────────┤</text>
+<text x="24" y="302" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">│ </text>
+<text x="38.4" y="302" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   </text>
+<text x="60.0" y="302" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#8fbcbb" xml:space="preserve">⠋</text>
+<text x="67.2" y="302" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> [STATUS] 🟢 ACTIVE (3 tasks): [RESUMED ON STARTUP] MONITOR WHERE EXT...</text>
+<text x="578.4" y="302" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
+<text x="24" y="316" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">├──────────────────────────────────────────────────────────────────────────────┤</text>
+<text x="24" y="330" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">│ </text>
+<text x="38.4" y="330" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">   [TermOx Widget] ↑/↓: Move │ ←/→/Enter: Select/Toggle │ ESC/&#x27;q&#x27;: Exit     </text>
+<text x="585.6" y="330" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> │</text>
+<text x="24" y="344" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">╰──────────────────────────────────────────────────────────────────────────────╯</text>
+<text x="24" y="382" font-family="Consolas, monospace" font-size="9" fill="#4c566a">system-cleaner-agent v5.7.0 | TUI Disk Cleaner</text>
 </svg>
