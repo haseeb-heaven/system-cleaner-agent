@@ -1,24 +1,90 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="948" height="294" viewBox="0 0 948 294">
+<svg xmlns="http://www.w3.org/2000/svg" width="1091" height="296" viewBox="0 0 1091 296">
 <defs><linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0a0e14"/><stop offset="100%" stop-color="#060a0f"/></linearGradient></defs>
-<rect width="948" height="294" fill="url(#bg)"/>
-<text x="24" y="22" font-family="Consolas, monospace" font-size="16" font-weight="bold" fill="#88c0d0">CLI: Task Library (history command)</text>
-<text x="24.0" y="36" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">[2026-07-28 20:20:30] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
-<text x="24.0" y="50" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">[2026-07-28 20:20:30] [INFO ] TaskHistory: Loaded &amp; resumed 4 unfinished task(s) from persistent configuration file.</text>
-<text x="24.0" y="64" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">[2026-07-28 20:20:30] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
-<text x="24.0" y="78" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">[Task Library] 4 running | 5 done | 0 failed | total 10</text>
-<text x="24.0" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce"></text>
-<text x="24.0" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">ID    STATUS     CATEGORY  TIME       DUR      NAME                      DETAIL / RESULT                         </text>
-<text x="24.0" y="120" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">-----------------------------------------------------------------------------------------------------------------</text>
-<text x="24.0" y="134" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b">[100] RUNNING    TUI        20:20:30   0s       Preset: OS Temp &amp; Upd...  [RESUMED ON STARTUP] clean preset-temp</text>
-<text x="24.0" y="148" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b">[009] RUNNING    DAEMON     20:20:30   0s       Smart Daemon Monitor      [RESUMED ON STARTUP] daemon --mem-t...</text>
-<text x="24.0" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b">[008] RUNNING    TUI        20:20:30   0s       Smart Deep Clean          [RESUMED ON STARTUP] clean --real     </text>
-<text x="24.0" y="176" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">[007] OK         AQL        20:14:07   6m 23s   AQL KILL (chrome.exe)     Cron trigger executed for: KILL chr...</text>
-<text x="24.0" y="190" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b">[006] RUNNING    AQL        20:20:30   0s       AQL MONITOR (node_mod...  [RESUMED ON STARTUP] MONITOR WHERE ...</text>
-<text x="24.0" y="204" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">[005] OK         AQL        20:14:07   6m 23s   AQL CLEAN (C:\Users\h...  AQL CLEAN finished.                   </text>
-<text x="24.0" y="218" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">[004] OK         AQL        20:14:07   6m 23s   AQL CLEAN (C:\Users\h...  AQL CLEAN finished.                   </text>
-<text x="24.0" y="232" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">[003] OK         AQL        20:14:06   6m 24s   AQL KILL (chrome.exe)     No active processes matched chrome.exe</text>
-<text x="24.0" y="246" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">[002] KILLED     TUI        20:14:06   6m 24s   Unit Test Action Task     Killed / Terminated by user.          </text>
-<text x="24.0" y="260" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">[001] OK         AQL        20:14:06   6m 24s   AQL CLEAN (C:\Temp)       AQL CLEAN finished.                   </text>
-<text x="24" y="288" font-family="Consolas, monospace" font-size="9" fill="#4c566a">system-cleaner-agent v5.6.9 | CLI Help</text>
+<rect width="1091" height="296" fill="url(#bg)"/>
+<text x="24" y="32" font-family="Consolas, monospace" font-size="16" font-weight="bold" fill="#88c0d0">CLI: system-cleaner-agent history</text>
+<text x="24" y="64" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:20] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
+<text x="24" y="78" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:20] [INFO ] TaskHistory: Loaded &amp; resumed 2 unfinished task(s) from persistent configuration file.</text>
+<text x="24" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:20] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
+<text x="24" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">[Task Library] 2 running | 4 done | 0 failed | total 7</text>
+<text x="24" y="134" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#e5e9f0" xml:space="preserve">ID    STATUS     CATEGORY  TIME       DUR      NAME                      DETAIL / RESULT                         </text>
+<text x="24" y="148" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#4c566a" xml:space="preserve">-----------------------------------------------------------------------------------------------------------------</text>
+<text x="24" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#4c566a" xml:space="preserve">[700]</text>
+<text x="60.0" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="67.2" y="162" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0" xml:space="preserve">RUNNING   </text>
+<text x="139.2" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> AQL        </text>
+<text x="225.6" y="162" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">21:35:20  </text>
+<text x="297.6" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="304.8" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#4c566a" xml:space="preserve">0s      </text>
+<text x="362.40000000000003" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="369.6" y="162" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#eceff4" xml:space="preserve">AQL KILL (chrome.exe)    </text>
+<text x="549.6" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="556.8000000000001" y="162" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0" xml:space="preserve">[RESUMED ON STARTUP] KILL chrome.ex...</text>
+<text x="24" y="176" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#4c566a" xml:space="preserve">[006]</text>
+<text x="60.0" y="176" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="67.2" y="176" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0" xml:space="preserve">RUNNING   </text>
+<text x="139.2" y="176" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> AQL        </text>
+<text x="225.6" y="176" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">21:35:20  </text>
+<text x="297.6" y="176" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="304.8" y="176" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#4c566a" xml:space="preserve">0s      </text>
+<text x="362.40000000000003" y="176" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="369.6" y="176" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#eceff4" xml:space="preserve">AQL MONITOR (node_mod... </text>
+<text x="549.6" y="176" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="556.8000000000001" y="176" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0" xml:space="preserve">[RESUMED ON STARTUP] MONITOR WHERE ...</text>
+<text x="24" y="190" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#4c566a" xml:space="preserve">[005]</text>
+<text x="60.0" y="190" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="67.2" y="190" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#a3be8c" xml:space="preserve">OK        </text>
+<text x="139.2" y="190" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> AQL        </text>
+<text x="225.6" y="190" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">21:12:56  </text>
+<text x="297.6" y="190" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="304.8" y="190" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#4c566a" xml:space="preserve">22m 24s </text>
+<text x="362.40000000000003" y="190" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="369.6" y="190" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#eceff4" xml:space="preserve">AQL CLEAN (C:\Users\h... </text>
+<text x="549.6" y="190" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="556.8000000000001" y="190" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0" xml:space="preserve">AQL CLEAN finished.                   </text>
+<text x="24" y="204" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#4c566a" xml:space="preserve">[004]</text>
+<text x="60.0" y="204" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="67.2" y="204" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#a3be8c" xml:space="preserve">OK        </text>
+<text x="139.2" y="204" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> AQL        </text>
+<text x="225.6" y="204" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">21:12:56  </text>
+<text x="297.6" y="204" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="304.8" y="204" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#4c566a" xml:space="preserve">22m 24s </text>
+<text x="362.40000000000003" y="204" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="369.6" y="204" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#eceff4" xml:space="preserve">AQL CLEAN (C:\Users\h... </text>
+<text x="549.6" y="204" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="556.8000000000001" y="204" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0" xml:space="preserve">AQL CLEAN finished.                   </text>
+<text x="24" y="218" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#4c566a" xml:space="preserve">[003]</text>
+<text x="60.0" y="218" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="67.2" y="218" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#a3be8c" xml:space="preserve">OK        </text>
+<text x="139.2" y="218" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> AQL        </text>
+<text x="225.6" y="218" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">21:12:56  </text>
+<text x="297.6" y="218" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="304.8" y="218" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#4c566a" xml:space="preserve">22m 24s </text>
+<text x="362.40000000000003" y="218" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="369.6" y="218" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#eceff4" xml:space="preserve">AQL KILL (chrome.exe)    </text>
+<text x="549.6" y="218" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="556.8000000000001" y="218" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0" xml:space="preserve">No active processes matched chrome.exe</text>
+<text x="24" y="232" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#4c566a" xml:space="preserve">[002]</text>
+<text x="60.0" y="232" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="67.2" y="232" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#4c566a" xml:space="preserve">KILLED    </text>
+<text x="139.2" y="232" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> TUI        </text>
+<text x="225.6" y="232" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">21:12:55  </text>
+<text x="297.6" y="232" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="304.8" y="232" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#4c566a" xml:space="preserve">22m 25s </text>
+<text x="362.40000000000003" y="232" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="369.6" y="232" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#eceff4" xml:space="preserve">Unit Test Action Task    </text>
+<text x="549.6" y="232" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="556.8000000000001" y="232" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0" xml:space="preserve">Killed / Terminated by user.          </text>
+<text x="24" y="246" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#4c566a" xml:space="preserve">[001]</text>
+<text x="60.0" y="246" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="67.2" y="246" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#a3be8c" xml:space="preserve">OK        </text>
+<text x="139.2" y="246" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> AQL        </text>
+<text x="225.6" y="246" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">21:12:55  </text>
+<text x="297.6" y="246" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="304.8" y="246" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#4c566a" xml:space="preserve">22m 25s </text>
+<text x="362.40000000000003" y="246" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="369.6" y="246" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#eceff4" xml:space="preserve">AQL CLEAN (C:\Temp)      </text>
+<text x="549.6" y="246" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> </text>
+<text x="556.8000000000001" y="246" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0" xml:space="preserve">AQL CLEAN finished.                   </text>
+<text x="24" y="284" font-family="Consolas, monospace" font-size="9" fill="#4c566a">system-cleaner-agent v5.7.0 | CLI Task History</text>
 </svg>

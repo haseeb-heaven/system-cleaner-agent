@@ -55,19 +55,49 @@
 
 *All tasks (clean, scan, AQL, agent, daemon) are saved to `cleaner_config.json` and auto-resumed on startup.*
 
-### CLI: Help Output
+### CLI: Storage & Drive Analysis (`scan`)
+
+![CLI Scan](assets/screenshot-cli-scan.svg)
+
+*Multi-threaded parallel storage scan analyzing temp files, caches, and drive health with active security status.*
+
+### CLI: Multi-Threaded Cleanup (`clean --dry-run`)
+
+![CLI Clean](assets/screenshot-cli-clean.svg)
+
+*Multi-threaded cleanup preview with path protection guards, safety checks, and real-time path inspection.*
+
+### CLI: System Deep Clean & Trash Purge (`deep-clean --dry-run`)
+
+![CLI Deep Clean](assets/screenshot-cli-deep-clean.svg)
+
+*Deep storage cache cleanup combined with OS Recycle Bin / Trash API purge.*
+
+### CLI: Agent Query Language Single-Shot (`aql`)
+
+![CLI AQL](assets/screenshot-cli-aql.svg)
+
+*Execute AQL statements directly from the command line for automated workflows.*
+
+### CLI: Autonomous ReAct AI Agent Trajectory (`agent`)
+
+![CLI Agent](assets/screenshot-cli-agent.svg)
+
+*Self-directed ReAct reasoning loop (Thought -> Action -> Observe -> Verify) for natural language goals.*
+
+### CLI: Help Output (`help`)
 
 ![CLI Help](assets/screenshot-cli-help.svg)
 
 *Full CLI command reference with all options documented.*
 
-### CLI: Version Output
+### CLI: Version Output (`version`)
 
 ![CLI Version](assets/screenshot-cli-version.svg)
 
-*Version and architecture information.*
+*Version, engine build, and architecture details.*
 
-### CLI: Task Library (History)
+### CLI: Task Library History (`history`)
 
 ![CLI History](assets/screenshot-cli-history.svg)
 

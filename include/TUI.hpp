@@ -1134,7 +1134,7 @@ public:
                                 if (selected + 1 < highProcs.size()) selected++;
                             } else if (keyEv.key == OpenTUI::Key::Escape) { // ESC
                                 procListDone = true;
-                            } else if (ch == 13) { // Enter - kill with confirm
+                            } else if (keyEv.key == OpenTUI::Key::Enter) { // Enter - kill with confirm
                                 if (selected < highProcs.size()) {
                                     const auto& target = highProcs[selected];
                                     if (target.isProtected) {
@@ -1154,7 +1154,7 @@ public:
                                         }
                                     }
                                 }
-                            } else if (ch == 'k' || ch == 'K') { // Hot-key INSTANT KILL
+                            } else if (keyEv.ch == 'k' || keyEv.ch == 'K') { // Hot-key INSTANT KILL
                                 if (selected < highProcs.size()) {
                                     const auto& target = highProcs[selected];
                                     if (target.isProtected) {
@@ -1178,7 +1178,7 @@ public:
                                     if (selected >= highProcs.size() && !highProcs.empty()) selected = highProcs.size() - 1;
                                     if (highProcs.empty()) procListDone = true;
                                 }
-                            } else if (ch == 'q' || ch == 'Q') { // Q - quit
+                            } else if (keyEv.ch == 'q' || keyEv.ch == 'Q') { // Q - quit
                                 procListDone = true;
                             }
                         }

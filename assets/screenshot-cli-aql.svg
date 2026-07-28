@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1091" height="240" viewBox="0 0 1091 240">
+<defs><linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0a0e14"/><stop offset="100%" stop-color="#060a0f"/></linearGradient></defs>
+<rect width="1091" height="240" fill="url(#bg)"/>
+<text x="24" y="32" font-family="Consolas, monospace" font-size="16" font-weight="bold" fill="#88c0d0">CLI: system-cleaner-agent aql &quot;CLEAN TEMP_C WHERE DISK_C &lt; 500MB&quot;</text>
+<text x="24" y="64" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:50] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
+<text x="24" y="78" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:50] [INFO ] TaskHistory: Loaded &amp; resumed 2 unfinished task(s) from persistent configuration file.</text>
+<text x="24" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:50] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
+<text x="24" y="106" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">+--[ Agent Query Language (AQL) Execution ]-------------------------+</text>
+<text x="24" y="120" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0" xml:space="preserve">|  Query:   CLEAN TEMP_C WHERE DISK_C &lt; 500MB</text>
+<text x="24" y="134" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0" xml:space="preserve">|  Command: CLEAN  |  FREE_DISK &lt; 500.00 MB</text>
+<text x="24" y="148" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">+------------------------------------------------------------------+</text>
+<text x="24" y="176" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#a3be8c" xml:space="preserve">[AQL] Evaluating DISK_FREE condition on C:\: Available free space = 514.67 MB (Trigger threshold = 500.00 MB)</text>
+<text x="24" y="190" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#a3be8c" xml:space="preserve">[AQL STATUS] Free space (514.67 MB) is above threshold (500.00 MB). No cleanup required.</text>
+<text x="24" y="228" font-family="Consolas, monospace" font-size="9" fill="#4c566a">system-cleaner-agent v5.7.0 | CLI Single-Shot AQL Statement</text>
+</svg>

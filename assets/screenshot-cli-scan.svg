@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1091" height="268" viewBox="0 0 1091 268">
+<defs><linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0a0e14"/><stop offset="100%" stop-color="#060a0f"/></linearGradient></defs>
+<rect width="1091" height="268" fill="url(#bg)"/>
+<text x="24" y="32" font-family="Consolas, monospace" font-size="16" font-weight="bold" fill="#88c0d0">CLI: system-cleaner-agent scan</text>
+<text x="24" y="64" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:20] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
+<text x="24" y="78" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:20] [INFO ] TaskHistory: Loaded &amp; resumed 2 unfinished task(s) from persistent configuration file.</text>
+<text x="24" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:20] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
+<text x="24" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:20] [INFO ] Execution mode: scan</text>
+<text x="24" y="120" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:20] [INFO ] GTLibc Engine: No background process lock handles detected.</text>
+<text x="24" y="134" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:20] [INFO ] Starting Multi-Platform Parallel Scan (Threads: 12)...</text>
+<text x="24" y="148" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">+--[ Security Status ]----------------------------------------------+</text>
+<text x="24" y="162" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#a3be8c" xml:space="preserve">|  [ON]  Sandbox Mode         - Real deletions BLOCKED (dry-run)     |</text>
+<text x="24" y="176" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#a3be8c" xml:space="preserve">|  [ON]  Dangerous Path Guard - System directory deletion BLOCKED      |</text>
+<text x="24" y="190" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">+-------------------------------------------------------------------+</text>
+<text x="24" y="218" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:27] [INFO ] [System] Windows User Temp [C:\Users\hasee\AppData\Local\Temp] | Size: 1.24 MB (Protected user files preserved)</text>
+<text x="24" y="256" font-family="Consolas, monospace" font-size="9" fill="#4c566a">system-cleaner-agent v5.7.0 | CLI Storage &amp; Drive Analysis</text>
+</svg>

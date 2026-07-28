@@ -1,52 +1,193 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="948" height="686" viewBox="0 0 948 686">
+<svg xmlns="http://www.w3.org/2000/svg" width="1091" height="1472" viewBox="0 0 1091 1472">
 <defs><linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0a0e14"/><stop offset="100%" stop-color="#060a0f"/></linearGradient></defs>
-<rect width="948" height="686" fill="url(#bg)"/>
-<text x="24" y="22" font-family="Consolas, monospace" font-size="16" font-weight="bold" fill="#88c0d0">CLI: system-cleaner-agent help</text>
-<text x="24.0" y="36" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">[2026-07-28 20:20:29] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
-<text x="24.0" y="50" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">[2026-07-28 20:20:29] [INFO ] TaskHistory: Loaded &amp; resumed 4 unfinished task(s) from persistent configuration file.</text>
-<text x="24.0" y="64" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">[2026-07-28 20:20:29] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
-<text x="24.0" y="78" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0">USAGE:</text>
-<text x="24.0" y="92" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0">  system-cleaner-agent [COMMAND] [FLAGS]</text>
-<text x="24.0" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce"></text>
-<text x="24.0" y="120" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0">COMMANDS:</text>
-<text x="24.0" y="134" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#5e81ac">  chat         Launch Interactive Local LLM ReAct Prompt Shell (try &#x27;menu&#x27; for queries).</text>
-<text x="24.0" y="148" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#5e81ac">  agent        Launch Autonomous ReAct Agent Loop (Thought-&gt;Action-&gt;Observation).</text>
-<text x="24.0" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  daemon       Run Smart Background Scheduler &amp; Memory Threshold Monitoring Daemon.</text>
-<text x="24.0" y="176" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  scan         Analyze system/drive targets and report cleanable storage.</text>
-<text x="24.0" y="190" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  clean        Execute multi-threaded cleanup using active policy rules.</text>
-<text x="24.0" y="204" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  deep-clean   Perform full system cache cleanup + empty OS Recycle Bin / Trash.</text>
-<text x="24.0" y="218" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  aql          Execute a single Agent Query Language (AQL) statement (e.g. aql &quot;CLEAN ...&quot;).</text>
-<text x="24.0" y="232" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  history      Show the unified Task Library (all clean/scan/AQL/agent/daemon tasks).</text>
-<text x="24.0" y="246" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  tui          Launch interactive Terminal User Interface (TUI) - default mode.</text>
-<text x="24.0" y="260" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  test         Execute automated engine diagnostic &amp; unit test suite.</text>
-<text x="24.0" y="274" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  version      Display version, engine build, and architecture details.</text>
-<text x="24.0" y="288" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  help         Show this help and usage specification.</text>
-<text x="24.0" y="302" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce"></text>
-<text x="24.0" y="316" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">SMART SCHEDULER &amp; THRESHOLD MONITORING:</text>
-<text x="24.0" y="330" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --mem-threshold &lt;pct&gt; Automatic cleanup trigger when system RAM exceeds percentage (e.g. 80%).</text>
-<text x="24.0" y="344" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --disk-threshold &lt;pct&gt; Automatic cleanup trigger when Disk space exceeds percentage (e.g. 90%).</text>
-<text x="24.0" y="358" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --schedule &lt;rule&gt;     Set folder-specific rule (e.g. &quot;D:/Temp:15m:mem&gt;80%&quot;).</text>
-<text x="24.0" y="372" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --interval &lt;dur&gt;      Check interval duration for daemon monitor (default: 15s).</text>
-<text x="24.0" y="386" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce"></text>
-<text x="24.0" y="400" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0">AGENTIC REACT OPTIONS:</text>
-<text x="24.0" y="414" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#5e81ac">  --task &lt;goal&gt;        Specify custom natural language goal for ReAct loop.</text>
-<text x="24.0" y="428" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#5e81ac">  --agent              Enable autonomous reasoning and action trajectory.</text>
-<text x="24.0" y="442" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce"></text>
-<text x="24.0" y="456" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">FILTERING &amp; TARGET SELECTION:</text>
-<text x="24.0" y="470" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --category &lt;list&gt;     Target categories: system, browser, dev, messaging, app.</text>
-<text x="24.0" y="484" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --exclude-category &lt;c&gt; Exclude target categories from operation.</text>
-<text x="24.0" y="498" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --only-ext &lt;ext1,ext2&gt; Only operate on matching file extensions (e.g. .log,.tmp).</text>
-<text x="24.0" y="512" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --exclude-ext &lt;exts&gt;   Protect specific extensions from deletion (e.g. .py,.cpp).</text>
-<text x="24.0" y="526" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --older-than &lt;dur&gt;     Filter files older than duration (e.g. 30m, 24h, 7d, 30d).</text>
-<text x="24.0" y="540" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --min-size &lt;size&gt;      Minimum file size threshold (e.g. 10MB, 100MB, 1GB).</text>
-<text x="24.0" y="554" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --max-size &lt;size&gt;      Maximum file size threshold.</text>
-<text x="24.0" y="568" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --strategy &lt;mode&gt;      Inspection policy: smart (default), force, safe.</text>
-<text x="24.0" y="582" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce"></text>
-<text x="24.0" y="596" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">LOCATION &amp; SCOPE:</text>
-<text x="24.0" y="610" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --path &lt;p1,p2&gt;         Specify custom directory path(s) to process.</text>
-<text x="24.0" y="624" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --drive &lt;drives&gt;       Target specific drive(s) (e.g. C:\, D:\) or &#x27;all&#x27;.</text>
-<text x="24.0" y="638" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --project-root &lt;dir&gt;   Root directory for recursive dev build cache discovery.</text>
-<text x="24.0" y="652" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce"></text>
-<text x="24" y="680" font-family="Consolas, monospace" font-size="9" fill="#4c566a">system-cleaner-agent v5.6.9 | CLI Help</text>
+<rect width="1091" height="1472" fill="url(#bg)"/>
+<text x="24" y="32" font-family="Consolas, monospace" font-size="16" font-weight="bold" fill="#88c0d0">CLI: system-cleaner-agent help</text>
+<text x="24" y="64" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:20] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
+<text x="24" y="78" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:20] [INFO ] TaskHistory: Loaded &amp; resumed 2 unfinished task(s) from persistent configuration file.</text>
+<text x="24" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:20] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
+<text x="24" y="106" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#c0c5ce" xml:space="preserve">USAGE:</text>
+<text x="24" y="120" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  system-cleaner-agent [COMMAND] [FLAGS]</text>
+<text x="24" y="148" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#c0c5ce" xml:space="preserve">COMMANDS:</text>
+<text x="24" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">chat</text>
+<text x="67.2" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">         Launch Interactive Local LLM ReAct Prompt Shell (try &#x27;menu&#x27; for queries).</text>
+<text x="24" y="176" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="176" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">agent</text>
+<text x="74.4" y="176" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">        Launch Autonomous ReAct Agent Loop (Thought-&gt;Action-&gt;Observation).</text>
+<text x="24" y="190" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="190" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">daemon</text>
+<text x="81.6" y="190" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">       Run Smart Background Scheduler &amp; Memory Threshold Monitoring Daemon.</text>
+<text x="24" y="204" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="204" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">scan</text>
+<text x="67.2" y="204" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">         Analyze system/drive targets and report cleanable storage.</text>
+<text x="24" y="218" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="218" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">clean</text>
+<text x="74.4" y="218" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">        Execute multi-threaded cleanup using active policy rules.</text>
+<text x="24" y="232" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="232" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">deep-clean</text>
+<text x="110.4" y="232" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">   Perform full system cache cleanup + empty OS Recycle Bin / Trash.</text>
+<text x="24" y="246" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="246" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">aql</text>
+<text x="60.0" y="246" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">          Execute a single Agent Query Language (AQL) statement (e.g. aql &quot;CLEAN ...&quot;).</text>
+<text x="24" y="260" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="260" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">history</text>
+<text x="88.8" y="260" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">      Show the unified Task Library (all clean/scan/AQL/agent/daemon tasks).</text>
+<text x="24" y="274" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="274" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">tui</text>
+<text x="60.0" y="274" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">          Launch interactive Terminal User Interface (TUI) - default mode.</text>
+<text x="24" y="288" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="288" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">test</text>
+<text x="67.2" y="288" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">         Execute automated engine diagnostic &amp; unit test suite.</text>
+<text x="24" y="302" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="302" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">version</text>
+<text x="88.8" y="302" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">      Display version, engine build, and architecture details.</text>
+<text x="24" y="316" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="316" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">help</text>
+<text x="67.2" y="316" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">         Show this help and usage specification.</text>
+<text x="24" y="344" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#c0c5ce" xml:space="preserve">SMART SCHEDULER &amp; THRESHOLD MONITORING:</text>
+<text x="24" y="358" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="358" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--mem-threshold &lt;pct&gt;</text>
+<text x="189.60000000000002" y="358" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> Automatic cleanup trigger when system RAM exceeds percentage (e.g. 80%).</text>
+<text x="24" y="372" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="372" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--disk-threshold &lt;pct&gt;</text>
+<text x="196.8" y="372" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> Automatic cleanup trigger when Disk space exceeds percentage (e.g. 90%).</text>
+<text x="24" y="386" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="386" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--schedule &lt;rule&gt;</text>
+<text x="160.8" y="386" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">     Set folder-specific rule (e.g. &quot;D:/Temp:15m:mem&gt;80%&quot;).</text>
+<text x="24" y="400" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="400" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--interval &lt;dur&gt;</text>
+<text x="153.6" y="400" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">      Check interval duration for daemon monitor (default: 15s).</text>
+<text x="24" y="428" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#c0c5ce" xml:space="preserve">AGENTIC REACT OPTIONS:</text>
+<text x="24" y="442" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="442" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--task &lt;goal&gt;</text>
+<text x="132.0" y="442" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">        Specify custom natural language goal for ReAct loop.</text>
+<text x="24" y="456" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="456" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--agent</text>
+<text x="88.8" y="456" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">              Enable autonomous reasoning and action trajectory.</text>
+<text x="24" y="484" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#c0c5ce" xml:space="preserve">FILTERING &amp; TARGET SELECTION:</text>
+<text x="24" y="498" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="498" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--category &lt;list&gt;</text>
+<text x="160.8" y="498" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">     Target categories: system, browser, dev, messaging, app.</text>
+<text x="24" y="512" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="512" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--exclude-category &lt;c&gt;</text>
+<text x="196.8" y="512" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> Exclude target categories from operation.</text>
+<text x="24" y="526" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="526" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--only-ext &lt;ext1,ext2&gt;</text>
+<text x="196.8" y="526" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> Only operate on matching file extensions (e.g. .log,.tmp).</text>
+<text x="24" y="540" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="540" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--exclude-ext &lt;exts&gt;</text>
+<text x="182.4" y="540" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">   Protect specific extensions from deletion (e.g. .py,.cpp).</text>
+<text x="24" y="554" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="554" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--older-than &lt;dur&gt;</text>
+<text x="168.0" y="554" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">     Filter files older than duration (e.g. 30m, 24h, 7d, 30d).</text>
+<text x="24" y="568" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="568" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--min-size &lt;size&gt;</text>
+<text x="160.8" y="568" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">      Minimum file size threshold (e.g. 10MB, 100MB, 1GB).</text>
+<text x="24" y="582" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="582" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--max-size &lt;size&gt;</text>
+<text x="160.8" y="582" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">      Maximum file size threshold.</text>
+<text x="24" y="596" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="596" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--strategy &lt;mode&gt;</text>
+<text x="160.8" y="596" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">      Inspection policy: smart (default), force, safe.</text>
+<text x="24" y="624" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#c0c5ce" xml:space="preserve">LOCATION &amp; SCOPE:</text>
+<text x="24" y="638" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="638" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--path &lt;p1,p2&gt;</text>
+<text x="139.2" y="638" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">         Specify custom directory path(s) to process.</text>
+<text x="24" y="652" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="652" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--drive &lt;drives&gt;</text>
+<text x="153.6" y="652" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">       Target specific drive(s) (e.g. C:\, D:\) or &#x27;all&#x27;.</text>
+<text x="24" y="666" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="666" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--project-root &lt;dir&gt;</text>
+<text x="182.4" y="666" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">   Root directory for recursive dev build cache discovery.</text>
+<text x="24" y="694" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#c0c5ce" xml:space="preserve">EXECUTION CONTROL:</text>
+<text x="24" y="708" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="708" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--mode &lt;mode&gt;</text>
+<text x="132.0" y="708" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">          Execution mode: light, deep, full, shred (secure wipe).</text>
+<text x="24" y="722" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="722" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--dry-run</text>
+<text x="103.19999999999999" y="722" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">              Preview operational results without disk state mutation.</text>
+<text x="24" y="736" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="736" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--recycle-bin</text>
+<text x="132.0" y="736" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">          Purge Windows Recycle Bin / OS Trash via Shell API.</text>
+<text x="24" y="750" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="750" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--kill-locks &lt;bool&gt;</text>
+<text x="175.20000000000002" y="750" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    Release file lock handles before operation (default: true).</text>
+<text x="24" y="764" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="764" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--threads &lt;N&gt;</text>
+<text x="132.0" y="764" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">          Worker thread count for parallel processing (default: auto).</text>
+<text x="24" y="778" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="778" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--json-report &lt;file&gt;</text>
+<text x="182.4" y="778" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">   Export structured execution results to JSON report.</text>
+<text x="24" y="792" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="792" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--cron &lt;duration&gt;</text>
+<text x="160.8" y="792" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">      Run daemon service on recurring schedule (e.g. 10m, 1h).</text>
+<text x="24" y="806" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="806" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#ebcb8b" xml:space="preserve">--verbose</text>
+<text x="103.19999999999999" y="806" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">              Enable detailed trace logging.</text>
+<text x="24" y="834" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#c0c5ce" xml:space="preserve">AGENT QUERY LANGUAGE (AQL) SYNTAX:</text>
+<text x="24" y="848" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  Use the </text>
+<text x="96.0" y="848" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">aql</text>
+<text x="117.6" y="848" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> command or the chat/TUI mode to run natural-language-style queries:</text>
+<text x="24" y="876" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="876" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">COMMANDS:</text>
+<text x="24" y="890" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    </text>
+<text x="52.8" y="890" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">CLEAN</text>
+<text x="88.8" y="890" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">   &lt;path&gt; WHERE &lt;condition&gt;      Clean files in &lt;path&gt; matching condition</text>
+<text x="24" y="904" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    </text>
+<text x="52.8" y="904" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">SCAN</text>
+<text x="81.6" y="904" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    &lt;path&gt; WHERE &lt;condition&gt;      Preview cleanable items (no deletion)</text>
+<text x="24" y="918" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    </text>
+<text x="52.8" y="918" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">SHRED</text>
+<text x="88.8" y="918" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">   &lt;path&gt; WHERE &lt;condition&gt;      Secure-wipe (zero-overwrite) + delete</text>
+<text x="24" y="932" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    </text>
+<text x="52.8" y="932" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">KILL</text>
+<text x="81.6" y="932" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    PROCESS WHERE &lt;condition&gt;     Terminate processes matching condition</text>
+<text x="24" y="946" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    </text>
+<text x="52.8" y="946" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">MONITOR</text>
+<text x="103.19999999999999" y="946" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve"> WHERE &lt;condition&gt; EVERY &lt;dur&gt; Watch thresholds &amp; auto-clean</text>
+<text x="24" y="960" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    </text>
+<text x="52.8" y="960" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">PURGE</text>
+<text x="88.8" y="960" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">   RECYCLE_BIN                   Empty OS Recycle Bin / Trash</text>
+<text x="24" y="988" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="988" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">CONDITIONS:</text>
+<text x="24" y="1002" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    FREE_DISK &lt; 500MB | 2GB | 10GB            Free space below threshold</text>
+<text x="24" y="1016" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    RAM &gt; 80%  (or any %)                     Memory usage percentage</text>
+<text x="24" y="1030" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    SIZE &gt; 10MB | 1GB                         Minimum file size</text>
+<text x="24" y="1044" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    AGE  &gt; 24H | 7D | 30D                     File age threshold</text>
+<text x="24" y="1058" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    EXT IN (&#x27;.log&#x27;, &#x27;.tmp&#x27;)                   Match extension list</text>
+<text x="24" y="1086" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  </text>
+<text x="38.4" y="1086" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">AQL EXAMPLE QUERIES (try these!):</text>
+<text x="24" y="1100" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    </text>
+<text x="52.8" y="1100" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">aql &quot;CLEAN &#x27;D:/Temp&#x27; WHERE FREE_DISK &lt; 1GB&quot;</text>
+<text x="24" y="1114" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    </text>
+<text x="52.8" y="1114" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">aql &quot;SCAN &#x27;C:/Windows/Temp&#x27; WHERE AGE &gt; 1H&quot;</text>
+<text x="24" y="1128" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    </text>
+<text x="52.8" y="1128" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">aql &quot;SHRED &#x27;D:/Temp&#x27; WHERE SIZE &gt; 10MB&quot;</text>
+<text x="24" y="1142" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    </text>
+<text x="52.8" y="1142" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">aql &quot;KILL PROCESS WHERE RAM &gt; 200MB&quot;</text>
+<text x="24" y="1156" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    </text>
+<text x="52.8" y="1156" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">aql &quot;MONITOR WHERE RAM &gt; 80% EVERY 15S&quot;</text>
+<text x="24" y="1170" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    </text>
+<text x="52.8" y="1170" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">aql &quot;PURGE RECYCLE_BIN&quot;</text>
+<text x="24" y="1184" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    </text>
+<text x="52.8" y="1184" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">aql &quot;CLEAN &#x27;C:/Users&#x27; WHERE EXT IN (&#x27;.log&#x27;, &#x27;.tmp&#x27;) AND AGE &gt; 7D&quot;</text>
+<text x="24" y="1212" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#c0c5ce" xml:space="preserve">TASK LIBRARY / PROCESS HISTORY:</text>
+<text x="24" y="1226" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  Every launched operation (AQL queries, deep-clean, scan, shred, daemon, agent loop,</text>
+<text x="24" y="1240" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  RAM kill, recycle bin purge, etc.) is automatically tracked in a unified in-memory</text>
+<text x="24" y="1254" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  Task Library.  View it via:</text>
+<text x="24" y="1268" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    </text>
+<text x="52.8" y="1268" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#88c0d0" xml:space="preserve">history</text>
+<text x="103.19999999999999" y="1268" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">        CLI view of all recorded tasks (status, timing, results)</text>
+<text x="24" y="1282" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">    OpenTUI -&gt; &#x27;Task Library / History&#x27; menu  (live auto-refresh + filters)</text>
+<text x="24" y="1310" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#c0c5ce" xml:space="preserve">PRODUCTION EXAMPLES:</text>
+<text x="24" y="1324" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  system-cleaner-agent chat</text>
+<text x="24" y="1338" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  system-cleaner-agent daemon --mem-threshold 80% --interval 15s</text>
+<text x="24" y="1352" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  system-cleaner-agent agent --task &quot;Perform clean code on D:/Temp when mem&gt;80%&quot;</text>
+<text x="24" y="1366" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  system-cleaner-agent scan --dry-run</text>
+<text x="24" y="1380" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  system-cleaner-agent deep-clean --recycle-bin</text>
+<text x="24" y="1394" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  system-cleaner-agent aql &quot;KILL PROCESS WHERE RAM &gt; 200MB&quot;</text>
+<text x="24" y="1408" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  system-cleaner-agent aql &quot;MONITOR WHERE RAM &gt; 80% EVERY 15S&quot;</text>
+<text x="24" y="1422" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">  system-cleaner-agent history</text>
+<text x="24" y="1460" font-family="Consolas, monospace" font-size="9" fill="#4c566a">system-cleaner-agent v5.7.0 | CLI Command Reference</text>
 </svg>

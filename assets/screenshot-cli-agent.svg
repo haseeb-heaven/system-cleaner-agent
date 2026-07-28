@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1105" height="464" viewBox="0 0 1105 464">
+<defs><linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0a0e14"/><stop offset="100%" stop-color="#060a0f"/></linearGradient></defs>
+<rect width="1105" height="464" fill="url(#bg)"/>
+<text x="24" y="32" font-family="Consolas, monospace" font-size="16" font-weight="bold" fill="#88c0d0">CLI: system-cleaner-agent agent --task &quot;Free up disk space&quot; --dry-run</text>
+<text x="24" y="64" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:50] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
+<text x="24" y="78" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:50] [INFO ] TaskHistory: Loaded &amp; resumed 2 unfinished task(s) from persistent configuration file.</text>
+<text x="24" y="92" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:50] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
+<text x="24" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:50] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
+<text x="24" y="120" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">================================================================================</text>
+<text x="24" y="134" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">   system-cleaner-agent - Local Autonomous ReAct Engine Initialized           </text>
+<text x="24" y="148" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">   Goal: Free up disk space on drive C:</text>
+<text x="24" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce" xml:space="preserve">================================================================================</text>
+<text x="24" y="190" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#b48ead" xml:space="preserve">[21:35:50] [THOUGHT    ] Evaluating system memory (RAM: 81.000000%), disk used (99.673446%), and free space (C:\ free: 514.67 MB)...</text>
+<text x="24" y="204" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:52] [INFO ] [THOUGHT    ] Evaluating system memory (RAM: 81.000000%), disk used (99.673446%), and free space (C:\ free: 514.67 MB)...</text>
+<text x="24" y="218" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0" xml:space="preserve">[21:35:52] [ACTION     ] INSPECT_SYSTEM_RESOURCES()</text>
+<text x="24" y="232" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:52] [INFO ] [ACTION     ] INSPECT_SYSTEM_RESOURCES()</text>
+<text x="24" y="246" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#a3be8c" xml:space="preserve">[21:35:52] [OBSERVATION] System metrics observed: Memory=81.000000%, DiskUsed=99.673446%, DiskFree(C:\)=514.67 MB</text>
+<text x="24" y="260" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:54] [INFO ] [OBSERVATION] System metrics observed: Memory=81.000000%, DiskUsed=99.673446%, DiskFree(C:\)=514.67 MB</text>
+<text x="24" y="274" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#b48ead" xml:space="preserve">[21:35:54] [THOUGHT    ] User goal specifies drive free space threshold rule (e.g. clean cache if free space &lt; 500 MB)...</text>
+<text x="24" y="288" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:55] [INFO ] [THOUGHT    ] User goal specifies drive free space threshold rule (e.g. clean cache if free space &lt; 500 MB)...</text>
+<text x="24" y="302" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0" xml:space="preserve">[21:35:55] [ACTION     ] INSPECT_SYSTEM_RESOURCES()</text>
+<text x="24" y="316" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:56] [INFO ] [ACTION     ] INSPECT_SYSTEM_RESOURCES()</text>
+<text x="24" y="330" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:56] [INFO ] Starting Multi-Platform Parallel Scan (Threads: 12)...</text>
+<text x="24" y="344" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">+--[ Security Status ]----------------------------------------------+</text>
+<text x="24" y="358" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#bf616a" xml:space="preserve">|  [OFF] Sandbox Mode         - Real deletions ENABLED                |</text>
+<text x="24" y="372" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#bf616a" xml:space="preserve">|  [OFF] Dangerous Path Guard - System directory protection disabled   |</text>
+<text x="24" y="386" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#ebcb8b" xml:space="preserve">+-------------------------------------------------------------------+</text>
+<text x="24" y="414" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#a3be8c" xml:space="preserve">[2026-07-28 21:35:56] [INFO ] [System] Windows User Temp [C:\Users\hasee\AppData\Local\Temp] | Size: 1.25 MB (Protected user files preserved)</text>
+<text x="24" y="452" font-family="Consolas, monospace" font-size="9" fill="#4c566a">system-cleaner-agent v5.7.0 | CLI Autonomous ReAct AI Agent Trajectory</text>
+</svg>
