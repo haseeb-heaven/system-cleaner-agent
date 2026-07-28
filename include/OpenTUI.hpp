@@ -33,6 +33,7 @@
 #include <termios.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #endif
 
 namespace OpenTUI {
@@ -612,6 +613,9 @@ class Menu {
     int selectedIndex = 0;
     std::string statusLine;
     std::vector<std::string> headerLines;
+    std::function<std::string()> topBannerCallback; // Renders a multi-line top banner ABOVE the menu box
+    int refreshIntervalMs = 0;                      // Auto re-render interval in ms (0 = disabled, keypress-only)
+    std::chrono::steady_clock::time_point lastRenderTime;
     std::string themeName = "OpenTUI";
     std::string colorScheme = "Default";
     std::string fgColor = "Default";
@@ -634,6 +638,8 @@ public:
     void SetPreRenderCallback(std::function<void()> cb) { onPreRender = cb; }
     void SetStatusLine(const std::string& status) { statusLine = status; }
     void SetHeaderLines(const std::vector<std::string>& headers) { headerLines = headers; }
+    void SetTopBanner(std::function<std::string()> cb) { topBannerCallback = cb; }
+    void SetRefreshIntervalMs(int ms) { refreshIntervalMs = ms; }
     void SetSelectedIndex(int idx) {
         if (idx >= 0 && idx < static_cast<int>(options.size())) {
             selectedIndex = idx;
@@ -650,17 +656,50 @@ public:
         TerminalEngine::HideCursor();
         TerminalEngine::ClearScreen();
 
+        // Calculate banner line count for vertical offset
+        int topLines = 0;
+        std::string bannerContent;
+        if (topBannerCallback) {
+            bannerContent = topBannerCallback();
+            // Count newlines in banner to know how many lines to push menu down
+            topLines = 0;
+            for (char c : bannerContent) {
+                if (c == '\n') topLines++;
+            }
+        }
+
         while (true) {
+            // Refresh banner content each frame so live data updates (RAM/Disk etc.)
+            if (topBannerCallback) {
+                bannerContent = topBannerCallback();
+                topLines = 0;
+                for (char c : bannerContent) {
+                    if (c == '\n') topLines++;
+                }
+            }
+
             auto style = GetThemeStyle(themeName, colorScheme, fgColor, bgColor);
             std::ostringstream frame;
 
+            // -----------------------------------------------------------------
+            // 1) Top banner (drawn at the very top of the screen, ABOVE the menu)
+            // -----------------------------------------------------------------
+            if (!bannerContent.empty()) {
+                frame << bannerContent;
+            }
+
+            // -----------------------------------------------------------------
+            // 2) Move cursor to the row just below the top banner, then start
+            //    drawing the menu box from there so the box never overwrites it.
+            // -----------------------------------------------------------------
+            frame << "\033[" << (topLines + 1) << ";1H";
+
             if (onPreRender) {
+                // Legacy compatibility: still capture pre-render output to frame
                 auto* oldBuf = std::cout.rdbuf(frame.rdbuf());
                 onPreRender();
                 std::cout.rdbuf(oldBuf);
             }
-
-            frame << "\033[H";
             if (themeName == "TermOx") {
                 // =============================================================
                 // TERMOX C++20 REACTIVE WIDGET TREE & WINDOW LAYOUT ENGINE
@@ -754,8 +793,51 @@ public:
 
             frame << "\033[J";
             std::cout << frame.str() << std::flush;
+            lastRenderTime = std::chrono::steady_clock::now();
 
-            KeyEvent ev = TerminalEngine::ReadKey();
+            // -----------------------------------------------------------------
+            // Auto-refresh loop: re-render the frame every refreshIntervalMs
+            // (if set) so live stats (RAM/Disk) update without user input.
+            // We poll _kbhit() / select() with a short timeout and only
+            // re-render when the interval has elapsed.
+            // -----------------------------------------------------------------
+            bool timedOutNoInput = false;
+            KeyEvent ev;
+            if (refreshIntervalMs > 0) {
+                while (true) {
+#ifdef _WIN32
+                    if (_kbhit()) { ev = TerminalEngine::ReadKey(); break; }
+                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - lastRenderTime).count();
+                    if (elapsed >= refreshIntervalMs) {
+                        timedOutNoInput = true;
+                        break;
+                    }
+                    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+#else
+                    struct timeval tv;
+                    tv.tv_sec = 0;
+                    tv.tv_usec = 50000; // 50ms poll
+                    fd_set fds;
+                    FD_ZERO(&fds);
+                    FD_SET(STDIN_FILENO, &fds);
+                    int rv = select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv);
+                    if (rv > 0) { ev = TerminalEngine::ReadKey(); break; }
+                    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        std::chrono::steady_clock::now() - lastRenderTime).count();
+                    if (elapsed >= refreshIntervalMs) {
+                        timedOutNoInput = true;
+                        break;
+                    }
+#endif
+                }
+            } else {
+                ev = TerminalEngine::ReadKey();
+            }
+
+            // If the interval elapsed without user input, skip the key handling
+            // and re-render the frame (continue outer loop) so live stats refresh.
+            if (timedOutNoInput) continue;
 
             while (TerminalEngine::HasKeyPending()) {
                 KeyEvent nextEv = TerminalEngine::ReadKey();

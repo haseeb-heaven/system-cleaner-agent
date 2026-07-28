@@ -2,6 +2,47 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.6.2] - 2026-07-28
+
+### Added / Features
+- **TUI Top-Banner Layout (`include/OpenTUI.hpp`, `include/TUI.hpp`)**: Replaced the legacy
+  `SetPreRenderCallback` banner injection (which overwrote/displaced the menu box) with a
+  new `Menu::SetTopBanner(std::function<std::string()>)` API. The banner is now drawn
+  ABOVE the menu box at the top of the screen, and the menu starts below the banner
+  using a calculated vertical offset -- fixing the "logo drawn at bottom" rendering bug.
+  Applied to all 4 submenus (main menu, Disk Cleaner, Deep Scan, Task Actions).
+- **TUI Live Auto-Refresh (`include/OpenTUI.hpp`, `include/TUI.hpp`)**: Added
+  `Menu::SetRefreshIntervalMs(int)` which re-renders the menu frame (including the live
+  RAM/Disk header stats) on a polling interval without requiring user input. The main
+  menu now refreshes every `monitorIntervalSec` seconds (set in Settings) so the live
+  RAM/Disk usage bars update in real-time instead of being frozen at the moment the menu
+  was last re-rendered after a key press.
+- **New "Manual Process List & Hot-Key Terminate" Option (`include/TUI.hpp`)**: Added to the
+  RAM Cleaner submenu. Lists every process currently using > 200 MB RAM in a navigable
+  selector with two kill paths:
+    - **[K] hot-key** = INSTANT KILL of the highlighted process (no extra confirm prompt)
+    - **[ENTER]** = Kill with y/N confirmation prompt
+  Other hot-keys: [UP/DOWN] navigate, [Q]/[ESC] cancel. Each row shows PID, process name,
+  RAM usage and a `[PROTECTED]` / `[CAN KILL]` status badge. The list auto-refreshes after
+  each kill so the displayed bloat sizes stay accurate.
+- **Deep Scan Option in Disk Cleaner (`include/TUI.hpp`)**: Added a new "Deep Scan
+  (Interactive Tree, Hotspot Analyzer & JSON Export)" entry to the Disk Cleaner
+  submenu (sel == 9) that delegates to the full `ShowDeepScanSubmenu` interface.
+
+### Changed
+- **ASCII Logo Redesign -- Now Text-Free (`include/TUI.hpp`)**: Replaced the previous
+  "SYSTEM-CLEANER-AGENT" text banner with a clean, two-badge icon-style design (corner
+  accents + central shield-and-sweep motif) that visually matches the application
+  icon. The new `TUI::BuildBannerString()` returns the logo as a string buffer
+  suitable for the new `Menu::SetTopBanner` layout.
+
+### Fixed
+- **Pre-existing Duplicate `sel == 3` Bug (`include/TUI.hpp`)**: Two consecutive
+  `else if (sel == 3)` blocks in `ShowDiskCleanerSubmenu` caused the "Preset: Crash
+  Dumps & Logs" entry (originally index 4) to be silently unreachable. Renamed the
+  second duplicate to `sel == 4` so the "Crash Dumps" preset is now correctly
+  selectable.
+
 ## [5.6.1] - 2026-07-28
 
 ### Fixed

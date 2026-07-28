@@ -149,21 +149,16 @@ struct TUITaskStatus {
     }
 };
 
+
+
+
 static TUITaskStatus g_tuiStatus;
 
 class TUI {
 public:
+    static std::string BuildBannerString(const std::string& themeOverride = "");
     static void PrintBanner(const std::string& themeOverride = "") {
-        std::string theme = themeOverride.empty() ? g_tuiSettings.tuiThemeEngine : themeOverride;
-        auto style = OpenTUI::GetThemeStyle(theme);
-        std::string osBanner = "[ AUTONOMOUS REACT AGENT | OS: " + GetCurrentOSNameStr() + " (" + SYSTEM_PRIMARY_DRIVE + ") | AQL ENGINE ]";
-        std::cout << style.primaryColor
-                  << "    _/_\\_      ____  _  _  ____  ____  ____  _  _   \n"
-                  << "   /     \\    / ___)( \\/ )( ___)(_  _)(  __)( \\/ )  \n"
-                  << "  |   *   |   \\___ \\ )  /  )__)   )(   ) _) / \\/ \\  \n"
-                  << "   \\     /    (____/(__/  (____) (__) (____)\\_/\\_/  \n"
-                  << "    \\___/     \033[1;33mSYSTEM-CLEANER-AGENT \033[1;32mv5.6.1\033[0m\n"
-                  << style.secondaryColor << "  " << osBanner << "\033[0m\n";
+        std::cout << BuildBannerString(themeOverride);
     }
 
     static void FlushInputBuffer() {
@@ -312,7 +307,7 @@ public:
             };
 
             OpenTUI::Menu actMenu("TASK ACTIONS & MONITORING (#" + std::to_string(t.id) + ")", actionOpts, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-            actMenu.SetPreRenderCallback([]() { PrintBanner(); });
+            actMenu.SetTopBanner(std::function<std::string()>([]() { return TUI::BuildBannerString(); }));
             actMenu.SetHeaderLines(headers);
             int aSel = actMenu.Show();
 
@@ -763,10 +758,11 @@ public:
             "Preset: IDE & Messaging Caches (VS Code/Cursor/Discord/Telegram)",
             "Secure Shred Wipe",
             "Empty OS Recycle Bin / Trash",
+            "Deep Scan (Interactive Tree, Hotspot Analyzer & JSON Export)",
             "Back"
         };
         OpenTUI::Menu subMenu("DISK CLEANER SUITE (" + GetCurrentOSNameStr() + " - " + driveName + ")", subOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-        subMenu.SetPreRenderCallback([]() { PrintBanner(); });
+        subMenu.SetTopBanner(std::function<std::string()>([]() { return TUI::BuildBannerString(); }));
         int sel = subMenu.Show();
 
         bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
@@ -819,7 +815,7 @@ public:
                 TaskHistory::Instance().MarkCompleted(tid, "OS Temp & Update cleanup finished.", 0, 0, 0, 0);
             });
             worker.detach();
-        } else if (sel == 3) {
+        } else if (sel == 4) {
             uint64_t tid = TaskHistory::Instance().Register("TUI", "Preset: Crash Dumps & Logs", "clean preset-logs", "Disk Cleaner");
             std::thread worker([&cleaner, currentDryRun, tid]() {
                 TaskHistory::Instance().MarkRunning(tid);
@@ -893,6 +889,9 @@ public:
                 TaskHistory::Instance().MarkCompleted(tid, "OS Recycle Bin / Trash purged.", 0, 0, 0, 0);
             });
             worker.detach();
+        } else if (sel == 9) {
+            // Delegate to ShowDeepScanSubmenu so Disk Cleaner also gets full Deep Scan power
+            ShowDeepScanSubmenu(cleaner);
         }
     }
 
@@ -928,6 +927,7 @@ public:
                 "OS System Memory Working Set Trimming",
                 "Browser Memory Purge (Clean High-RAM Browser Instances)",
                 "Terminate Specific High-RAM Process (> 200 MB)",
+                "Manual Process List & Hot-Key Terminate (All > 200 MB)",
                 "Add Process Name to Protection Whitelist",
                 "Release Process Lock Handles",
                 "Return to Dashboard"
@@ -936,7 +936,7 @@ public:
             OpenTUI::Menu ramMenu("RAM CLEANER PERMISSIONS", ramMenuOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             int ramChoice = ramMenu.Show();
 
-            if (ramChoice == -1 || ramChoice == 6) break;
+            if (ramChoice == -1 || ramChoice == 7) break;
 
             if (ramChoice == 0) {
                 bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
@@ -1004,6 +1004,122 @@ public:
                     }
                 }
             } else if (ramChoice == 4) {
+                // ----------------------------------------------------------------
+                // Manual Process List & Hot-Key Terminate (All > 200 MB)
+                // ----------------------------------------------------------------
+                // Display all processes currently using > 200 MB RAM in a navigable
+                // list. Hot-keys:
+                //   [UP/DOWN]   = Navigate the list
+                //   [K]         = INSTANT KILL selected process (no extra confirm)
+                //   [ENTER]     = Kill selected process WITH y/N confirmation
+                //   [Q] / [ESC] = Cancel / return to RAM Cleaner
+                // ----------------------------------------------------------------
+                {
+                    auto highProcs = ProcessManager::GetHighMemoryCandidates(200ULL * 1024 * 1024);
+                    if (highProcs.empty()) {
+                        OpenTUI::TerminalEngine::ClearScreen();
+                        PrintBanner();
+                        std::cout << "\033[1;32m[SAFE] No processes currently consuming > 200 MB RAM on the system.\033[0m\n";
+                        std::cout << "\n\033[90m(Press Enter to return...)\033[0m";
+                        std::cin.get();
+                    } else {
+                        // Sort by RAM descending so the biggest bloat is at the top
+                        std::sort(highProcs.begin(), highProcs.end(), [](const GTLIBC::ProcessInfo& a, const GTLIBC::ProcessInfo& b) {
+                            return a.memoryUsageBytes > b.memoryUsageBytes;
+                        });
+
+                        size_t selected = 0;
+                        bool procListDone = false;
+                        while (!procListDone) {
+                            OpenTUI::TerminalEngine::ClearScreen();
+                            PrintBanner();
+                            std::cout << "\033[1;36m================================================================================\033[0m\n";
+                            std::cout << "\033[1;97m            MANUAL PROCESS LIST - ALL PROCESSES > 200 MB RAM" << std::string(30, ' ') << "\033[0m\n";
+                            std::cout << "\033[1;36m================================================================================\033[0m\n\n";
+                            std::cout << "\033[1;33mHot-Keys: [UP/DOWN]=Navigate | [K]=INSTANT KILL | [ENTER]=Kill with confirm | [Q/ESC]=Cancel\033[0m\n\n";
+                            std::cout << "  \033[1;97mPROCESS NAME" << std::string(27, ' ') << "RAM USAGE" << std::string(9, ' ') << "PID / STATUS\033[0m\n";
+                            std::cout << "  --------------------------------------------------------------------------------\n";
+
+                            for (size_t i = 0; i < highProcs.size(); ++i) {
+                                const auto& p = highProcs[i];
+                                std::string nm = "  " + p.processName;
+                                if (nm.length() < 45) nm += std::string(45 - nm.length(), ' ');
+                                nm += " | " + Cleaner::FormatSize(p.memoryUsageBytes);
+                                if (nm.length() < 65) nm += std::string(65 - nm.length(), ' ');
+                                nm += " | PID:" + std::to_string(p.pid);
+                                if (p.isProtected) nm += "  \033[1;32m[PROTECTED]\033[0m";
+                                else nm += "  \033[1;31m[CAN KILL]\033[0m";
+                                if (i == selected) {
+                                    std::cout << "\033[7;1;36m > " << nm << " \033[0m\n";
+                                } else {
+                                    std::cout << "   " << nm << "\n";
+                                }
+                            }
+                            std::cout << "\n   Cancel / Return to RAM Cleaner\n";
+                            std::cout << "\n\033[90mTotal processes > 200 MB: " << highProcs.size() << "\033[0m\n";
+                            std::cout.flush();
+
+                            int ch = _getch();
+                            if (ch == 0 || ch == 224) {
+                                int ext = _getch();
+                                if (ext == 72) { // Up arrow
+                                    if (selected > 0) selected--;
+                                } else if (ext == 80) { // Down arrow
+                                    if (selected + 1 < highProcs.size()) selected++;
+                                }
+                            } else if (ch == 27) { // ESC
+                                procListDone = true;
+                            } else if (ch == 13) { // Enter - kill with confirm
+                                if (selected < highProcs.size()) {
+                                    const auto& target = highProcs[selected];
+                                    if (target.isProtected) {
+                                        std::cout << "\n\033[1;31m[BLOCKED] \"" << target.processName << "\" is a PROTECTED process and cannot be terminated.\033[0m\n";
+                                        std::this_thread::sleep_for(std::chrono::seconds(2));
+                                    } else {
+                                        std::string confirm = OpenTUI::TextInput::ReadLine("\nConfirm terminate PID " + std::to_string(target.pid) + " (" + target.processName + ")? [y/N]: ", "n");
+                                        if (confirm == "y" || confirm == "Y") {
+                                            bool ok = GTLIBC::GTLibc::KillProcess(target.pid);
+                                            if (ok) {
+                                                std::cout << "\033[1;32m[OK] Terminated PID " << target.pid << " (\"" << target.processName << "\").\033[0m\n";
+                                                Logger::Instance().Info("Manual TUI kill: PID " + std::to_string(target.pid) + " (" + target.processName + ")");
+                                            } else {
+                                                std::cout << "\033[1;31m[FAIL] Could not terminate PID " << target.pid << " (Access Denied or already exited).\033[0m\n";
+                                            }
+                                            std::this_thread::sleep_for(std::chrono::seconds(2));
+                                        }
+                                    }
+                                }
+                            } else if (ch == 'k' || ch == 'K') { // Hot-key INSTANT KILL
+                                if (selected < highProcs.size()) {
+                                    const auto& target = highProcs[selected];
+                                    if (target.isProtected) {
+                                        std::cout << "\n\033[1;31m[BLOCKED] \"" << target.processName << "\" is a PROTECTED process and cannot be terminated.\033[0m\n";
+                                        std::this_thread::sleep_for(std::chrono::seconds(2));
+                                    } else {
+                                        bool ok = GTLIBC::GTLibc::KillProcess(target.pid);
+                                        if (ok) {
+                                            std::cout << "\n\033[1;32m[OK] Hot-Key killed PID " << target.pid << " (\"" << target.processName << "\", RAM: " << Cleaner::FormatSize(target.memoryUsageBytes) << " freed).\033[0m\n";
+                                            Logger::Instance().Info("Hot-key kill: PID " + std::to_string(target.pid) + " (" + target.processName + ")");
+                                        } else {
+                                            std::cout << "\n\033[1;31m[FAIL] Could not terminate PID " << target.pid << " (Access Denied or already exited).\033[0m\n";
+                                        }
+                                        std::this_thread::sleep_for(std::chrono::seconds(1));
+                                    }
+                                    // Refresh the list since a process was killed
+                                    highProcs = ProcessManager::GetHighMemoryCandidates(200ULL * 1024 * 1024);
+                                    std::sort(highProcs.begin(), highProcs.end(), [](const GTLIBC::ProcessInfo& a, const GTLIBC::ProcessInfo& b) {
+                                        return a.memoryUsageBytes > b.memoryUsageBytes;
+                                    });
+                                    if (selected >= highProcs.size() && !highProcs.empty()) selected = highProcs.size() - 1;
+                                    if (highProcs.empty()) procListDone = true;
+                                }
+                            } else if (ch == 'q' || ch == 'Q') { // Q - quit
+                                procListDone = true;
+                            }
+                        }
+                    }
+                }
+            } else if (ramChoice == 5) {
                 OpenTUI::TerminalEngine::ClearScreen();
                 PrintBanner();
                 std::string procName = OpenTUI::TextInput::ReadLine("Enter Process Name to Add to Protection Whitelist (e.g. myapp.exe): ", "");
@@ -1014,7 +1130,7 @@ public:
                     std::cout << "\033[1;32mProcess '" << procName << "' added to protection whitelist & saved to cleaner_config.json!\033[0m\n";
                     std::this_thread::sleep_for(std::chrono::seconds(2));
                 }
-            } else if (ramChoice == 5) {
+            } else if (ramChoice == 6) {
                 size_t released = ProcessManager::StopLockingProcesses(true);
                 std::cout << "\033[1;32mReleased " << released << " process lock handle(s).\033[0m\n";
                 std::this_thread::sleep_for(std::chrono::seconds(2));
@@ -1043,7 +1159,7 @@ public:
         };
 
         OpenTUI::Menu deepMenu("DEEP DISK & MEMORY SCAN ENGINE (dust-architecture)", subOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-        deepMenu.SetPreRenderCallback([]() { PrintBanner(); });
+        deepMenu.SetTopBanner(std::function<std::string()>([]() { return TUI::BuildBannerString(); }));
 
         while (true) {
             int sel = deepMenu.Show();
@@ -1265,7 +1381,8 @@ public:
         };
 
         OpenTUI::Menu menu("SYSTEM-CLEANER-AGENT", options, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-        menu.SetPreRenderCallback([]() { PrintBanner(); });
+        menu.SetTopBanner(std::function<std::string()>([]() { return TUI::BuildBannerString(); }));
+        menu.SetRefreshIntervalMs(g_tuiSettings.monitorIntervalSec * 1000);
         bool firstRender = true;
 
         while (true) {
@@ -1278,6 +1395,8 @@ public:
             } else {
                 OpenTUI::TerminalEngine::ClearScreen();
             }
+            // Update refresh interval in case user changed the setting via Settings menu
+            menu.SetRefreshIntervalMs(g_tuiSettings.monitorIntervalSec * 1000);
             menu.SetHeaderLines(GetLiveResourceHeaders());
             menu.SetStatusLine(g_tuiStatus.GetStatusLine());
             int selected = menu.Show();
@@ -1385,3 +1504,32 @@ public:
         }
     }
 };
+
+// =============================================================================
+// TUI::BuildBannerString - return the simple icon-like ASCII logo as a string
+// buffer so it can be embedded ABOVE a menu box (top-banner layout) instead
+// of being streamed to stdout directly. The design is intentionally
+// TEXT-FREE and matches the cleaner/shield theme of the application icon.
+// =============================================================================
+inline std::string TUI::BuildBannerString(const std::string& themeOverride) {
+    std::string theme = themeOverride.empty() ? g_tuiSettings.tuiThemeEngine : themeOverride;
+    auto style = OpenTUI::GetThemeStyle(theme);
+    std::ostringstream ss;
+    ss << style.primaryColor;
+    ss << "                                                                                ";
+    ss << "         .-----------------------.   .-----------------------.                  ";
+    ss << "         |  +   +          +   + |   |  +   +          +   + |                  ";
+    ss << "         |       .          .    |   |       .          .    |                  ";
+    ss << "         |         .      .      |   |         .      .      |                  ";
+    ss << "         |   . . . .\\..../  . . . |   |   . . . .\\..../ . . . |                  ";
+    ss << "         |         .  X  .       |   |         .  X  .       |                  ";
+    ss << "         |   . . . ./....\\. . . . |   |   . . . ./....\\. . . |                  ";
+    ss << "         |         .      .       |   |         .      .       |                  ";
+    ss << "         |       .          .     |   |       .          .     |                  ";
+    ss << "         |  +   +          +   + |   |  +   +          +   + |                  ";
+    ss << "         `-----------------------'   `-----------------------'                  ";
+    ss << "                                                                                ";
+    ss << "\033[0m";
+    return ss.str();
+}
+
