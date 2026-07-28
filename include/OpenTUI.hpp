@@ -29,6 +29,7 @@
 #endif
 #include <windows.h>
 #include <conio.h>
+#include <io.h>
 #else
 #include <termios.h>
 #include <unistd.h>
@@ -168,6 +169,14 @@ public:
 
     static bool HasKeyPending() {
 #ifdef _WIN32
+        if (!_isatty(_fileno(stdin))) {
+            HANDLE hStdin = (HANDLE)_get_osfhandle(_fileno(stdin));
+            DWORD avail = 0;
+            if (PeekNamedPipe(hStdin, NULL, 0, NULL, &avail, NULL)) {
+                return avail > 0;
+            }
+            return false;
+        }
         return _kbhit() != 0;
 #else
         struct timeval tv = { 0, 0 };
@@ -181,6 +190,41 @@ public:
     static KeyEvent ReadKey() {
         KeyEvent event;
 #ifdef _WIN32
+        if (!_isatty(_fileno(stdin))) {
+            int c = fgetc(stdin);
+            if (c == EOF) return event;
+            if (c == 0 || c == 224) {
+                int arrow = fgetc(stdin);
+                switch (arrow) {
+                    case 72: event.key = Key::Up; break;
+                    case 80: event.key = Key::Down; break;
+                    case 75: event.key = Key::Left; break;
+                    case 77: event.key = Key::Right; break;
+                }
+            } else if (c == 27) {
+                int next1 = fgetc(stdin);
+                if (next1 == '[' || next1 == 'O') {
+                    int next2 = fgetc(stdin);
+                    switch (next2) {
+                        case 'A': event.key = Key::Up; break;
+                        case 'B': event.key = Key::Down; break;
+                        case 'C': event.key = Key::Right; break;
+                        case 'D': event.key = Key::Left; break;
+                    }
+                } else {
+                    event.key = Key::Escape;
+                }
+            } else if (c == 13 || c == 10) {
+                event.key = Key::Enter;
+            } else if (c == 9) {
+                event.key = Key::Tab;
+            } else {
+                event.key = Key::Char;
+                event.ch = static_cast<char>(c);
+            }
+            return event;
+        }
+
         int c = _getch();
         if (c == 0 || c == 224) {
             int arrow = _getch();
@@ -818,7 +862,7 @@ public:
             if (refreshIntervalMs > 0) {
                 while (true) {
 #ifdef _WIN32
-                    if (_kbhit()) {
+                    if (TerminalEngine::HasKeyPending()) {
                         ev = TerminalEngine::ReadKey();
                         // CRITICAL FIX: If the key is unknown (stray char from
                         // stdin), discard it and keep waiting for a real keypress.
