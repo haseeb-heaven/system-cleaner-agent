@@ -2,6 +2,35 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.6.3] - 2026-07-28
+
+### Fixed
+- **TUI Logo at Bottom of Screen (`include/TUI.hpp`)**: The ASCII banner
+  was being rendered as a single concatenated line (because each `ss << "...";`
+  statement in `BuildBannerString` was missing a trailing newline). This caused
+  the top-banner newline counter (`topLines`) to stay at 0, so the menu box
+  was positioned at row 1 and overwrote the banner. Fix: appended `\n` to
+  every banner line in `BuildBannerString()` so the banner spans 11+ rows
+  and the menu box correctly starts BELOW the banner.
+- **TUI Live Refresh Left Artifacts (`include/OpenTUI.hpp`)**: The auto-refresh
+  re-render loop was only clearing the screen ONCE at startup. On subsequent
+  refresh ticks the previous frame's menu box content remained on screen
+  (causing ghosting / partial-render tearing). Fix: emit `\033[2J\033[H`
+  (clear screen + home) at the start of EVERY re-render so each live frame
+  is a clean atomic snapshot.
+- **TUI Stale Crash on stdin Close (`include/OpenTUI.hpp`)**: The TUI
+  `Menu::ShowExtended` now uses a `firstRender` guard so the initial
+  `TerminalEngine::ClearScreen()` is only called on the first iteration,
+  preventing redundant screen-clears on every keypress.
+
+### Added
+- **Scratch Folder + .gitignore (`scratch/`, `.gitignore`)**: Created a new
+  `scratch/` directory at the project root for temporary Python helper
+  scripts (TUI render tests, banner verification, etc.). Added `scratch/`
+  plus additional editor/IDE file patterns (`.vscode/`, `.idea/`, `*.tmp`,
+  `*.bak`, `*.swp`, `*~`, `.DS_Store`) to `.gitignore` so they never
+  accidentally get committed.
+
 ## [5.6.2] - 2026-07-28
 
 ### Added / Features
