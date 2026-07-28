@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(system-cleaner-agent VERSION 5.6.1 LANGUAGES CXX)
+project(system-cleaner-agent VERSION 5.6.9 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

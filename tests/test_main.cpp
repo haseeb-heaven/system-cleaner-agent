@@ -1,5 +1,5 @@
 // =============================================================================
-//  system-cleaner-agent v5.6.0 — Comprehensive Unit Test Suite
+//  system-cleaner-agent v5.6.9 — Comprehensive Unit Test Suite
 //  Tests: ContentInspector | Cleaner | SecurityGuard | LocalLLMBrain
 //         SmartScheduler | AgentEngine | OpenTUI | ProcessManager | Logger
 // =============================================================================
@@ -1034,8 +1034,8 @@ void TestTaskHistoryPersistenceAndResume() {
 int main() {
     std::cout << "\033[1;36m"
               << "=====================================================================\n"
-              << "  system-cleaner-agent v5.6.0 — Comprehensive Unit Test Suite          \n"
-              << "  27 Test Functions | 280+ Assertions                                \n"
+              << "  system-cleaner-agent v5.6.9 — Comprehensive Unit Test Suite          \n"
+              << "  27 Test Functions | 292 Assertions                                \n"
               << "=====================================================================\n"
               << "\033[0m\n";
 

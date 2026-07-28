@@ -233,7 +233,7 @@ public:
             }
 
             jsonFile << "{\n";
-            jsonFile << "  \"engine\": \"system-cleaner-agent v5.6.0 Deep Disk Scan Engine\",\n";
+            jsonFile << "  \"engine\": \"system-cleaner-agent v5.6.9 Deep Disk Scan Engine\",\n";
             jsonFile << "  \"root_path\": \"" << rootPath.string() << "\",\n";
             jsonFile << "  \"total_size_bytes\": " << (rootNode ? rootNode->sizeBytes : 0) << ",\n";
             jsonFile << "  \"total_size_formatted\": \"" << Cleaner::FormatSize(rootNode ? rootNode->sizeBytes : 0) << "\",\n";
