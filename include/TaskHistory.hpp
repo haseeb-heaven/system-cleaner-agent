@@ -17,6 +17,8 @@
 #include <chrono>
 #include <cstdint>
 #include <ctime>
+#include <fstream>
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <mutex>
@@ -26,6 +28,52 @@
 #include <vector>
 
 namespace TaskHistoryNS {
+
+inline std::string GetDefaultTasksFilePath() {
+#ifdef _WIN32
+    const char* localAppData = std::getenv("LOCALAPPDATA");
+    if (localAppData && std::string(localAppData).length() > 0) {
+        std::error_code ec;
+        std::filesystem::path appDir = std::filesystem::path(localAppData) / "system-cleaner-agent";
+        std::filesystem::create_directories(appDir, ec);
+        return (appDir / "cleaner_tasks.json").string();
+    }
+#endif
+    return "cleaner_tasks.json";
+}
+
+inline std::string EscapeJsonString(const std::string& input) {
+    std::string out;
+    out.reserve(input.size());
+    for (char c : input) {
+        if (c == '"') out += "\\\"";
+        else if (c == '\\') out += "\\\\";
+        else if (c == '\n') out += "\\n";
+        else if (c == '\r') out += "\\r";
+        else if (c == '\t') out += "\\t";
+        else out += c;
+    }
+    return out;
+}
+
+inline std::string UnescapeJsonString(const std::string& input) {
+    std::string out;
+    out.reserve(input.size());
+    for (size_t i = 0; i < input.size(); ++i) {
+        if (input[i] == '\\' && i + 1 < input.size()) {
+            char next = input[i + 1];
+            if (next == '"') { out += '"'; i++; }
+            else if (next == '\\') { out += '\\'; i++; }
+            else if (next == 'n') { out += '\n'; i++; }
+            else if (next == 'r') { out += '\r'; i++; }
+            else if (next == 't') { out += '\t'; i++; }
+            else { out += input[i]; }
+        } else {
+            out += input[i];
+        }
+    }
+    return out;
+}
 
 enum class Status {
     Queued,
@@ -116,6 +164,133 @@ public:
         return inst;
     }
 
+    void SetFilePath(const std::string& path) {
+        std::lock_guard<std::mutex> lock(mtx_);
+        tasksFilePath = path;
+    }
+
+    std::string GetFilePath() const {
+        if (!tasksFilePath.empty()) return tasksFilePath;
+        return GetDefaultTasksFilePath();
+    }
+
+    void SaveToFile(const std::string& path = "") const {
+        std::lock_guard<std::mutex> lock(mtx_);
+        SaveToFileUnlocked(path);
+    }
+
+    void LoadFromFile(const std::string& path = "") {
+        std::lock_guard<std::mutex> lock(mtx_);
+        std::string targetPath = path.empty() ? GetFilePath() : path;
+        if (!std::filesystem::exists(targetPath)) return;
+
+        try {
+            std::ifstream file(targetPath);
+            if (!file.is_open()) return;
+
+            std::string jsonStr((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+            file.close();
+
+            size_t nextIdPos = jsonStr.find("\"nextId\":");
+            if (nextIdPos != std::string::npos) {
+                std::stringstream ss(jsonStr.substr(nextIdPos + 9));
+                uint64_t nid = 0;
+                if (ss >> nid) nextId = nid;
+            }
+
+            tasks.clear();
+            size_t arrStart = jsonStr.find("\"tasks\":");
+            if (arrStart == std::string::npos) return;
+
+            size_t pos = arrStart;
+            while ((pos = jsonStr.find('{', pos)) != std::string::npos) {
+                size_t objEnd = jsonStr.find('}', pos);
+                if (objEnd == std::string::npos) break;
+
+                std::string block = jsonStr.substr(pos, objEnd - pos + 1);
+                pos = objEnd + 1;
+
+                if (block.find("\"id\":") == std::string::npos) continue;
+
+                TaskEntry t;
+                auto getValInt = [&](const std::string& key) -> int64_t {
+                    size_t k = block.find("\"" + key + "\":");
+                    if (k == std::string::npos) return 0;
+                    std::stringstream ss(block.substr(k + key.length() + 3));
+                    int64_t val = 0;
+                    ss >> val;
+                    return val;
+                };
+
+                auto getValStr = [&](const std::string& key) -> std::string {
+                    size_t k = block.find("\"" + key + "\":");
+                    if (k == std::string::npos) return "";
+                    size_t q1 = block.find('"', k + key.length() + 3);
+                    if (q1 == std::string::npos) return "";
+                    size_t q2 = q1 + 1;
+                    while (q2 < block.size()) {
+                        if (block[q2] == '"' && block[q2 - 1] != '\\') break;
+                        q2++;
+                    }
+                    if (q2 >= block.size()) return "";
+                    return UnescapeJsonString(block.substr(q1 + 1, q2 - q1 - 1));
+                };
+
+                auto getValDouble = [&](const std::string& key) -> double {
+                    size_t k = block.find("\"" + key + "\":");
+                    if (k == std::string::npos) return 0.0;
+                    std::stringstream ss(block.substr(k + key.length() + 3));
+                    double val = 0.0;
+                    ss >> val;
+                    return val;
+                };
+
+                t.id = getValInt("id");
+                t.category = getValStr("category");
+                t.name = getValStr("name");
+                t.command = getValStr("command");
+                t.source = getValStr("source");
+                int statusInt = static_cast<int>(getValInt("status"));
+                t.status = static_cast<Status>(statusInt);
+                t.progressMsg = getValStr("progressMsg");
+                t.resultSummary = getValStr("resultSummary");
+                t.bytesFreed = static_cast<uintmax_t>(getValInt("bytesFreed"));
+                t.filesProcessed = static_cast<size_t>(getValInt("filesProcessed"));
+                t.filesSkipped = static_cast<size_t>(getValInt("filesSkipped"));
+                t.processesHandled = static_cast<size_t>(getValInt("processesHandled"));
+
+                int64_t startSec = getValInt("startSec");
+                int64_t finishSec = getValInt("finishSec");
+                if (startSec > 0) t.startedAt = std::chrono::system_clock::time_point(std::chrono::seconds(startSec));
+                if (finishSec > 0) t.finishedAt = std::chrono::system_clock::time_point(std::chrono::seconds(finishSec));
+                t.percent = getValDouble("percent");
+
+                if (t.id > 0) {
+                    tasks.push_back(t);
+                    if (t.id > nextId) nextId = t.id;
+                }
+            }
+        } catch (...) {}
+    }
+
+    std::vector<uint64_t> ResumeUnfinishedTasksOnStartup() {
+        std::lock_guard<std::mutex> lock(mtx_);
+        std::vector<uint64_t> resumedIds;
+        for (auto& t : tasks) {
+            if (t.status == Status::Running || t.status == Status::Queued || t.status == Status::Paused) {
+                t.status = Status::Running;
+                t.startedAt = std::chrono::system_clock::now();
+                std::string origCmd = t.command.empty() ? t.name : t.command;
+                t.progressMsg = "[RESUMED ON STARTUP] " + origCmd;
+                resumedIds.push_back(t.id);
+            }
+        }
+        if (!resumedIds.empty()) {
+            SaveToFileUnlocked();
+        }
+        return resumedIds;
+    }
+
     uint64_t Register(const std::string& category,
                       const std::string& name,
                       const std::string& command,
@@ -134,6 +309,7 @@ public:
         if (tasks.size() > 200) {
             tasks.erase(tasks.begin(), tasks.begin() + 50);
         }
+        SaveToFileUnlocked();
         return e.id;
     }
 
@@ -144,6 +320,7 @@ public:
         e->status = Status::Running;
         e->startedAt = std::chrono::system_clock::now();
         e->threadId  = std::this_thread::get_id();
+        SaveToFileUnlocked();
     }
 
     void UpdateProgress(uint64_t id, const std::string& msg, double percent = -1.0) {
@@ -152,6 +329,7 @@ public:
         if (!e) return;
         e->progressMsg = msg;
         if (percent >= 0.0) e->percent = percent;
+        SaveToFileUnlocked();
     }
 
     void MarkCompleted(uint64_t id, const std::string& summary = "",
@@ -169,6 +347,7 @@ public:
         e->processesHandled= processesHandled;
         e->percent       = 100.0;
         if (e->progressMsg.empty()) e->progressMsg = "Completed.";
+        SaveToFileUnlocked();
     }
 
     void MarkFailed(uint64_t id, const std::string& errorMsg) {
@@ -178,6 +357,7 @@ public:
         e->status        = Status::Failed;
         e->finishedAt    = std::chrono::system_clock::now();
         e->resultSummary = "Error: " + errorMsg;
+        SaveToFileUnlocked();
     }
 
     void MarkCancelled(uint64_t id) {
@@ -187,6 +367,7 @@ public:
         e->status        = Status::Cancelled;
         e->finishedAt    = std::chrono::system_clock::now();
         e->resultSummary = "Cancelled by user/system.";
+        SaveToFileUnlocked();
     }
 
     bool PauseTask(uint64_t id) {
@@ -195,6 +376,7 @@ public:
         if (!e || (e->status != Status::Running && e->status != Status::Queued)) return false;
         e->status = Status::Paused;
         e->progressMsg = "Paused by user action.";
+        SaveToFileUnlocked();
         return true;
     }
 
@@ -204,6 +386,7 @@ public:
         if (!e || e->status != Status::Paused) return false;
         e->status = Status::Running;
         e->progressMsg = "Resumed running...";
+        SaveToFileUnlocked();
         return true;
     }
 
@@ -214,6 +397,7 @@ public:
         e->status        = Status::Cancelled;
         e->finishedAt    = std::chrono::system_clock::now();
         e->resultSummary = "Killed / Terminated by user.";
+        SaveToFileUnlocked();
         return true;
     }
 
@@ -248,6 +432,7 @@ public:
     void Clear() {
         std::lock_guard<std::mutex> lock(mtx_);
         tasks.clear();
+        SaveToFileUnlocked();
     }
 
     std::string HeaderSummary() const {
@@ -341,6 +526,47 @@ private:
         return nullptr;
     }
 
+    void SaveToFileUnlocked(const std::string& path = "") const {
+        std::string targetPath = path.empty() ? GetFilePath() : path;
+        try {
+            std::ofstream out(targetPath);
+            if (!out.is_open()) return;
+
+            out << "{\n";
+            out << "  \"nextId\": " << nextId << ",\n";
+            out << "  \"tasks\": [\n";
+
+            for (size_t i = 0; i < tasks.size(); ++i) {
+                const auto& t = tasks[i];
+                auto startSec = std::chrono::duration_cast<std::chrono::seconds>(t.startedAt.time_since_epoch()).count();
+                auto finishSec = std::chrono::duration_cast<std::chrono::seconds>(t.finishedAt.time_since_epoch()).count();
+
+                out << "    {\n";
+                out << "      \"id\": " << t.id << ",\n";
+                out << "      \"category\": \"" << EscapeJsonString(t.category) << "\",\n";
+                out << "      \"name\": \"" << EscapeJsonString(t.name) << "\",\n";
+                out << "      \"command\": \"" << EscapeJsonString(t.command) << "\",\n";
+                out << "      \"source\": \"" << EscapeJsonString(t.source) << "\",\n";
+                out << "      \"status\": " << static_cast<int>(t.status) << ",\n";
+                out << "      \"progressMsg\": \"" << EscapeJsonString(t.progressMsg) << "\",\n";
+                out << "      \"resultSummary\": \"" << EscapeJsonString(t.resultSummary) << "\",\n";
+                out << "      \"bytesFreed\": " << t.bytesFreed << ",\n";
+                out << "      \"filesProcessed\": " << t.filesProcessed << ",\n";
+                out << "      \"filesSkipped\": " << t.filesSkipped << ",\n";
+                out << "      \"processesHandled\": " << t.processesHandled << ",\n";
+                out << "      \"startSec\": " << startSec << ",\n";
+                out << "      \"finishSec\": " << finishSec << ",\n";
+                out << "      \"percent\": " << t.percent << "\n";
+                out << "    }" << (i + 1 < tasks.size() ? "," : "") << "\n";
+            }
+
+            out << "  ]\n";
+            out << "}\n";
+            out.close();
+        } catch (...) {}
+    }
+
+    std::string tasksFilePath;
     mutable std::mutex mtx_;
     std::vector<TaskEntry> tasks;
     uint64_t nextId = 0;

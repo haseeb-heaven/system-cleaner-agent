@@ -955,13 +955,68 @@ void TestDeepScanner() {
 }
 
 // ===========================================================================
-// MAIN — Run all 26 test suites
+// 27. Task History Persistence & Auto-Resume
+// ===========================================================================
+void TestTaskHistoryPersistenceAndResume() {
+    std::cout << "[TEST 27] Task History Persistence & Auto-Resume... ";
+
+    fs::path tempTasksFile = fs::temp_directory_path() / "test_cleaner_tasks.json";
+    std::error_code ec;
+    fs::remove(tempTasksFile, ec);
+
+    TaskHistory::Instance().SetFilePath(tempTasksFile.string());
+    TaskHistory::Instance().Clear();
+
+    uint64_t id1 = TaskHistory::Instance().Register("CLEAN", "Clean Temp", "clean --path C:\\Temp", "AQL");
+    uint64_t id2 = TaskHistory::Instance().Register("DAEMON", "Background Watcher", "daemon --interval 15", "TUI");
+    uint64_t id3 = TaskHistory::Instance().Register("SCAN", "Quick Scan", "scan", "CLI");
+
+    TaskHistory::Instance().MarkRunning(id1);
+    TaskHistory::Instance().MarkCompleted(id1, "Cleaned 50MB", 52428800, 10, 0, 0);
+
+    TaskHistory::Instance().MarkRunning(id2);
+    TaskHistory::Instance().UpdateProgress(id2, "Monitoring system RAM...", 45.0);
+
+    assert(fs::exists(tempTasksFile));
+    TaskHistory::Instance().SaveToFile();
+
+    TaskHistory::Instance().Clear();
+    assert(TaskHistory::Instance().TotalCount() == 0);
+
+    TaskHistory::Instance().LoadFromFile();
+    assert(TaskHistory::Instance().TotalCount() == 3);
+
+    TaskEntry loaded1, loaded2, loaded3;
+    assert(TaskHistory::Instance().GetTask(id1, loaded1));
+    assert(TaskHistory::Instance().GetTask(id2, loaded2));
+    assert(TaskHistory::Instance().GetTask(id3, loaded3));
+
+    assert(loaded1.status == TaskStatus::Completed);
+    assert(loaded1.bytesFreed == 52428800);
+    assert(loaded2.status == TaskStatus::Running);
+    assert(loaded3.status == TaskStatus::Queued);
+
+    auto resumed = TaskHistory::Instance().ResumeUnfinishedTasksOnStartup();
+    assert(resumed.size() == 2);
+
+    assert(TaskHistory::Instance().GetTask(id2, loaded2));
+    assert(loaded2.status == TaskStatus::Running);
+    assert(loaded2.progressMsg.find("[RESUMED ON STARTUP]") != std::string::npos);
+
+    fs::remove(tempTasksFile, ec);
+    TaskHistory::Instance().SetFilePath("");
+
+    PASS("TaskHistoryPersistenceAndResume", 12);
+}
+
+// ===========================================================================
+// MAIN — Run all 27 test suites
 // ===========================================================================
 int main() {
     std::cout << "\033[1;36m"
               << "=====================================================================\n"
               << "  system-cleaner-agent v5.6.0 — Comprehensive Unit Test Suite          \n"
-              << "  26 Test Functions | 270+ Assertions                                \n"
+              << "  27 Test Functions | 280+ Assertions                                \n"
               << "=====================================================================\n"
               << "\033[0m\n";
 
@@ -991,6 +1046,7 @@ int main() {
     TestAQLStrictGrammarAndValidation();
     TestAQLRealUserScenariosLive();
     TestDeepScanner();
+    TestTaskHistoryPersistenceAndResume();
 
     std::cout << "\n\033[1;33m"
               << "---------------------------------------------------------------------\n"

@@ -269,6 +269,11 @@ int main(int argc, char* argv[]) {
 
     Logger::Instance().Init("system-cleaner-agent.log", verbose);
     LoadTUISettings();
+    TaskHistory::Instance().LoadFromFile();
+    auto resumedTaskIds = TaskHistory::Instance().ResumeUnfinishedTasksOnStartup();
+    if (!resumedTaskIds.empty()) {
+        Logger::Instance().Info("TaskHistory: Loaded & resumed " + std::to_string(resumedTaskIds.size()) + " unfinished task(s) from persistent configuration file.");
+    }
 
     Cleaner cleaner;
 

@@ -25,10 +25,11 @@ All notable changes to the system-cleaner-agent project will be documented in th
   - Added "Deep Scan" menu item to main menu.
   - Interactive Tree View Explorer with key navigation (Arrow keys expand/collapse, `D` schedule clean, `E` export JSON).
   - Non-blocking background thread with live OpenTUI braille spinner animation (`SpinnerAnimation`).
-- **CLI Flag Integration (`main.cpp`)**:
-  - Added `deep-scan` command and CLI flags `--top`, `--depth`, `--min-size`, `--exclude-ext`, `--multi-drive`, `--json-report`.
+- **Task History JSON Persistence & Auto-Resume (`include/TaskHistory.hpp`)**:
+  - Automatically saves task library state to `cleaner_tasks.json` on task registration, progress updates, completion, or pause/resume.
+  - Automatically loads and resumes unfinished tasks (`Running`/`Queued`/`Paused`) with `[RESUMED ON STARTUP]` status tags on app restart.
 - **Unit Test Expansion (`tests/test_main.cpp`)**:
-  - Added `TestDeepScanner` test suite (Test #26) with 10 new assertions (271 total assertions across 26 test suites, 100% pass rate).
+  - Added `TestDeepScanner` (Test #26) and `TestTaskHistoryPersistenceAndResume` (Test #27) (283 total assertions across 27 test suites, 100% pass rate).
 
 ## [5.1.0] - 2026-07-27
 
