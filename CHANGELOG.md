@@ -2,6 +2,35 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.7.0] - 2026-07-28
+
+### Changed
+- **Main Menu Restructured: "Deep Scan" Merged into "Disk Cleaner"**:
+  The "Deep Scan" option has been removed from the top-level main menu and is now
+  only accessible as option 9 inside the "Disk Cleaner" submenu. The main menu
+  now has 7 options (down from 8): Disk Cleaner, RAM Cleaner, AQL Query,
+  Daemon Monitor, Task Library, Settings, Exit.
+  The "Disk Cleaner" option is now labeled "Disk Cleaner (with Deep Scan)" to make
+  the merged functionality discoverable.
+
+### Fixed
+- **ESC Key Now Works in All Submenus (`include/TUI.hpp`)**:
+  Previously, pressing ESC in the "Disk Cleaner" submenu or the "AQL Query"
+  submenu did not return to the main menu correctly:
+    - **Disk Cleaner**: The "Back" option (index 11) was not handled. Added
+      `if (sel == -1 || sel == 11) return;` after `subMenu.Show()` to return to
+      the main menu when ESC is pressed or "Back" is selected.
+    - **AQL Query**: ESC was entering the custom query input loop (forcing the
+      user to type an empty query to go back). Now ESC immediately returns empty
+      string to the main menu: `if (choice == -1) return "";`
+    - **RAM Cleaner / Daemon Monitor / Deep Scan / Task Library**: Already worked
+      correctly with ESC (the `if (sel == -1 || sel == N) break;` checks were present).
+  Result: All submenus now consistently use ESC (or "Back" option) to return to
+  the main menu, and ESC from the main menu exits the application.
+
+### Test Results
+- 27 Test Suites | 292 Assertions | 0 Failures | 100% Pass Rate
+
 ## [5.6.7] - 2026-07-28
 
 ### Added
