@@ -2,6 +2,30 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.6.4] - 2026-07-28
+
+### Removed
+- **ASCII Text Logo Completely Removed (`include/TUI.hpp`, `include/OpenTUI.hpp`, `main.cpp`)**:
+  The old ASCII text banner that was being drawn above the menu box has been
+  removed entirely. The application still ships the image icon
+  (`resources/app_icon.ico` and `resources/app_icon.rc`) which is embedded
+  into the Windows .exe via the resource compiler -- only the terminal
+  ASCII art was removed. Changes:
+    - Removed `TUI::BuildBannerString()` inline implementation (the 2-badge icon-style ASCII art)
+    - Made `TUI::PrintBanner()` a no-op (kept symbol for ABI compatibility)
+    - Removed all 4 `Menu::SetTopBanner()` calls in TUI.hpp
+    - Removed all 11 `PrintBanner()` calls in TUI.hpp
+    - Removed the inline ASCII banner in `ShowSystemResourceMonitor()`
+    - Removed `topBannerCallback` member and `SetTopBanner()` method from `OpenTUI::Menu`
+    - Removed the top-banner render path from `Menu::ShowExtended()` (banner setup, per-frame refresh, cursor positioning)
+    - Removed `TUI::PrintBanner()` call in `main.cpp` history command
+  Result: The TUI now renders directly without any ASCII art, the menu box
+  appears immediately after the TermOx ribbon, and the `help` command output
+  no longer has a banner before the USAGE section.
+- **Scratch Test Scripts Cleaned (`scratch/`)**: All logo-related test scripts
+  have been removed. The `scratch/` folder is in `.gitignore` so future
+  temp scripts never get committed.
+
 ## [5.6.3] - 2026-07-28
 
 ### Fixed

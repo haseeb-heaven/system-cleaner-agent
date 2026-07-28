@@ -304,7 +304,6 @@ int main(int argc, char* argv[]) {
 
     if (cmd == "history" || cmd == "--history" || cmd == "tasks") {
         // Print the unified Task Library to stdout and exit
-        TUI::PrintBanner();
         std::cout << TaskHistory::Instance().HeaderSummary() << std::endl << std::endl;
         std::vector<TaskEntry> tasks = TaskHistory::Instance().Snapshot();
         if (tasks.empty()) {

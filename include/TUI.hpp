@@ -156,10 +156,8 @@ static TUITaskStatus g_tuiStatus;
 
 class TUI {
 public:
-    static std::string BuildBannerString(const std::string& themeOverride = "");
-    static void PrintBanner(const std::string& themeOverride = "") {
-        std::cout << BuildBannerString(themeOverride);
-    }
+    // PrintBanner is now a no-op (the ASCII logo was removed in v5.6.4)
+    static void PrintBanner(const std::string& themeOverride = "") { (void)themeOverride; }
 
     static void FlushInputBuffer() {
         std::cin.clear();
@@ -212,15 +210,6 @@ public:
         while (true) {
             auto style = OpenTUI::GetThemeStyle(g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             std::ostringstream ss;
-            // Build banner inline so the full frame is flushed atomically
-            std::string osBanner = "[ AUTONOMOUS REACT AGENT | OS: " + GetCurrentOSNameStr() + " (" + SYSTEM_PRIMARY_DRIVE + ") | AQL ENGINE ]";
-            ss << style.primaryColor
-               << "    _/_\\_      ____  _  _  ____  ____  ____  _  _   \n"
-               << "   /     \\    / ___)( \\/ )( ___)(_  _)(  __)( \\/ )  \n"
-               << "  |   *   |   \\___ \\ )  /  )__)   )(   ) _) / \\/ \\  \n"
-               << "   \\     /    (____/(__/  (____) (__) (____)\\_/\\_/  \n"
-               << "    \\___/     \033[1;33mSYSTEM-CLEANER-AGENT \033[1;32mv5.6.1\033[0m\n"
-               << style.secondaryColor << "  " << osBanner << "\033[0m\n";
             ss << OpenTUI::Box::DrawBorder(80, "SYSTEM RESOURCE & DRIVE MONITOR", g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             double memPercent = SmartScheduler::GetMemoryUsagePercent();
             std::string ramBar = OpenTUI::ProgressBar::Render(memPercent, 35, "% used");
@@ -307,7 +296,6 @@ public:
             };
 
             OpenTUI::Menu actMenu("TASK ACTIONS & MONITORING (#" + std::to_string(t.id) + ")", actionOpts, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-            actMenu.SetTopBanner(std::function<std::string()>([]() { return TUI::BuildBannerString(); }));
             actMenu.SetHeaderLines(headers);
             int aSel = actMenu.Show();
 
@@ -350,7 +338,6 @@ public:
 
             // Capture banner into ss buffer
             auto* oldBuf = std::cout.rdbuf(ss.rdbuf());
-            PrintBanner();
             std::cout.rdbuf(oldBuf);
 
             auto tasks = TaskHistory::Instance().Snapshot();
@@ -602,7 +589,6 @@ public:
                 }
                 case 11: { // Target Folders
                     OpenTUI::TerminalEngine::ClearScreen();
-                    PrintBanner();
                     std::string newPath = OpenTUI::TextInput::ReadLine("Enter target PATH folders (comma-separated): ", g_tuiSettings.customPathsStr);
                     if (!newPath.empty()) g_tuiSettings.customPathsStr = newPath;
                     break;
@@ -663,7 +649,6 @@ public:
 
         auto showHelp = [&]() {
             OpenTUI::TerminalEngine::ClearScreen();
-            PrintBanner();
             std::cout << "\033[1;36m╔══════════════════════════════════════════════════════════════════════════════╗\033[0m\n";
             std::cout << "\033[1;36m║\033[1;97m          AGENT QUERY LANGUAGE (AQL)  —  Command Reference                  \033[1;36m║\033[0m\n";
             std::cout << "\033[1;36m╠══════════════════════════════════════════════════════════════════════════════╣\033[0m\n";
@@ -762,7 +747,6 @@ public:
             "Back"
         };
         OpenTUI::Menu subMenu("DISK CLEANER SUITE (" + GetCurrentOSNameStr() + " - " + driveName + ")", subOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-        subMenu.SetTopBanner(std::function<std::string()>([]() { return TUI::BuildBannerString(); }));
         int sel = subMenu.Show();
 
         bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
@@ -898,7 +882,6 @@ public:
     static void ShowRamCleanerSubmenu(Cleaner& cleaner) {
         while (true) {
             OpenTUI::TerminalEngine::ClearScreen();
-            PrintBanner();
             std::cout << "\033[1;36m================================================================================\033[0m\n";
             std::cout << "\033[1;97m                 RAM CLEANER & PROCESS PERMISSION MANAGEMENT                    \033[0m\n";
             std::cout << "\033[1;36m================================================================================\033[0m\n\n";
@@ -1018,7 +1001,6 @@ public:
                     auto highProcs = ProcessManager::GetHighMemoryCandidates(200ULL * 1024 * 1024);
                     if (highProcs.empty()) {
                         OpenTUI::TerminalEngine::ClearScreen();
-                        PrintBanner();
                         std::cout << "\033[1;32m[SAFE] No processes currently consuming > 200 MB RAM on the system.\033[0m\n";
                         std::cout << "\n\033[90m(Press Enter to return...)\033[0m";
                         std::cin.get();
@@ -1032,7 +1014,6 @@ public:
                         bool procListDone = false;
                         while (!procListDone) {
                             OpenTUI::TerminalEngine::ClearScreen();
-                            PrintBanner();
                             std::cout << "\033[1;36m================================================================================\033[0m\n";
                             std::cout << "\033[1;97m            MANUAL PROCESS LIST - ALL PROCESSES > 200 MB RAM" << std::string(30, ' ') << "\033[0m\n";
                             std::cout << "\033[1;36m================================================================================\033[0m\n\n";
@@ -1121,7 +1102,6 @@ public:
                 }
             } else if (ramChoice == 5) {
                 OpenTUI::TerminalEngine::ClearScreen();
-                PrintBanner();
                 std::string procName = OpenTUI::TextInput::ReadLine("Enter Process Name to Add to Protection Whitelist (e.g. myapp.exe): ", "");
                 if (!procName.empty()) {
                     GTLIBC::GTLibc::AddCustomProtectedProcess(procName);
@@ -1159,14 +1139,12 @@ public:
         };
 
         OpenTUI::Menu deepMenu("DEEP DISK & MEMORY SCAN ENGINE (dust-architecture)", subOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-        deepMenu.SetTopBanner(std::function<std::string()>([]() { return TUI::BuildBannerString(); }));
 
         while (true) {
             int sel = deepMenu.Show();
             if (sel == -1 || sel == 5) break;
 
             OpenTUI::TerminalEngine::ClearScreen();
-            PrintBanner();
             std::cout << "--------------------------------------------------------------------------------\n";
 
             if (sel == 0) { // Interactive Directory Tree Explorer
@@ -1188,7 +1166,6 @@ public:
 
                 while (!scanDone) {
                     OpenTUI::TerminalEngine::ClearScreen();
-                    PrintBanner();
                     std::cout << "\033[1;36m" << spinner.GetNextFrame() << " Deep Scanning '" << scanPath << "'... " << statusMsg << "\033[0m\n";
                     std::this_thread::sleep_for(std::chrono::milliseconds(100));
                 }
@@ -1211,7 +1188,6 @@ public:
                     if (cursor >= visible.size()) cursor = visible.size() - 1;
 
                     OpenTUI::TerminalEngine::ClearScreen();
-                    PrintBanner();
                     std::cout << "\033[1;33m+--[ Deep Scan Interactive Tree Explorer ]---------------------------------------+\033[0m\n";
                     std::cout << "\033[90m| Controls: UP/DOWN=Navigate | RIGHT/ENTER=Expand | LEFT=Collapse | D=Clean | E=Export | Q=Exit |\033[0m\n";
                     std::cout << "\033[1;33m+--------------------------------------------------------------------------------+\033[0m\n\n";
@@ -1381,7 +1357,6 @@ public:
         };
 
         OpenTUI::Menu menu("SYSTEM-CLEANER-AGENT", options, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-        menu.SetTopBanner(std::function<std::string()>([]() { return TUI::BuildBannerString(); }));
         menu.SetRefreshIntervalMs(g_tuiSettings.monitorIntervalSec * 1000);
         bool firstRender = true;
 
@@ -1407,7 +1382,6 @@ public:
             }
 
             OpenTUI::TerminalEngine::ClearScreen();
-            PrintBanner();
             std::cout << "--------------------------------------------------------------------------------\n";
 
             switch (selected) {
@@ -1504,32 +1478,4 @@ public:
         }
     }
 };
-
-// =============================================================================
-// TUI::BuildBannerString - return the simple icon-like ASCII logo as a string
-// buffer so it can be embedded ABOVE a menu box (top-banner layout) instead
-// of being streamed to stdout directly. The design is intentionally
-// TEXT-FREE and matches the cleaner/shield theme of the application icon.
-// =============================================================================
-inline std::string TUI::BuildBannerString(const std::string& themeOverride) {
-    std::string theme = themeOverride.empty() ? g_tuiSettings.tuiThemeEngine : themeOverride;
-    auto style = OpenTUI::GetThemeStyle(theme);
-    std::ostringstream ss;
-    ss << style.primaryColor;
-    ss << "                                                                                \n";
-    ss << "         .-----------------------.   .-----------------------.                  \n";
-    ss << "         |  +   +          +   + |   |  +   +          +   + |                  \n";
-    ss << "         |       .          .    |   |       .          .    |                  \n";
-    ss << "         |         .      .      |   |         .      .      |                  \n";
-    ss << "         |   . . . .\\..../  . . . |   |   . . . .\\..../ . . . |                  \n";
-    ss << "         |         .  X  .       |   |         .  X  .       |                  \n";
-    ss << "         |   . . . ./....\\. . . . |   |   . . . ./....\\. . . |                  \n";
-    ss << "         |         .      .       |   |         .      .       |                  \n";
-    ss << "         |       .          .     |   |       .          .     |                  \n";
-    ss << "         |  +   +          +   + |   |  +   +          +   + |                  \n";
-    ss << "         `-----------------------'   `-----------------------'                  \n";
-    ss << "                                                                                \n";
-    ss << "\033[0m\n";
-    return ss.str();
-}
 

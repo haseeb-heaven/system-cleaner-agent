@@ -613,7 +613,6 @@ class Menu {
     int selectedIndex = 0;
     std::string statusLine;
     std::vector<std::string> headerLines;
-    std::function<std::string()> topBannerCallback; // Renders a multi-line top banner ABOVE the menu box
     int refreshIntervalMs = 0;                      // Auto re-render interval in ms (0 = disabled, keypress-only)
     std::chrono::steady_clock::time_point lastRenderTime;
     std::string themeName = "OpenTUI";
@@ -638,7 +637,6 @@ public:
     void SetPreRenderCallback(std::function<void()> cb) { onPreRender = cb; }
     void SetStatusLine(const std::string& status) { statusLine = status; }
     void SetHeaderLines(const std::vector<std::string>& headers) { headerLines = headers; }
-    void SetTopBanner(std::function<std::string()> cb) { topBannerCallback = cb; }
     void SetRefreshIntervalMs(int ms) { refreshIntervalMs = ms; }
     void SetSelectedIndex(int idx) {
         if (idx >= 0 && idx < static_cast<int>(options.size())) {
@@ -654,55 +652,14 @@ public:
     MenuSelection ShowExtended() {
         TerminalEngine::EnableVirtualTerminal();
         TerminalEngine::HideCursor();
+        TerminalEngine::ClearScreen();
 
-        // Calculate banner line count for vertical offset
-        int topLines = 0;
-        std::string bannerContent;
-        if (topBannerCallback) {
-            bannerContent = topBannerCallback();
-            // Count newlines in banner to know how many lines to push menu down
-            topLines = 0;
-            for (char c : bannerContent) {
-                if (c == '\n') topLines++;
-            }
-        }
-
-        bool firstRender = true;
         while (true) {
             // Clear screen on each re-render so live refresh doesn't leave artifacts
-            // (the previous frame's menu box content stays on screen otherwise)
-            if (firstRender) {
-                TerminalEngine::ClearScreen();
-                firstRender = false;
-            } else {
-                // Move to top-left and clear entire screen for clean re-render
-                std::cout << "\033[2J\033[H" << std::flush;
-            }
-
-            // Refresh banner content each frame so live data updates (RAM/Disk etc.)
-            if (topBannerCallback) {
-                bannerContent = topBannerCallback();
-                topLines = 0;
-                for (char c : bannerContent) {
-                    if (c == '\n') topLines++;
-                }
-            }
+            std::cout << "\033[2J\033[H" << std::flush;
 
             auto style = GetThemeStyle(themeName, colorScheme, fgColor, bgColor);
             std::ostringstream frame;
-
-            // -----------------------------------------------------------------
-            // 1) Top banner (drawn at the very top of the screen, ABOVE the menu)
-            // -----------------------------------------------------------------
-            if (!bannerContent.empty()) {
-                frame << bannerContent;
-            }
-
-            // -----------------------------------------------------------------
-            // 2) Move cursor to the row just below the top banner, then start
-            //    drawing the menu box from there so the box never overwrites it.
-            // -----------------------------------------------------------------
-            frame << "\033[" << (topLines + 1) << ";1H";
 
             if (onPreRender) {
                 // Legacy compatibility: still capture pre-render output to frame
