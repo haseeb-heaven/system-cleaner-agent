@@ -2,6 +2,42 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.6.7] - 2026-07-28
+
+### Added
+- **CPU Usage Live Monitoring (`include/SmartScheduler.hpp`)**:
+  New `SmartScheduler::GetCpuUsagePercent()` function that samples CPU
+  usage at most every 500ms for accuracy. On Windows it uses
+  `GetSystemTimes()` to read kernel/user/idle times. On POSIX it reads
+  `/proc/stat` for the aggregate `cpu` line. Returns 0.0-100.0 percentage.
+- **Color-Coded Progress Bars (`include/OpenTUI.hpp`)**:
+  New `OpenTUI::RenderColoredBar()` function renders a progress bar with
+  color based on usage level: green (< 60%), yellow (60-85%), red (> 85%).
+  Uses Unicode block characters for a modern look.
+- **Sparkline / Mini-Chart Widget (`include/OpenTUI.hpp`)**:
+  New `OpenTUI::Sparkline::Render()` function renders a compact trend
+  chart from a series of values using Unicode block characters.
+  Auto-downsamples if more values than width. Color-coded per-character
+  based on current value.
+- **Resource History Tracking (`include/TUI.hpp`)**:
+  New `TUI::ResourceHistory` struct stores last 30 samples of CPU,
+  RAM, and disk usage. Used by sparkline widgets to show live trends.
+- **Enhanced Live Resource Headers (`include/TUI.hpp`)**:
+  `GetLiveResourceHeaders()` now shows:
+    - **CPU** with color-coded progress bar + sparkline trend (14 chars)
+    - **RAM** with color-coded progress bar + sparkline trend (14 chars)
+    - **Each drive** with color-coded progress bar + free/total info
+    - **TREND** line showing disk usage history (20 chars sparkline)
+    - **Tasks** status (running count, active task name)
+  The headers update automatically based on the `monitorIntervalSec`
+  setting (3s/5s/10s/15s/30s/60s in Settings).
+
+### Changed
+- **ShowSystemResourceMonitor (`include/TUI.hpp`)**: Now shows CPU usage
+  in addition to RAM, with color-coded progress bars and sparkline
+  trend charts for both metrics. Each drive is shown with a color-coded
+  progress bar and free/total size info.
+
 ## [5.6.6] - 2026-07-28
 
 ### Fixed
