@@ -773,9 +773,10 @@ public:
             }
         }
 
+        TerminalEngine::ClearScreen();
         while (true) {
-            // Clear screen on each re-render so live refresh doesn't leave artifacts
-            std::cout << "\033[2J\033[H" << std::flush;
+            // Move cursor to top-left (0,0) without clearing buffer to eliminate flicker & scrolling
+            std::cout << "\033[H" << std::flush;
 
             auto style = GetThemeStyle(themeName, colorScheme, fgColor, bgColor);
             std::ostringstream frame;

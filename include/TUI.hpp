@@ -1430,7 +1430,7 @@ public:
         LoadTUISettings();
 
         std::vector<std::string> options = {
-            "Disk Cleaner (with Deep Scan)",
+            "Disk Cleaner",
             "RAM Cleaner",
             "AQL Query",
             "Daemon Monitor",
