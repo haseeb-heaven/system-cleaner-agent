@@ -98,7 +98,63 @@ public:
         static uint64_t s_lastTotal = 0;
         static double s_lastResult = 0.0;
         static std::chrono::steady_clock::time_point s_lastSample;
+        static bool s_initialized = false;
         auto now = std::chrono::steady_clock::now();
+        // On first call, do an immediate double-sample (sleep 100ms) to get a real value.
+        // Subsequent calls cache for 500ms minimum for accurate delta calculation.
+        if (!s_initialized) {
+            // First call: take two samples 100ms apart for an immediate real value
+            uint64_t idle1, total1, idle2, total2;
+#ifdef _WIN32
+            FILETIME idleTime, kernelTime, userTime;
+            auto filetimeToUint64 = [](const FILETIME& ft) -> uint64_t {
+                return (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+            };
+            if (!GetSystemTimes(&idleTime, &kernelTime, &userTime)) return 0.0;
+            idle1 = filetimeToUint64(idleTime);
+            total1 = filetimeToUint64(kernelTime) + filetimeToUint64(userTime);
+#else
+            FILE* f1 = std::fopen("/proc/stat", "r");
+            if (!f1) return 0.0;
+            char buf[1024];
+            uint64_t u=0,n=0,s=0,i=0,io=0,ir=0,si=0,st=0;
+            if (std::fgets(buf, sizeof(buf), f1))
+                std::sscanf(buf, "cpu %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64
+                              " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64,
+                      &u, &n, &s, &i, &io, &ir, &si, &st);
+            std::fclose(f1);
+            idle1 = i; total1 = u+n+s+i+io+ir+si+st;
+#endif
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+#ifdef _WIN32
+            if (!GetSystemTimes(&idleTime, &kernelTime, &userTime)) return 0.0;
+            idle2 = filetimeToUint64(idleTime);
+            total2 = filetimeToUint64(kernelTime) + filetimeToUint64(userTime);
+#else
+            FILE* f2 = std::fopen("/proc/stat", "r");
+            if (!f2) return 0.0;
+            if (std::fgets(buf, sizeof(buf), f2))
+                std::sscanf(buf, "cpu %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64
+                              " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64,
+                      &u, &n, &s, &i, &io, &ir, &si, &st);
+            std::fclose(f2);
+            idle2 = i; total2 = u+n+s+i+io+ir+si+st;
+#endif
+            s_lastIdle = idle1;
+            s_lastTotal = total1;
+            s_lastSample = now;
+            s_initialized = true;
+            if (total2 > total1) {
+                uint64_t totalDelta = total2 - total1;
+                uint64_t idleDelta = (idle2 >= idle1) ? (idle2 - idle1) : 0;
+                if (totalDelta > 0) {
+                    s_lastResult = 100.0 * (1.0 - (static_cast<double>(idleDelta) / static_cast<double>(totalDelta)));
+                    if (s_lastResult < 0.0) s_lastResult = 0.0;
+                    if (s_lastResult > 100.0) s_lastResult = 100.0;
+                }
+            }
+            return s_lastResult;
+        }
         // Re-sample at most every 500ms to get a meaningful delta
         if (std::chrono::duration_cast<std::chrono::milliseconds>(
                 now - s_lastSample).count() < 500 && s_lastTotal > 0) {

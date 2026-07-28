@@ -537,7 +537,8 @@ public:
                 std::string("Path Protection:   [") + (g_tuiSettings.pathProtection ? "ON  - System Dir Guard" : "OFF - Disabled") + "]",
                 std::string("Dry-Run Mode:      [") + (g_tuiSettings.dryRun ? "ON  - Preview Only" : "OFF - REAL CLEAN") + "]",
                 std::string("Kill Locks:        [") + (g_tuiSettings.killLocks ? "ON" : "OFF") + "]",
-                std::string("Monitor Interval:  [") + std::to_string(g_tuiSettings.monitorIntervalSec) + " seconds]",
+                std::string("Monitor Interval:  [") + std::to_string(g_tuiSettings.monitorIntervalSec)
+                    + (g_tuiSettings.monitorIntervalSec == 1 ? " second (LIVE)]" : " seconds]"),
                 std::string("Target Folders:    [") + g_tuiSettings.customPathsStr.substr(0, 40) + (g_tuiSettings.customPathsStr.size() > 40 ? "..." : "") + "]",
                 std::string("Reset to OS Defaults (" + osName + " safe temp/cache paths)"),
                 "Save & Return to Dashboard"
@@ -652,9 +653,11 @@ public:
                 case 8: g_tuiSettings.dryRun = !g_tuiSettings.dryRun; break;
                 case 9: g_tuiSettings.killLocks = !g_tuiSettings.killLocks; break;
                 case 10: { // Monitor Interval
-                    static const std::vector<int> intervals = { 3, 5, 10, 15, 30, 60 };
+                    // 1 second = Live mode (max refresh rate)
+                    // 3, 5, 10, 15, 30, 60 = normal intervals
+                    static const std::vector<int> intervals = { 1, 3, 5, 10, 15, 30, 60 };
                     auto it = std::find(intervals.begin(), intervals.end(), g_tuiSettings.monitorIntervalSec);
-                    int idx = (it != intervals.end()) ? static_cast<int>(std::distance(intervals.begin(), it)) : 1;
+                    int idx = (it != intervals.end()) ? static_cast<int>(std::distance(intervals.begin(), it)) : 2;  // default to 5s (index 2)
                     if (sel.actionKey == OpenTUI::Key::Left) {
                         idx = (idx > 0) ? idx - 1 : static_cast<int>(intervals.size()) - 1;
                     } else {
