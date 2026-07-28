@@ -2,6 +2,17 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.7.4] - 2026-07-28
+
+### Fixed
+- **Explorer Double-Click Launch Fix (`include/OpenTUI.hpp` & `main.cpp`)**:
+  - Removed `ENABLE_VIRTUAL_TERMINAL_INPUT` from `SetConsoleMode` which was corrupting `_getch()` / `_kbhit()` key events on Windows ConHost startup when double-clicked from Explorer.
+  - Made ANSI escape sequence check non-blocking using `_kbhit()` inside `ReadKey()`.
+  - Added `IsLaunchedFromExplorer()` prompt (`Press Enter to close window...`) when double-clicked so the console window remains open and readable after exit.
+
+### Test Results
+- 27 Test Suites | 292 Assertions | 0 Failures | 100% Pass Rate
+
 ## [5.7.3] - 2026-07-28
 
 ### Changed

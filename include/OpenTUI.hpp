@@ -123,10 +123,19 @@ public:
             DWORD dwMode = 0;
             if (GetConsoleMode(hIn, &dwMode)) {
                 dwMode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
-                dwMode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
                 SetConsoleMode(hIn, dwMode);
             }
         }
+#endif
+    }
+
+    static bool IsLaunchedFromExplorer() {
+#ifdef _WIN32
+        DWORD processList[2];
+        DWORD count = GetConsoleProcessList(processList, 2);
+        return count <= 1;
+#else
+        return false;
 #endif
     }
 
@@ -165,6 +174,8 @@ public:
     }
 
     static void HideCursor() { std::cout << "\033[?25l" << std::flush; }
+    static void ShowCursor() { std::cout << "\033[?25h" << std::flush; }
+
     static bool IsInteractiveConsole() {
 #ifdef _WIN32
         HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
@@ -243,19 +254,19 @@ public:
                 case 77: event.key = Key::Right; break;
             }
         } else if (c == 27) {
-            // CRITICAL FIX: Handle ANSI escape sequences for arrow keys.
-            // Some terminal configs send arrow keys as ESC + [ + A/B/C/D
-            // instead of Windows extended key prefix (0x00 or 0xE0).
-            // Without this, arrow keys would be interpreted as ESC
-            // and the cursor would never move.
-            int next1 = _getch();
-            if (next1 == '[' || next1 == 'O') {
-                int next2 = _getch();
-                switch (next2) {
-                    case 'A': event.key = Key::Up; break;
-                    case 'B': event.key = Key::Down; break;
-                    case 'C': event.key = Key::Right; break;
-                    case 'D': event.key = Key::Left; break;
+            // Non-blocking check for ANSI arrow key sequence (ESC [ A/B/C/D)
+            if (_kbhit()) {
+                int next1 = _getch();
+                if ((next1 == '[' || next1 == 'O') && _kbhit()) {
+                    int next2 = _getch();
+                    switch (next2) {
+                        case 'A': event.key = Key::Up; break;
+                        case 'B': event.key = Key::Down; break;
+                        case 'C': event.key = Key::Right; break;
+                        case 'D': event.key = Key::Left; break;
+                    }
+                } else {
+                    event.key = Key::Escape;
                 }
             } else {
                 event.key = Key::Escape;

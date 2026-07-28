@@ -190,7 +190,7 @@ void ExportJsonReport(const std::string& jsonPath, const std::vector<TargetRepor
         if (!jsonFile.is_open()) return;
 
         jsonFile << "{\n";
-        jsonFile << "  \"engine\": \"system-cleaner-agent v5.7.3 (C++17 ReAct Agentic Engine)\",\n";
+        jsonFile << "  \"engine\": \"system-cleaner-agent v5.7.4 (C++17 ReAct Agentic Engine)\",\n";
         jsonFile << "  \"targets\": [\n";
 
         uintmax_t grandTotal = 0;
@@ -279,6 +279,10 @@ int main(int argc, char* argv[]) {
 
     if (args.empty()) {
         TUI::RunInteractiveMenu(cleaner);
+        if (OpenTUI::TerminalEngine::IsLaunchedFromExplorer()) {
+            std::cout << "\n\033[1;36mPress Enter to close window...\033[0m\n";
+            std::cin.get();
+        }
         return 0;
     }
 
@@ -291,7 +295,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (cmd == "version" || cmd == "--version" || cmd == "-v") {
-        std::cout << "system-cleaner-agent v5.7.3 (C++17 Autonomous ReAct Agentic Engine - 64-bit Architecture)\n";
+        std::cout << "system-cleaner-agent v5.7.4 (C++17 Autonomous ReAct Agentic Engine - 64-bit Architecture)\n";
         return 0;
     }
 
