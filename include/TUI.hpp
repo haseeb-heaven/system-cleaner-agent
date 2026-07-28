@@ -166,20 +166,82 @@ public:
 #endif
     }
 
+    // ----------------------------------------------------------------
+    // Resource history (for live sparkline trend charts)
+    // ----------------------------------------------------------------
+    struct ResourceHistory {
+        std::vector<double> cpu;
+        std::vector<double> ram;
+        std::vector<double> disk;
+        static constexpr size_t MAX_SAMPLES = 30;
+        void Push(double c, double r, double d) {
+            cpu.push_back(c);
+            ram.push_back(r);
+            disk.push_back(d);
+            if (cpu.size() > MAX_SAMPLES) cpu.erase(cpu.begin());
+            if (ram.size() > MAX_SAMPLES) ram.erase(ram.begin());
+            if (disk.size() > MAX_SAMPLES) disk.erase(disk.begin());
+        }
+    };
+    static ResourceHistory& GetResourceHistory() {
+        static ResourceHistory hist;
+        return hist;
+    }
+
     static std::vector<std::string> GetLiveResourceHeaders() {
         std::vector<std::string> headers;
-        double memPercent = SmartScheduler::GetMemoryUsagePercent();
-        std::string ramBar = OpenTUI::ProgressBar::Render(memPercent, 16, "% used");
-        headers.push_back("RAM:  " + ramBar);
 
+        // Sample CPU, RAM, and disk usage
+        double cpuPercent = SmartScheduler::GetCpuUsagePercent();
+        double memPercent = SmartScheduler::GetMemoryUsagePercent();
         auto driveStats = SmartScheduler::GetAllDriveStats();
+        double maxDiskPercent = 0.0;
         for (const auto& ds : driveStats) {
-            std::string diskBar = OpenTUI::ProgressBar::Render(ds.usedPercent, 14, "% used");
+            if (ds.usedPercent > maxDiskPercent) maxDiskPercent = ds.usedPercent;
+        }
+
+        // Update resource history (used for sparkline trend charts)
+        GetResourceHistory().Push(cpuPercent, memPercent, maxDiskPercent);
+        const auto& hist = GetResourceHistory();
+
+        // Line 1: CPU with color-coded progress bar + sparkline trend
+        std::string cpuBar = OpenTUI::RenderColoredBar(cpuPercent, 18, "%");
+        std::ostringstream cpuLine;
+        cpuLine << "[1;36mCPU:[0m  " << cpuBar
+                 << "  [90m" << OpenTUI::Sparkline::Render(hist.cpu, 14) << "[0m";
+        headers.push_back(cpuLine.str());
+
+        // Line 2: RAM with color-coded progress bar + sparkline trend
+        std::string ramBar = OpenTUI::RenderColoredBar(memPercent, 18, "%");
+        std::ostringstream ramLine;
+        ramLine << "[1;33mRAM:[0m  " << ramBar
+                 << "  [90m" << OpenTUI::Sparkline::Render(hist.ram, 14) << "[0m";
+        headers.push_back(ramLine.str());
+
+        // Lines 3+: Each drive with progress bar
+        for (const auto& ds : driveStats) {
+            std::string diskBar = OpenTUI::RenderColoredBar(ds.usedPercent, 14, "%");
             std::ostringstream ss;
-            ss << ds.driveName << " " << diskBar << " (Free: " << Cleaner::FormatSize(ds.freeBytes) << " / " << Cleaner::FormatSize(ds.capacityBytes) << ")";
+            ss << ds.driveName << " " << diskBar
+               << " (F:" << Cleaner::FormatSize(ds.freeBytes)
+               << " / " << Cleaner::FormatSize(ds.capacityBytes) << ")";
             headers.push_back(ss.str());
         }
 
+        // Trend chart for disk usage (most recent on the right)
+        if (!hist.disk.empty()) {
+            std::ostringstream trendLine;
+            trendLine << "[1;35mTREND:[0m [90m"
+                       << OpenTUI::Sparkline::Render(hist.disk, 20)
+                       << "[0m [90m(disk usage history)[0m";
+            headers.push_back(trendLine.str());
+        }
+
+        return headers;
+    }
+
+    // Legacy: add running task info to header list (for callers that expect it)
+    static void AppendTaskStatusToHeaders(std::vector<std::string>& headers) {
         auto tasks = TaskHistory::Instance().Snapshot();
         size_t runningCount = 0;
         std::string activeName = "";
@@ -202,8 +264,6 @@ public:
             taskSs << "Tasks: \033[1;32mIDLE\033[0m (0 Running) | Total Recorded: " << tasks.size();
         }
         headers.push_back(taskSs.str());
-
-        return headers;
     }
 
     static void ShowSystemResourceMonitor() {
@@ -211,15 +271,31 @@ public:
             auto style = OpenTUI::GetThemeStyle(g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             std::ostringstream ss;
             ss << OpenTUI::Box::DrawBorder(80, "SYSTEM RESOURCE & DRIVE MONITOR", g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+
+            // CPU usage with color-coded progress bar + sparkline trend
+            double cpuPercent = SmartScheduler::GetCpuUsagePercent();
             double memPercent = SmartScheduler::GetMemoryUsagePercent();
-            std::string ramBar = OpenTUI::ProgressBar::Render(memPercent, 35, "% used");
-            ss << OpenTUI::Box::DrawLine(80, "System Memory (RAM): " + ramBar, false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+            const auto& hist = GetResourceHistory();
+
+            std::string cpuBar = OpenTUI::RenderColoredBar(cpuPercent, 30, "%");
+            std::ostringstream cpuLine;
+            cpuLine << "\033[1;36mCPU  \033[0m" << cpuBar << "  trend: " << OpenTUI::Sparkline::Render(hist.cpu, 20);
+            ss << OpenTUI::Box::DrawLine(80, cpuLine.str(), false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+
+            // RAM with color-coded progress bar + sparkline trend
+            std::string ramBar = OpenTUI::RenderColoredBar(memPercent, 30, "%");
+            std::ostringstream ramLine;
+            ramLine << "\033[1;33mRAM  \033[0m" << ramBar << "  trend: " << OpenTUI::Sparkline::Render(hist.ram, 20);
+            ss << OpenTUI::Box::DrawLine(80, ramLine.str(), false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+
             ss << OpenTUI::Box::DrawDivider(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+
+            // Each drive with progress bar + free/total info
             auto driveStats = SmartScheduler::GetAllDriveStats();
             for (const auto& ds : driveStats) {
-                std::string diskBar = OpenTUI::ProgressBar::Render(ds.usedPercent, 20, "% used");
+                std::string diskBar = OpenTUI::RenderColoredBar(ds.usedPercent, 20, "%");
                 std::ostringstream dss;
-                dss << "Drive " << ds.driveName << " " << diskBar << " (Free: " << Cleaner::FormatSize(ds.freeBytes) << " / " << Cleaner::FormatSize(ds.capacityBytes) << ")";
+                dss << "Disk " << ds.driveName << " " << diskBar << " (Free: " << Cleaner::FormatSize(ds.freeBytes) << " / " << Cleaner::FormatSize(ds.capacityBytes) << ")";
                 ss << OpenTUI::Box::DrawLine(80, dss.str(), false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             }
             ss << OpenTUI::Box::DrawDivider(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
@@ -1376,7 +1452,11 @@ public:
             }
             // Update refresh interval in case user changed the setting via Settings menu
             menu.SetRefreshIntervalMs(g_tuiSettings.monitorIntervalSec * 1000);
-            menu.SetHeaderLines(GetLiveResourceHeaders());
+            {
+                auto headers = GetLiveResourceHeaders();
+                AppendTaskStatusToHeaders(headers);
+                menu.SetHeaderLines(headers);
+            }
             menu.SetStatusLine(g_tuiStatus.GetStatusLine());
             int selected = menu.Show();
 

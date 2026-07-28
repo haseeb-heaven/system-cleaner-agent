@@ -12,6 +12,8 @@
 #include <algorithm>
 #include <sstream>
 #include <filesystem>
+#include <cinttypes>   // for SCNu64 (CPU usage parsing on POSIX)
+#include <cstdio>      // for std::fopen (CPU usage on POSIX)
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -85,6 +87,66 @@ public:
         }
 #endif
         return 0.0;
+    }
+
+    // ----------------------------------------------------------------
+    // CPU usage % (sampled over a short interval for accuracy)
+    // ----------------------------------------------------------------
+    static double GetCpuUsagePercent() {
+        // Static cache of previous measurement for delta calculation
+        static uint64_t s_lastIdle = 0;
+        static uint64_t s_lastTotal = 0;
+        static double s_lastResult = 0.0;
+        static std::chrono::steady_clock::time_point s_lastSample;
+        auto now = std::chrono::steady_clock::now();
+        // Re-sample at most every 500ms to get a meaningful delta
+        if (std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - s_lastSample).count() < 500 && s_lastTotal > 0) {
+            return s_lastResult;
+        }
+#ifdef _WIN32
+        FILETIME idleTime, kernelTime, userTime;
+        if (!GetSystemTimes(&idleTime, &kernelTime, &userTime)) {
+            return s_lastResult;
+        }
+        auto filetimeToUint64 = [](const FILETIME& ft) -> uint64_t {
+            return (static_cast<uint64_t>(ft.dwHighDateTime) << 32) | ft.dwLowDateTime;
+        };
+        uint64_t idle = filetimeToUint64(idleTime);
+        uint64_t kernel = filetimeToUint64(kernelTime);
+        uint64_t user = filetimeToUint64(userTime);
+        // Total = kernel + user (idle is already excluded from kernel on Windows)
+        uint64_t total = kernel + user;
+#else
+        // POSIX: read /proc/stat for cpu line
+        FILE* f = std::fopen("/proc/stat", "r");
+        if (!f) return s_lastResult;
+        char buf[1024];
+        uint64_t user = 0, nice = 0, system = 0, idle = 0;
+        uint64_t iowait = 0, irq = 0, softirq = 0, steal = 0;
+        if (std::fgets(buf, sizeof(buf), f)) {
+            std::sscanf(buf, "cpu %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64
+                          " %" SCNu64 " %" SCNu64 " %" SCNu64 " %" SCNu64,
+                  &user, &nice, &system, &idle, &iowait, &irq, &softirq, &steal);
+        }
+        std::fclose(f);
+        uint64_t total = user + nice + system + idle + iowait + irq + softirq + steal;
+#endif
+        double pct = 0.0;
+        if (s_lastTotal > 0 && total > s_lastTotal) {
+            uint64_t totalDelta = total - s_lastTotal;
+            uint64_t idleDelta = (idle >= s_lastIdle) ? (idle - s_lastIdle) : 0;
+            if (totalDelta > 0) {
+                pct = 100.0 * (1.0 - (static_cast<double>(idleDelta) / static_cast<double>(totalDelta)));
+                if (pct < 0.0) pct = 0.0;
+                if (pct > 100.0) pct = 100.0;
+            }
+        }
+        s_lastIdle = idle;
+        s_lastTotal = total;
+        s_lastSample = now;
+        s_lastResult = pct;
+        return pct;
     }
 
     static fs::path NormalizeDrivePath(const fs::path& p) {

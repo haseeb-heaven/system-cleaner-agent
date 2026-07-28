@@ -1002,4 +1002,72 @@ public:
     }
 };
 
+// =============================================================================
+// Color-coded Progress Bar (green < 60%, yellow 60-85%, red > 85%)
+// Standalone function to avoid class scope issues.
+// =============================================================================
+static std::string RenderColoredBar(double percentage, int width = 30, const std::string& unitLabel = "%") {
+    percentage = (std::min)((std::max)(percentage, 0.0), 100.0);
+    int filled = static_cast<int>((percentage / 100.0) * width);
+    std::string fillColor = Color::BrightGreen;
+    if (percentage >= 85.0) fillColor = Color::BrightRed;
+    else if (percentage >= 60.0) fillColor = Color::BrightYellow;
+
+    std::ostringstream ss;
+    ss << Color::BrightCyan << "▕" << fillColor;
+    for (int i = 0; i < filled; ++i) ss << "█";
+    ss << Color::Dim;
+    for (int i = filled; i < width; ++i) ss << "░";
+    ss << Color::Reset << Color::BrightCyan << "▍ " << Color::BrightWhite << Color::Bold
+       << std::fixed << std::setprecision(1) << percentage << unitLabel << Color::Reset;
+    return ss.str();
+}
+
+// =============================================================================
+// Sparkline / Mini-Chart Widget for Live Trend Visualization
+// =============================================================================
+class Sparkline {
+public:
+    // Render a compact trend chart from a series of values (0-100 percentages).
+    static std::string Render(const std::vector<double>& values, int width = 20) {
+        if (values.empty()) return std::string(width, ' ');
+
+        std::vector<double> samples;
+        if (static_cast<int>(values.size()) > width) {
+            size_t step = values.size() / width;
+            if (step == 0) step = 1;
+            for (size_t i = 0; i < values.size(); i += step) {
+                samples.push_back(values[i]);
+            }
+            if (samples.back() != values.back()) {
+                samples.push_back(values.back());
+            }
+            if (static_cast<int>(samples.size()) > width) {
+                samples.erase(samples.begin(), samples.end() - width);
+            }
+        } else {
+            samples = values;
+        }
+
+        // Unicode block characters from low to high: ▁▂▃▄▅▆▇█
+        static const char* blocks[] = {
+            "▁", "▂", "▃", "▄",
+            "▅", "▆", "▇", "█"
+        };
+
+        std::ostringstream ss;
+        for (double v : samples) {
+            v = (std::min)((std::max)(v, 0.0), 100.0);
+            int idx = static_cast<int>((v / 100.0) * 7.0);
+            if (idx > 7) idx = 7;
+            if (idx < 0) idx = 0;
+            std::string col = Color::BrightGreen;
+            if (v >= 85.0) col = Color::BrightRed;
+            else if (v >= 60.0) col = Color::BrightYellow;
+            ss << col << blocks[idx] << Color::Reset;
+        }
+        return ss.str();
+    }
+};
+
 } // namespace OpenTUI

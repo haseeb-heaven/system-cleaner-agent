@@ -235,8 +235,27 @@ void TestSmartSchedulerEngine() {
 
     double memPct  = SmartScheduler::GetMemoryUsagePercent();
     double diskPct = SmartScheduler::GetDiskUsagePercent();
+    double cpuPct  = SmartScheduler::GetCpuUsagePercent();
     assert(memPct  >= 0.0 && memPct  <= 100.0);
     assert(diskPct >= 0.0 && diskPct <= 100.0);
+    assert(cpuPct  >= 0.0 && cpuPct  <= 100.0);
+
+    // Test the new color-coded progress bar widget
+    std::string greenBar = OpenTUI::RenderColoredBar(30.0, 20, "%");
+    assert(!greenBar.empty());
+    assert(greenBar.find("30.0%") != std::string::npos);
+    std::string yellowBar = OpenTUI::RenderColoredBar(70.0, 20, "%");
+    assert(yellowBar.find("70.0%") != std::string::npos);
+    std::string redBar = OpenTUI::RenderColoredBar(95.0, 20, "%");
+    assert(redBar.find("95.0%") != std::string::npos);
+
+    // Test the Sparkline widget
+    std::vector<double> values = {10, 20, 30, 40, 50, 60, 70, 80, 90, 100};
+    std::string spark = OpenTUI::Sparkline::Render(values, 10);
+    assert(!spark.empty());
+    // Empty input should return spaces
+    std::string emptySpark = OpenTUI::Sparkline::Render({}, 10);
+    assert(emptySpark.size() == 10);
 
     // Basic rule parsing: folder:interval:threshold
     ScheduleRule r1 = SmartScheduler::ParseRuleString("D:/Temp:15m:mem>80%");
@@ -254,7 +273,7 @@ void TestSmartSchedulerEngine() {
     assert(r3.intervalSeconds       == 1800);
     assert(r3.diskThresholdPercent  == 90.0);
 
-    PASS("SmartSchedulerEngine", 9);
+    PASS("SmartSchedulerEngine", 18);
 }
 
 // ===========================================================================
