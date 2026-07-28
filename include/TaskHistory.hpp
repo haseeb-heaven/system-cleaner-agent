@@ -275,20 +275,21 @@ public:
 
     std::vector<uint64_t> ResumeUnfinishedTasksOnStartup() {
         std::lock_guard<std::mutex> lock(mtx_);
-        std::vector<uint64_t> resumedIds;
+        std::vector<uint64_t> cleanedIds;
         for (auto& t : tasks) {
             if (t.status == Status::Running || t.status == Status::Queued || t.status == Status::Paused) {
-                t.status = Status::Running;
-                t.startedAt = std::chrono::system_clock::now();
-                std::string origCmd = t.command.empty() ? t.name : t.command;
-                t.progressMsg = "[RESUMED ON STARTUP] " + origCmd;
-                resumedIds.push_back(t.id);
+                t.status = Status::Cancelled;
+                t.finishSec = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::seconds>(
+                    std::chrono::system_clock::now().time_since_epoch()).count());
+                t.resultSummary = "Interrupted by application restart.";
+                t.progressMsg = "Stopped.";
+                cleanedIds.push_back(t.id);
             }
         }
-        if (!resumedIds.empty()) {
+        if (!cleanedIds.empty()) {
             SaveToFileUnlocked();
         }
-        return resumedIds;
+        return cleanedIds;
     }
 
     uint64_t Register(const std::string& category,
