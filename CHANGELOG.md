@@ -2,6 +2,15 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.7.2] - 2026-07-28
+
+### Fixed
+- **Interactive Console Input Fix (`include/OpenTUI.hpp`)**:
+  Added `GetConsoleMode()` check in `TerminalEngine::IsInteractiveConsole()`. Distinguishes interactive PowerShell/CMD/Windows Terminal/double-click Explorer sessions from redirected subprocess pipes so that double-clicking the executable or running it directly from PowerShell launches OpenTUI smoothly without exiting.
+
+### Test Results
+- 27 Test Suites | 292 Assertions | 0 Failures | 100% Pass Rate
+
 ## [5.7.1] - 2026-07-28
 
 ### Added

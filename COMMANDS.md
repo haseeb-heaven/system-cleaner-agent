@@ -1,6 +1,6 @@
 # Command & Agent Query Language (AQL) Specification
 
-> **Full Command Line Reference & Natural Language AQL Grammar Guide for `system-cleaner-agent` v5.7.1**
+> **Full Command Line Reference & Natural Language AQL Grammar Guide for `system-cleaner-agent` v5.7.2**
 
 ---
 

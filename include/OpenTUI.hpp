@@ -165,19 +165,27 @@ public:
     }
 
     static void HideCursor() { std::cout << "\033[?25l" << std::flush; }
-    static void ShowCursor() { std::cout << "\033[?25h" << std::flush; }
+    static bool IsInteractiveConsole() {
+#ifdef _WIN32
+        HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+        DWORD mode = 0;
+        return GetConsoleMode(hIn, &mode) != 0;
+#else
+        return isatty(STDIN_FILENO) != 0;
+#endif
+    }
 
     static bool HasKeyPending() {
 #ifdef _WIN32
-        if (!_isatty(_fileno(stdin))) {
-            HANDLE hStdin = (HANDLE)_get_osfhandle(_fileno(stdin));
-            DWORD avail = 0;
-            if (PeekNamedPipe(hStdin, NULL, 0, NULL, &avail, NULL)) {
-                return avail > 0;
-            }
-            return false;
+        if (IsInteractiveConsole()) {
+            return _kbhit() != 0;
         }
-        return _kbhit() != 0;
+        HANDLE hStdin = (HANDLE)_get_osfhandle(_fileno(stdin));
+        DWORD avail = 0;
+        if (PeekNamedPipe(hStdin, NULL, 0, NULL, &avail, NULL)) {
+            return avail > 0;
+        }
+        return false;
 #else
         struct timeval tv = { 0, 0 };
         fd_set fds;
@@ -190,7 +198,7 @@ public:
     static KeyEvent ReadKey() {
         KeyEvent event;
 #ifdef _WIN32
-        if (!_isatty(_fileno(stdin))) {
+        if (!IsInteractiveConsole()) {
             int c = fgetc(stdin);
             if (c == EOF) return event;
             if (c == 0 || c == 224) {
@@ -724,7 +732,7 @@ public:
         // characters from the terminal that would otherwise be consumed as a real
         // keypress and cause the TUI to immediately exit or auto-select an option.
 #ifdef _WIN32
-        if (_isatty(_fileno(stdin)))
+        if (TerminalEngine::IsInteractiveConsole())
 #endif
         {
             int flushed = 0;
