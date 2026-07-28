@@ -19,6 +19,7 @@
 #include <memory>
 #include <mutex>
 #include <map>
+#include <ctime>
 
 #ifdef _WIN32
 #ifndef WIN32_LEAN_AND_MEAN
@@ -38,6 +39,9 @@
 #endif
 
 namespace OpenTUI {
+
+// Application version displayed in TUI title bars.
+inline const std::string AppVersion = "v5.7.5";
 
 // =============================================================================
 // ANSI Color Palette & Styling System
@@ -175,6 +179,46 @@ public:
 
     static void HideCursor() { std::cout << "\033[?25l" << std::flush; }
     static void ShowCursor() { std::cout << "\033[?25h" << std::flush; }
+
+    // -----------------------------------------------------------------
+    // Adaptive terminal width (clamped 60-100) for enterprise layouts.
+    // Falls back to 80 when the console size cannot be determined.
+    // -----------------------------------------------------------------
+    static int GetTerminalWidth() {
+        int w = 80;
+#ifdef _WIN32
+        HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+        if (hOut != INVALID_HANDLE_VALUE) {
+            CONSOLE_SCREEN_BUFFER_INFO csbi;
+            if (GetConsoleScreenBufferInfo(hOut, &csbi)) {
+                int winW = csbi.srWindow.Right - csbi.srWindow.Left + 1;
+                if (winW > 0) w = winW;
+            }
+        }
+#else
+        struct winsize ws;
+        if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0) {
+            w = ws.ws_col;
+        }
+#endif
+        if (w < 60) w = 60;
+        if (w > 100) w = 100;
+        return w;
+    }
+
+    // Current local time as "HH:MM:SS" for live title-bar clocks.
+    static std::string CurrentTimeHHMMSS() {
+        std::time_t t = std::time(nullptr);
+        std::tm tmv{};
+#ifdef _WIN32
+        localtime_s(&tmv, &t);
+#else
+        localtime_r(&t, &tmv);
+#endif
+        char buf[16] = {};
+        std::strftime(buf, sizeof(buf), "%H:%M:%S", &tmv);
+        return buf;
+    }
 
     static bool IsInteractiveConsole() {
 #ifdef _WIN32
@@ -480,6 +524,84 @@ public:
         return ss.str();
     }
 
+    // -----------------------------------------------------------------
+    // Enterprise title bar: "╔═[ TITLE ]═══════[ RIGHT ]═╗"
+    // Title on the left, right-aligned info (version/clock) on the right.
+    // -----------------------------------------------------------------
+    static std::string DrawTitleBar(int width, const std::string& title, const std::string& rightText = "", const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Default", const std::string& fg = "Default", const std::string& bg = "Default") {
+        auto style = GetThemeStyle(themeName, colorScheme, fg, bg);
+        std::ostringstream ss;
+
+        std::string leftSeg  = "[ " + title + " ]";
+        std::string rightSeg = rightText.empty() ? "" : "[ " + rightText + " ]";
+        int inner = width - 2;  // excluding corner glyphs
+        int leftV  = GetVisibleDisplayWidth(leftSeg);
+        int rightV = GetVisibleDisplayWidth(rightSeg);
+
+        // Layout: horiz + leftSeg + fill(horiz) + rightSeg + horiz
+        int fill = inner - 2 - leftV - rightV;
+        if (!rightSeg.empty() && fill < 1) { rightSeg.clear(); rightV = 0; fill = inner - 2 - leftV; }
+        if (fill < 0) {
+            leftSeg = TruncateVisibleText(leftSeg, inner - 2);
+            leftV = GetVisibleDisplayWidth(leftSeg);
+            fill = (std::max)(0, inner - 2 - leftV);
+        }
+
+        ss << style.panelBg << style.secondaryColor << style.borderTL << style.borderHoriz;
+        ss << style.headerColor << leftSeg << style.panelBg << style.secondaryColor;
+        for (int i = 0; i < fill; ++i) ss << style.borderHoriz;
+        if (!rightSeg.empty()) ss << style.accentColor << rightSeg << style.panelBg << style.secondaryColor;
+        ss << style.borderHoriz << style.borderTR << style.panelBg << "\033[K\n";
+        return ss.str();
+    }
+
+    // -----------------------------------------------------------------
+    // Labeled section divider: "╠═[ SECTION ]═════════════════╣"
+    // Falls back to a plain divider when the label is empty.
+    // -----------------------------------------------------------------
+    static std::string DrawSectionDivider(int width, const std::string& label, const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Default", const std::string& fg = "Default", const std::string& bg = "Default") {
+        if (label.empty()) return DrawDivider(width, themeName, colorScheme, fg, bg);
+        auto style = GetThemeStyle(themeName, colorScheme, fg, bg);
+        std::ostringstream ss;
+
+        std::string seg = "[ " + label + " ]";
+        int segV = GetVisibleDisplayWidth(seg);
+        int inner = width - 2;
+        int fill = inner - 1 - segV;  // 1 leading horiz
+        if (fill < 0) {
+            seg = TruncateVisibleText(seg, inner - 1);
+            segV = GetVisibleDisplayWidth(seg);
+            fill = (std::max)(0, inner - 1 - segV);
+        }
+
+        ss << style.panelBg << style.secondaryColor << style.borderSplitL << style.borderHoriz;
+        ss << style.accentColor << seg << style.panelBg << style.secondaryColor;
+        for (int i = 0; i < fill; ++i) ss << style.borderHoriz;
+        ss << style.borderSplitR << style.panelBg << "\033[K\n";
+        return ss.str();
+    }
+
+    // -----------------------------------------------------------------
+    // Full-width inverted status bar (enterprise footer keybind strip).
+    // -----------------------------------------------------------------
+    static std::string DrawStatusBar(int width, const std::string& text, const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Default", const std::string& fg = "Default", const std::string& bg = "Default") {
+        auto style = GetThemeStyle(themeName, colorScheme, fg, bg);
+        std::ostringstream ss;
+
+        std::string safe = TruncateVisibleText(text, width - 2);
+        int textV = GetVisibleDisplayWidth(safe);
+        int totalPad = (std::max)(0, width - textV);
+        int leftPad = totalPad / 2;
+        int rightPad = totalPad - leftPad;
+
+        ss << style.bgHighlight;
+        for (int i = 0; i < leftPad; ++i) ss << " ";
+        ss << safe;
+        for (int i = 0; i < rightPad; ++i) ss << " ";
+        ss << Color::Reset << style.panelBg << "\033[K\n";
+        return ss.str();
+    }
+
     static std::string DrawFooter(int width, const std::string& themeName = "OpenTUI", const std::string& colorScheme = "Default", const std::string& fg = "Default", const std::string& bg = "Default") {
         auto style = GetThemeStyle(themeName, colorScheme, fg, bg);
         std::ostringstream ss;
@@ -711,7 +833,9 @@ class Menu {
     std::vector<std::string> options;
     int selectedIndex = 0;
     std::string statusLine;
+    std::function<std::string()> statusProvider; // If set, queried each frame for live status
     std::vector<std::string> headerLines;
+    std::string headerSectionTitle;             // Optional label for the header section divider
     // Callback to refresh header data on each auto-refresh tick.
     // If set, the callback is called BEFORE rendering headers, allowing
     // live data (CPU/RAM/disk usage) to be re-queried on every frame.
@@ -724,6 +848,9 @@ class Menu {
     std::string bgColor = "Default";
     SpinnerAnimation spinner;
     std::function<void()> onPreRender = nullptr;
+    // Previous frame lines for diff-based rendering (flicker-free repaints:
+    // only lines that actually changed are rewritten to the console).
+    std::vector<std::string> prevFrameLines;
 
 public:
     Menu(const std::string& t, const std::vector<std::string>& opts, const std::string& theme = "OpenTUI", const std::string& scheme = "Default", const std::string& fg = "Default", const std::string& bg = "Default")
@@ -739,7 +866,12 @@ public:
     std::string GetBgColor() const { return bgColor; }
     void SetPreRenderCallback(std::function<void()> cb) { onPreRender = cb; }
     void SetStatusLine(const std::string& status) { statusLine = status; }
+    // Set a per-frame status provider. When set, it is queried on every render
+    // tick and overrides the static SetStatusLine() value, so background-task
+    // progress is reflected live in the bottom STATUS section.
+    void SetStatusProvider(std::function<std::string()> provider) { statusProvider = provider; }
     void SetHeaderLines(const std::vector<std::string>& headers) { headerLines = headers; }
+    void SetHeaderSectionTitle(const std::string& t) { headerSectionTitle = t; }
     void SetHeaderRefreshCallback(std::function<std::vector<std::string>()> cb) { headerRefreshCallback = cb; }
     void SetRefreshIntervalMs(int ms) { refreshIntervalMs = ms; }
     void SetSelectedIndex(int idx) {
@@ -774,10 +906,10 @@ public:
         }
 
         TerminalEngine::ClearScreen();
+        // Screen was fully cleared: invalidate the diff buffer so the first
+        // frame performs a complete repaint.
+        prevFrameLines.clear();
         while (true) {
-            // Move cursor to top-left (0,0) without clearing buffer to eliminate flicker & scrolling
-            std::cout << "\033[H" << std::flush;
-
             auto style = GetThemeStyle(themeName, colorScheme, fgColor, bgColor);
             std::ostringstream frame;
 
@@ -787,111 +919,125 @@ public:
                 onPreRender();
                 std::cout.rdbuf(oldBuf);
             }
-            if (themeName == "TermOx") {
-                // =============================================================
-                // TERMOX C++20 REACTIVE WIDGET TREE & WINDOW LAYOUT ENGINE
-                // =============================================================
-                std::string topRibbon = "╭─ [File] ── [Scan] ── [Tools] ── [AQL Console] ── [Settings] ── [Help] ─╮";
-                frame << style.secondaryColor << topRibbon << style.panelBg << "\033[K\n";
-                frame << Box::DrawBorder(80, title, themeName, colorScheme, fgColor, bgColor);
+            // =================================================================
+            // ENTERPRISE UNIFIED LAYOUT ENGINE (OpenTUI / TermOx / FTXUI)
+            // -----------------------------------------------------------------
+            // Adaptive width (60-100), title bar with version + live clock,
+            // labeled sections, and a full-width inverted keybind status bar.
+            // All three themes share the same professional layout skeleton and
+            // differ only in their visual identity (borders, ribbon, tab strip).
+            // =================================================================
+            const int W = TerminalEngine::GetTerminalWidth();
 
-                // Refresh header data on each frame for live stats (CPU/RAM/disk)
-                if (headerRefreshCallback) {
-                    auto fresh = headerRefreshCallback();
-                    if (!fresh.empty()) headerLines = fresh;
-                }
-
-                if (!headerLines.empty()) {
-                    for (const auto& h : headerLines) {
-                        frame << Box::DrawLine(80, h, false, themeName, colorScheme, fgColor, bgColor);
-                    }
-                    frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
-                }
-
-                for (size_t i = 0; i < options.size(); ++i) {
-                    bool isSelected = (static_cast<int>(i) == selectedIndex);
-                    frame << Box::DrawLine(80, options[i], isSelected, themeName, colorScheme, fgColor, bgColor);
-                }
-
-                if (!statusLine.empty()) {
-                    frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
-                    std::string animatedStatus = spinner.GetNextFrame() + " " + statusLine;
-                    frame << Box::DrawLine(80, animatedStatus, false, themeName, colorScheme, fgColor, bgColor);
-                }
-
-                frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
-                std::string navHint = "[TermOx Widget] ↑/↓: Move │ ←/→/Enter: Select/Toggle │ ESC/'q': Exit";
-                frame << Box::DrawLine(80, navHint, false, themeName, colorScheme, fgColor, bgColor);
-                frame << Box::DrawFooter(80, themeName, colorScheme, fgColor, bgColor);
-
-            } else if (themeName == "FTXUI") {
-                // =============================================================
-                // FTXUI FUNCTIONAL GRAPHICAL DOM COMPONENT TREE RENDERER
-                // =============================================================
-                frame << Box::DrawBorder(80, "SYSTEM-CLEANER-AGENT DOM TREE", themeName, colorScheme, fgColor, bgColor);
-
-                if (!headerLines.empty()) {
-                    for (const auto& h : headerLines) {
-                        frame << Box::DrawLine(80, h, false, themeName, colorScheme, fgColor, bgColor);
-                    }
-                    frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
-                }
-
-                for (size_t i = 0; i < options.size(); ++i) {
-                    bool isSelected = (static_cast<int>(i) == selectedIndex);
-                    frame << Box::DrawLine(80, options[i], isSelected, themeName, colorScheme, fgColor, bgColor);
-                }
-
-                if (!statusLine.empty()) {
-                    frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
-                    std::string animatedStatus = spinner.GetNextFrame() + " " + statusLine;
-                    frame << Box::DrawLine(80, animatedStatus, false, themeName, colorScheme, fgColor, bgColor);
-                }
-
-                frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
-                std::string tabStrip = "[Tab 1: Dashboard]   [Tab 2: AQL Console]   [Tab 3: Settings]";
-                frame << Box::DrawLine(80, tabStrip, false, themeName, colorScheme, fgColor, bgColor);
-                frame << Box::DrawFooter(80, themeName, colorScheme, fgColor, bgColor);
-
-            } else {
-                // =============================================================
-                // OPENTUI CLASSIC REACTIVE DASHBOARD ENGINE
-                // =============================================================
-                frame << Box::DrawBorder(80, title, themeName, colorScheme, fgColor, bgColor);
-
-                // Refresh header data on each frame for live stats (CPU/RAM/disk)
-                if (headerRefreshCallback) {
-                    auto fresh = headerRefreshCallback();
-                    if (!fresh.empty()) headerLines = fresh;
-                }
-
-                if (!headerLines.empty()) {
-                    for (const auto& h : headerLines) {
-                        frame << Box::DrawLine(80, h, false, themeName, colorScheme, fgColor, bgColor);
-                    }
-                    frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
-                }
-
-                for (size_t i = 0; i < options.size(); ++i) {
-                    bool isSelected = (static_cast<int>(i) == selectedIndex);
-                    frame << Box::DrawLine(80, options[i], isSelected, themeName, colorScheme, fgColor, bgColor);
-                }
-
-                if (!statusLine.empty()) {
-                    frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
-                    std::string animatedStatus = spinner.GetNextFrame() + " " + statusLine;
-                    frame << Box::DrawLine(80, animatedStatus, false, themeName, colorScheme, fgColor, bgColor);
-                }
-
-                frame << Box::DrawDivider(80, themeName, colorScheme, fgColor, bgColor);
-                std::string navHint = "Use UP/DOWN to navigate, LEFT/RIGHT or Enter to toggle/select, ESC/'q' to exit.";
-                frame << Box::DrawLine(80, navHint, false, themeName, colorScheme, fgColor, bgColor);
-
-                frame << Box::DrawFooter(80, themeName, colorScheme, fgColor, bgColor);
+            // Refresh header data on each frame for live stats (CPU/RAM/disk).
+            // NOTE: previously the FTXUI theme never invoked this callback,
+            // which froze its live stats — now unified for all themes.
+            if (headerRefreshCallback) {
+                auto fresh = headerRefreshCallback();
+                if (!fresh.empty()) headerLines = fresh;
             }
 
-            frame << "\033[J";
-            std::cout << frame.str() << std::flush;
+            // ---- Theme-specific top chrome ----------------------------------
+            if (themeName == "TermOx") {
+                // TermOx: adaptive window ribbon (rounded menubar strip)
+                std::string ribbon = "[File]   [Scan]   [Tools]   [AQL Console]   [Settings]   [Help]";
+                int ribbonV = Box::GetVisibleDisplayWidth(ribbon);
+                int inner = W - 4;  // "╭─" ... "─╮"
+                int pad = (std::max)(0, inner - ribbonV - 1);
+                frame << style.panelBg << style.secondaryColor
+                      << "╭─ " << style.headerColor << ribbon << style.panelBg << style.secondaryColor << " ";
+                for (int i = 0; i < pad; ++i) frame << "─";
+                frame << "─╮" << style.panelBg << "\033[K\n";
+            }
+
+            // ---- Title bar: menu title (left) + version & live clock (right)
+            std::string rightInfo = AppVersion + "  " + TerminalEngine::CurrentTimeHHMMSS();
+            frame << Box::DrawTitleBar(W, title, rightInfo, themeName, colorScheme, fgColor, bgColor);
+
+            // ---- Header section (live resources / details), labeled divider
+            if (!headerLines.empty()) {
+                frame << Box::DrawSectionDivider(W, headerSectionTitle, themeName, colorScheme, fgColor, bgColor);
+                for (const auto& h : headerLines) {
+                    frame << Box::DrawLine(W, h, false, themeName, colorScheme, fgColor, bgColor);
+                }
+            }
+
+            // ---- Menu options section
+            frame << Box::DrawSectionDivider(W, "MENU", themeName, colorScheme, fgColor, bgColor);
+            for (size_t i = 0; i < options.size(); ++i) {
+                bool isSelected = (static_cast<int>(i) == selectedIndex);
+                frame << Box::DrawLine(W, options[i], isSelected, themeName, colorScheme, fgColor, bgColor);
+            }
+
+            // ---- Status section (animated spinner + live status).
+            // A status provider (if set) is queried each frame so background-
+            // task progress flows into the bottom STATUS line in real time.
+            {
+                std::string liveStatus = statusProvider ? statusProvider() : statusLine;
+                if (!liveStatus.empty()) {
+                    frame << Box::DrawSectionDivider(W, "STATUS", themeName, colorScheme, fgColor, bgColor);
+                    std::string animatedStatus = spinner.GetNextFrame() + " " + liveStatus;
+                    frame << Box::DrawLine(W, animatedStatus, false, themeName, colorScheme, fgColor, bgColor);
+                }
+            }
+
+            // ---- Theme-specific bottom chrome
+            if (themeName == "FTXUI") {
+                // FTXUI: DOM tab strip with active-tab highlight
+                frame << Box::DrawSectionDivider(W, "TABS", themeName, colorScheme, fgColor, bgColor);
+                std::ostringstream tabs;
+                tabs << style.bgHighlight << " Dashboard " << Color::Reset << style.panelBg << style.primaryColor
+                     << "   AQL Console   Settings";
+                frame << Box::DrawLine(W, tabs.str(), false, themeName, colorScheme, fgColor, bgColor);
+            }
+
+            frame << Box::DrawFooter(W, themeName, colorScheme, fgColor, bgColor);
+
+            // ---- Full-width inverted keybind status bar (enterprise footer)
+            std::string keybinds;
+            if (themeName == "TermOx")      keybinds = "UP/DOWN Move   LEFT/RIGHT Toggle   ENTER Select   ESC Exit   [TermOx Widget Engine]";
+            else if (themeName == "FTXUI")  keybinds = "UP/DOWN Move   LEFT/RIGHT Toggle   ENTER Select   ESC Exit   [FTXUI DOM Renderer]";
+            else                            keybinds = "UP/DOWN Move   LEFT/RIGHT Toggle   ENTER Select   ESC Exit";
+            frame << Box::DrawStatusBar(W, keybinds, themeName, colorScheme, fgColor, bgColor);
+
+            // -------------------------------------------------------------
+            // DIFF-BASED RENDERING (flicker-free): instead of repositioning to
+            // home and repainting the entire frame every tick (which makes the
+            // whole screen visibly flash in Windows consoles), split the frame
+            // into lines and only rewrite the lines that actually changed since
+            // the previous frame. Static lines (borders, menu items) are left
+            // untouched, so nothing on screen flickers.
+            // -------------------------------------------------------------
+            {
+                std::string frameStr = frame.str();
+                std::vector<std::string> newLines;
+                size_t lineStart = 0;
+                while (lineStart <= frameStr.size()) {
+                    size_t nl = frameStr.find('\n', lineStart);
+                    if (nl == std::string::npos) {
+                        newLines.push_back(frameStr.substr(lineStart));
+                        break;
+                    }
+                    newLines.push_back(frameStr.substr(lineStart, nl - lineStart));
+                    lineStart = nl + 1;
+                }
+
+                std::ostringstream out;
+                for (size_t i = 0; i < newLines.size(); ++i) {
+                    if (i >= prevFrameLines.size() || prevFrameLines[i] != newLines[i]) {
+                        // Position cursor at start of the changed line, write it,
+                        // then erase any leftover characters to end-of-line.
+                        out << "\033[" << (i + 1) << ";1H" << newLines[i] << "\033[K";
+                    }
+                }
+                // If the new frame has fewer lines than the previous one, erase
+                // the stale lines below it.
+                if (prevFrameLines.size() > newLines.size()) {
+                    out << "\033[" << (newLines.size() + 1) << ";1H\033[J";
+                }
+                std::cout << out.str() << std::flush;
+                prevFrameLines = std::move(newLines);
+            }
             lastRenderTime = std::chrono::steady_clock::now();
 
             // -----------------------------------------------------------------

@@ -2,6 +2,39 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.7.7] - 2026-07-29
+
+### Fixed
+- **Over-broad `C:\Windows` CRITICAL block** (`include/SecurityGuard.hpp`): the bare `c:\windows` prefix in the critical-blocked list was rejecting safe subdirectories (Logs, System32\LogFiles, Prefetch, SoftwareDistribution, Minidump, LiveKernelReports) even with sandbox disabled. Removed the over-broad root; granular `system32/syswow64/system` entries still protect the truly sensitive OS files. Added `wd\System32\LogFiles` and `wd\debug` to the explicit safe allowlist.
+- **AQL SHRED/WIPE validation message** (`include/AgentQueryLanguage.hpp`): error said "Invalid AQL CLEAN query" for SHRED/WIPE commands. Now correctly reports the actual command verb and shows a SHRED example in the hint.
+- **TUI corrupted by background worker output** (`include/SecurityGuard.hpp`): `PrintBlockedReport` wrote directly to `std::cout`, racing the menu's diff renderer. Routed through `Logger` (auto-suppressed when the TUI is active, still written to the log file).
+- **AQL syntax errors lost in TUI** (`include/AgentQueryLanguage.hpp`): syntax-error output now routed through `Logger` and a Failed task is recorded in the Task Library so the error is visible to the user.
+
+### Added
+- **Live status pinned to the bottom of the screen** (`include/OpenTUI.hpp` & `include/TUI.hpp`): new `Menu::SetStatusProvider()` callback is queried on every render tick, so background-task progress (e.g. "Storage Scan", "Smart Deep Clean") appears live in the STATUS section instead of only at the top/middle of the frame.
+
+### Test Results
+- 27 Test Suites | 314 Assertions | 0 Failures | 100% Pass Rate
+
+## [5.7.6] - 2026-07-29
+
+### Fixed
+- **Disk Cleaner Menu Wrong-Action Bug (`include/TUI.hpp`)**: A duplicated `else if (sel == 4)` branch made the Browser Cache handler dead code and shifted every action from menu index 5 onward off-by-one (selecting one option launched a different operation). Dispatch rewritten as an index-exact `switch`.
+- **C:\ System Drive Never Cleaned (`include/Cleaner.hpp`)**: A non-empty `customPaths` list silently disabled ALL built-in OS temp/cache targets. New `SetIncludeBuiltInTargets(true)` union mode (fixed targets + custom folders, category-filtered) is used by the Disk Cleaner Suite; ReAct agent/AQL/tests keep legacy scoped mode.
+- **ProgramData Junk Targets Always Blocked (`include/SecurityGuard.hpp`)**: WER ReportArchive/ReportQueue and Delivery Optimization cache were CRITICAL-blocked by the `C:\ProgramData` root rule; now explicitly allowlisted. Removed the dead/dangerous ProgramData DockerDesktop target.
+- **Empty Recycle Bin Menu Did Nothing**: `emptyRecycleBin` self-guard flag was never enabled for the explicit menu action.
+- **Inaccurate RAM/CPU Monitors (`include/SmartScheduler.hpp`)**: RAM now computed as `(TotalPhys - AvailPhys) / TotalPhys` (Task Manager-grade `GetMemoryStats()` with used/total bytes) instead of the approximate `dwMemoryLoad`; CPU delta sampler serialized with a mutex to stop cross-thread corruption.
+- **FTXUI Theme Frozen Live Stats**: the header refresh callback was never invoked in the FTXUI render branch.
+- **Main Screen Flickering (`include/OpenTUI.hpp`)**: diff-based line rendering — only changed lines are rewritten per tick instead of full-frame repaints.
+
+### Added
+- **100 ms REALTIME LIVE Monitor Tier**: Monitor Interval options are now `100 ms (REALTIME LIVE), 1s (LIVE), 3s, 5s, 10s, 15s, 30s, 60s`; sparkline history sampling throttled to ~2 Hz so trend windows stay meaningful.
+- **Enterprise TUI Layout (all 3 themes: OpenTUI / TermOx / FTXUI)**: adaptive terminal width (clamped 60-100), title bar with app version + live `HH:MM:SS` clock, labeled section dividers (`SYSTEM RESOURCES` / `MENU` / `STATUS`), full-width inverted keybind status bar, adaptive TermOx ribbon, FTXUI tab strip with active-tab highlight.
+- **New Deep-Clean Targets & Presets**: Thumbnail/Icon cache, Windows LiveKernelReports, user WER cache, Delivery Optimization cache, Chrome/Edge/Brave GPU + Service Worker caches; new `Diagnostics` category (dumps/WER/shader caches) and new presets: Windows System Deep Clean, Dumps & Diagnostic Caches, Custom Target Folders Only.
+
+### Test Results
+- 27 Test Suites | 308 Assertions | 0 Failures | 100% Pass Rate
+
 ## [5.7.5] - 2026-07-28
 
 ### Added

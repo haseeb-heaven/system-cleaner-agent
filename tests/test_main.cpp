@@ -20,6 +20,7 @@
 
 #include <iostream>
 #include <cassert>
+#include <cmath>
 #include <string>
 #include <fstream>
 #include <filesystem>
@@ -224,7 +225,33 @@ void TestOpenTUIFramework() {
     auto s3 = OpenTUI::GetThemeStyle("FTXUI");
     assert(s3.borderTL == "┏");
 
-    PASS("OpenTUIFramework", 12);
+    // Enterprise widgets: title bar (left title + right info)
+    std::string titleBar = OpenTUI::Box::DrawTitleBar(80, "DASHBOARD", "v5.7.5  12:00:00", "OpenTUI");
+    assert(titleBar.find("DASHBOARD") != std::string::npos);
+    assert(titleBar.find("v5.7.5") != std::string::npos);
+    assert(titleBar.find("╔") != std::string::npos);
+
+    // Labeled section divider
+    std::string section = OpenTUI::Box::DrawSectionDivider(80, "SYSTEM RESOURCES", "OpenTUI");
+    assert(section.find("SYSTEM RESOURCES") != std::string::npos);
+    assert(section.find("╠") != std::string::npos);
+    // Empty label falls back to plain divider
+    std::string plainSection = OpenTUI::Box::DrawSectionDivider(80, "", "OpenTUI");
+    assert(plainSection.find("╠") != std::string::npos);
+
+    // Full-width inverted status bar (keybind strip)
+    std::string statusBar = OpenTUI::Box::DrawStatusBar(80, "UP/DOWN Move   ENTER Select", "OpenTUI");
+    assert(statusBar.find("UP/DOWN Move") != std::string::npos);
+
+    // Adaptive terminal width: clamped to [60, 100]
+    int termW = OpenTUI::TerminalEngine::GetTerminalWidth();
+    assert(termW >= 60 && termW <= 100);
+
+    // Live clock format HH:MM:SS
+    std::string clock = OpenTUI::TerminalEngine::CurrentTimeHHMMSS();
+    assert(clock.size() == 8 && clock[2] == ':' && clock[5] == ':');
+
+    PASS("OpenTUIFramework", 22);
 }
 
 // ===========================================================================
@@ -239,6 +266,17 @@ void TestSmartSchedulerEngine() {
     assert(memPct  >= 0.0 && memPct  <= 100.0);
     assert(diskPct >= 0.0 && diskPct <= 100.0);
     assert(cpuPct  >= 0.0 && cpuPct  <= 100.0);
+
+    // Accurate Task Manager-grade memory statistics
+    auto memStats = SmartScheduler::GetMemoryStats();
+    assert(memStats.totalBytes > 0);
+    assert(memStats.usedBytes <= memStats.totalBytes);
+    assert(memStats.percent >= 0.0 && memStats.percent <= 100.0);
+    // Percent must agree with the byte-level ratio (within rounding)
+    if (memStats.totalBytes > 0) {
+        double ratio = (static_cast<double>(memStats.usedBytes) / static_cast<double>(memStats.totalBytes)) * 100.0;
+        assert(std::fabs(ratio - memStats.percent) < 0.5);
+    }
 
     // Test the new color-coded progress bar widget
     std::string greenBar = OpenTUI::RenderColoredBar(30.0, 20, "%");
@@ -273,7 +311,7 @@ void TestSmartSchedulerEngine() {
     assert(r3.intervalSeconds       == 1800);
     assert(r3.diskThresholdPercent  == 90.0);
 
-    PASS("SmartSchedulerEngine", 18);
+    PASS("SmartSchedulerEngine", 24);
 }
 
 // ===========================================================================
@@ -370,7 +408,28 @@ void TestSecurityGuard() {
     assert(guard.IsDangerousExtension(fs::path("debug.dmp"))  == false);
     assert(guard.IsDangerousExtension(fs::path("error.log"))  == false);
 
-    PASS("SecurityGuard", 21);
+    // Regression: C:\Windows\System32\LogFiles (a fixed Cleaner target) and
+    // other safe Windows subdirs must be allowed even when sandbox is OFF,
+    // because they are not the literal system file root. Previously the
+    // over-broad "c:\windows" critical-block prefix blocked these.
+#ifdef _WIN32
+    SecurityGuard noSandboxFixed(false, true);
+    SecurityReport lr = noSandboxFixed.AuditPath(fs::path("C:\\Windows\\System32\\LogFiles"));
+    assert(lr.level   == ThreatLevel::Safe);
+    assert(lr.blocked == false);
+    SecurityReport lp = noSandboxFixed.AuditPath(fs::path("C:\\Windows\\Prefetch"));
+    assert(lp.level   == ThreatLevel::Safe);
+    assert(lp.blocked == false);
+    SecurityReport wu = noSandboxFixed.AuditPath(fs::path("C:\\Windows\\SoftwareDistribution\\Download"));
+    assert(wu.level   == ThreatLevel::Safe);
+    assert(wu.blocked == false);
+    // The literal C:\Windows\System32 must STILL be CRITICAL.
+    SecurityReport s32 = noSandboxFixed.AuditPath(fs::path("C:\\Windows\\System32"));
+    assert(s32.level   == ThreatLevel::Critical);
+    assert(s32.blocked == true);
+#endif
+
+    PASS("SecurityGuard", 25);
 }
 
 // ===========================================================================
@@ -820,6 +879,8 @@ void TestAQLStrictGrammarAndValidation() {
         "KILL",
         "SELECT",
         "CLEAN",
+        "SHRED WHERE SIZE > 10MB",
+        "WIPE WHERE FREE_DISK < 1GB",
         "",
         "RANDOM TEXT NOT AN AQL STATEMENT"
     };
@@ -831,17 +892,25 @@ void TestAQLStrictGrammarAndValidation() {
         assert(!val.suggestedHint.empty());
     }
 
-    // 3. Verify Execution Prevention on Invalid Query
+    // 3. Verify Execution Prevention on Invalid Query.
+    //    A Failed task IS registered in the library so the user can see the
+    //    error in the Task Library; no actual work (scan/clean) runs.
     Cleaner cleaner;
     size_t countBefore = TaskHistory::Instance().Snapshot().size();
     AQLQuery badParsed = AQLEngine::Parse("FOOBAR INVALID QUERY STATEMENT");
     AQLEngine::Execute(badParsed, cleaner, true);
-    size_t countAfter = TaskHistory::Instance().Snapshot().size();
 
-    // Verify NO task was registered or executed for invalid query!
-    assert(countBefore == countAfter);
+    auto postTasks = TaskHistory::Instance().Snapshot();
+    bool foundFailedSyntaxTask = false;
+    for (const auto& t : postTasks) {
+        if (t.name == "AQL Syntax Error") { foundFailedSyntaxTask = true; break; }
+    }
+    assert(foundFailedSyntaxTask);
+    // SHRED without a target path must also fail validation
+    AQLQuery shredNoTarget = AQLEngine::Parse("SHRED WHERE SIZE > 10MB");
+    AQLEngine::Execute(shredNoTarget, cleaner, true);
 
-    PASS("AQLStrictGrammarAndValidation", 16);
+    PASS("AQLStrictGrammarAndValidation", 18);
 }
 
 void TestAQLRealUserScenariosLive() {
@@ -1035,7 +1104,7 @@ int main() {
     std::cout << "\033[1;36m"
               << "=====================================================================\n"
               << "  system-cleaner-agent v5.7.0 — Comprehensive Unit Test Suite          \n"
-              << "  27 Test Functions | 292 Assertions                                \n"
+              << "  27 Test Functions | 314 Assertions                                \n"
               << "=====================================================================\n"
               << "\033[0m\n";
 

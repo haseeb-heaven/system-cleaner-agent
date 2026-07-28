@@ -160,12 +160,20 @@ public:
         std::string color;
         std::string label;
         switch (report.level) {
-            case ThreatLevel::Critical:    color = "\033[1;31m"; label = "[CRITICAL]  "; break;
-            case ThreatLevel::Dangerous:   color = "\033[1;33m"; label = "[DANGEROUS] "; break;
-            case ThreatLevel::Suspicious:  color = "\033[1;36m"; label = "[SANDBOX]   "; break;
-            default:                       color = "\033[1;32m"; label = "[SAFE]      "; break;
+            case ThreatLevel::Critical:    label = "[CRITICAL]  "; break;
+            case ThreatLevel::Dangerous:   label = "[DANGEROUS] "; break;
+            case ThreatLevel::Suspicious:  label = "[SANDBOX]   "; break;
+            default:                       label = "[SAFE]      "; break;
         }
-        std::cout << color << label << report.reason << "\033[0m\n";
+        // Route through the Logger so the message is automatically suppressed
+        // when the TUI is active (otherwise a background scan/clean worker
+        // would write directly to std::cout and corrupt the menu render).
+        std::string fullMsg = label + report.reason;
+        if (report.level == ThreatLevel::Critical || report.level == ThreatLevel::Dangerous) {
+            Logger::Instance().Warn(fullMsg);
+        } else {
+            Logger::Instance().Info(fullMsg);
+        }
     }
 
     // Public helper: Get comma-joined default safe paths for the current OS
@@ -208,9 +216,16 @@ private:
         paths.push_back(la + "\\Microsoft\\Windows\\WER");          // Windows Error Reporting
         paths.push_back(la + "\\Microsoft\\Windows\\WebCache");
         paths.push_back(la + "\\CrashDumps");
+        paths.push_back(la + "\\D3DSCache");                        // DirectX shader cache
         paths.push_back(la + "\\Microsoft\\Edge\\User Data\\Default\\Cache");
+        paths.push_back(la + "\\Microsoft\\Edge\\User Data\\Default\\GPUCache");
+        paths.push_back(la + "\\Microsoft\\Edge\\User Data\\Default\\Service Worker\\CacheStorage");
         paths.push_back(la + "\\Google\\Chrome\\User Data\\Default\\Cache");
         paths.push_back(la + "\\Google\\Chrome\\User Data\\Default\\Code Cache");
+        paths.push_back(la + "\\Google\\Chrome\\User Data\\Default\\GPUCache");
+        paths.push_back(la + "\\Google\\Chrome\\User Data\\Default\\Service Worker\\CacheStorage");
+        paths.push_back(la + "\\BraveSoftware\\Brave-Browser\\User Data\\Default\\Cache");
+        paths.push_back(la + "\\BraveSoftware\\Brave-Browser\\User Data\\Default\\GPUCache");
         paths.push_back(la + "\\Mozilla\\Firefox\\Profiles");       // browser cache subfolders
         paths.push_back(la + "\\Packages");                         // UWP package caches
         paths.push_back(up + "\\AppData\\Local\\pip\\cache");
@@ -219,11 +234,23 @@ private:
         paths.push_back(up + "\\AppData\\Local\\SquirrelTemp");
         paths.push_back(up + "\\AppData\\Roaming\\npm-cache");
 
+        // ProgramData junk caches (these live under the critical-blocked
+        // C:\ProgramData root, so they MUST be explicitly allowlisted here)
+        char programData[MAX_PATH] = {};
+        ExpandEnvironmentStringsA("%PROGRAMDATA%", programData, MAX_PATH);
+        std::string pd(programData);
+        paths.push_back(pd + "\\Microsoft\\Windows\\WER");                       // Error reporting archive/queue
+        paths.push_back(pd + "\\Microsoft\\Windows\\DeliveryOptimization\\Cache"); // Windows Update DO cache
+
         // Windows system temp (safe to clean contents, not the folder itself)
         paths.push_back(wd + "\\Temp");
         paths.push_back(wd + "\\Prefetch");
         paths.push_back(wd + "\\SoftwareDistribution\\Download");   // Windows Update cache
         paths.push_back(wd + "\\Logs");
+        paths.push_back(wd + "\\Minidump");                         // BSOD minidumps
+        paths.push_back(wd + "\\LiveKernelReports");                // Live kernel dump reports
+        paths.push_back(wd + "\\System32\\LogFiles");               // System32 event/audit logs
+        paths.push_back(wd + "\\debug");                            // Kernel debug logs (WPP/trace)
 
 #elif defined(__APPLE__)
         char* home = std::getenv("HOME");
@@ -274,11 +301,14 @@ private:
         return paths;
     }
 
-    // Always blocked — these will never be allowed regardless of sandbox flag
+    // Always blocked — these will never be allowed regardless of sandbox flag.
+    // NOTE: The bare "c:\windows" root prefix is intentionally NOT in this list
+    // (it would over-block safe subdirectories like Logs/LogFiles/Prefetch that
+    // Disk Cleanup is meant to clean). The granular system32/syswow64/system
+    // entries below protect the truly sensitive OS files.
     static std::vector<std::string> GetCriticalBlockedPaths() {
         return {
 #ifdef _WIN32
-            "c:\\windows",
             "c:\\windows\\system32",
             "c:\\windows\\syswow64",
             "c:\\windows\\system",

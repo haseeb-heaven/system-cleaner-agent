@@ -77,7 +77,18 @@ struct TUISettings {
     }
 };
 
-static TUISettings g_tuiSettings;
+    static TUISettings g_tuiSettings;
+
+    // Monitor refresh interval helpers.
+    // monitorIntervalSec == 0 is the special REALTIME LIVE tier = 100 ms.
+    static int GetMonitorIntervalMs() {
+        return g_tuiSettings.monitorIntervalSec <= 0 ? 100 : g_tuiSettings.monitorIntervalSec * 1000;
+    }
+    static std::string GetMonitorIntervalLabel() {
+        if (g_tuiSettings.monitorIntervalSec <= 0) return "100 ms (REALTIME LIVE)";
+        if (g_tuiSettings.monitorIntervalSec == 1)  return "1 second (LIVE)";
+        return std::to_string(g_tuiSettings.monitorIntervalSec) + " seconds";
+    }
 
 inline void SaveTUISettings() {
     ConfigManager::Save(g_tuiSettings.ToAppConfig());
@@ -191,17 +202,28 @@ public:
     static std::vector<std::string> GetLiveResourceHeaders() {
         std::vector<std::string> headers;
 
-        // Sample CPU, RAM, and disk usage
+        // Sample CPU, RAM (accurate, Task Manager-grade), and disk usage
         double cpuPercent = SmartScheduler::GetCpuUsagePercent();
-        double memPercent = SmartScheduler::GetMemoryUsagePercent();
+        auto memStats = SmartScheduler::GetMemoryStats();
+        double memPercent = memStats.percent;
         auto driveStats = SmartScheduler::GetAllDriveStats();
         double maxDiskPercent = 0.0;
         for (const auto& ds : driveStats) {
             if (ds.usedPercent > maxDiskPercent) maxDiskPercent = ds.usedPercent;
         }
 
-        // Update resource history (used for sparkline trend charts)
-        GetResourceHistory().Push(cpuPercent, memPercent, maxDiskPercent);
+        // Update resource history (used for sparkline trend charts).
+        // Throttled to ~2 Hz so the trend window stays meaningful even at
+        // the 100 ms REALTIME LIVE refresh tier (30 samples = ~15 s window).
+        {
+            static std::chrono::steady_clock::time_point lastPush;
+            auto nowTs = std::chrono::steady_clock::now();
+            if (lastPush.time_since_epoch().count() == 0 ||
+                std::chrono::duration_cast<std::chrono::milliseconds>(nowTs - lastPush).count() >= 500) {
+                GetResourceHistory().Push(cpuPercent, memPercent, maxDiskPercent);
+                lastPush = nowTs;
+            }
+        }
         const auto& hist = GetResourceHistory();
 
         // Line 1: CPU with color-coded progress bar + sparkline trend
@@ -214,7 +236,7 @@ public:
         // Line 2: RAM with color-coded progress bar + sparkline trend
         std::string ramBar = OpenTUI::RenderColoredBar(memPercent, 18, "%");
         std::ostringstream ramLine;
-        ramLine << "[1;33mRAM:[0m  " << ramBar
+        ramLine << "[1;33mRAM:[0m  " << ramBar << "  \033[97m" << Cleaner::FormatSize(memStats.usedBytes) << " / " << Cleaner::FormatSize(memStats.totalBytes) << "\033[0m"
                  << "  [90m" << OpenTUI::Sparkline::Render(hist.ram, 14) << "[0m";
         headers.push_back(ramLine.str());
 
@@ -222,9 +244,11 @@ public:
         for (const auto& ds : driveStats) {
             std::string diskBar = OpenTUI::RenderColoredBar(ds.usedPercent, 14, "%");
             std::ostringstream ss;
-            ss << ds.driveName << " " << diskBar
-               << " (F:" << Cleaner::FormatSize(ds.freeBytes)
-               << " / " << Cleaner::FormatSize(ds.capacityBytes) << ")";
+            std::string driveLabel = ds.driveName;
+            while (driveLabel.size() < 5) driveLabel += ' ';
+            ss << driveLabel << diskBar
+               << "  Free " << Cleaner::FormatSize(ds.freeBytes)
+               << " of " << Cleaner::FormatSize(ds.capacityBytes);
             headers.push_back(ss.str());
         }
 
@@ -299,16 +323,17 @@ public:
                 ss << OpenTUI::Box::DrawLine(80, dss.str(), false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             }
             ss << OpenTUI::Box::DrawDivider(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-            std::string hint = "Press 'A'/Enter to run AQL Query | ESC/'q' to return (Refreshing every " + std::to_string(g_tuiSettings.monitorIntervalSec) + "s)";
+            std::string hint = "Press 'A'/Enter to run AQL Query | ESC/'q' to return (Refreshing every " + GetMonitorIntervalLabel() + ")";
             ss << OpenTUI::Box::DrawLine(80, hint, false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             ss << OpenTUI::Box::DrawFooter(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-            // Clear, home, then flush entire frame atomically (no partial-render artifacts)
-            OpenTUI::TerminalEngine::ClearScreen(style.panelBg);
+            // Home cursor, then flush entire frame atomically (no ClearScreen:
+            // fixed-width box lines are overwritten in-place and the trailing
+            // \033[J erases any stale content below, so no full-screen flicker).
             OpenTUI::TerminalEngine::MoveCursorToHome();
             std::cout << style.panelBg << ss.str() << "\033[J" << std::flush;
 
             // Sleep in 100ms intervals to allow ESC/q/A responsiveness
-            int checkCycles = g_tuiSettings.monitorIntervalSec * 10;
+            int checkCycles = (std::max)(1, GetMonitorIntervalMs() / 100);
             bool returnToMenu = false;
             for (int i = 0; i < checkCycles; ++i) {
 #ifdef _WIN32
@@ -373,6 +398,7 @@ public:
 
             OpenTUI::Menu actMenu("TASK ACTIONS & MONITORING (#" + std::to_string(t.id) + ")", actionOpts, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             actMenu.SetHeaderLines(headers);
+            actMenu.SetHeaderSectionTitle("TASK DETAILS");
             int aSel = actMenu.Show();
 
             if (aSel == -1 || aSel == 3) break;
@@ -537,8 +563,7 @@ public:
                 std::string("Path Protection:   [") + (g_tuiSettings.pathProtection ? "ON  - System Dir Guard" : "OFF - Disabled") + "]",
                 std::string("Dry-Run Mode:      [") + (g_tuiSettings.dryRun ? "ON  - Preview Only" : "OFF - REAL CLEAN") + "]",
                 std::string("Kill Locks:        [") + (g_tuiSettings.killLocks ? "ON" : "OFF") + "]",
-                std::string("Monitor Interval:  [") + std::to_string(g_tuiSettings.monitorIntervalSec)
-                    + (g_tuiSettings.monitorIntervalSec == 1 ? " second (LIVE)]" : " seconds]"),
+                std::string("Monitor Interval:  [") + GetMonitorIntervalLabel() + "]",
                 std::string("Target Folders:    [") + g_tuiSettings.customPathsStr.substr(0, 40) + (g_tuiSettings.customPathsStr.size() > 40 ? "..." : "") + "]",
                 std::string("Reset to OS Defaults (" + osName + " safe temp/cache paths)"),
                 "Save & Return to Dashboard"
@@ -653,11 +678,10 @@ public:
                 case 8: g_tuiSettings.dryRun = !g_tuiSettings.dryRun; break;
                 case 9: g_tuiSettings.killLocks = !g_tuiSettings.killLocks; break;
                 case 10: { // Monitor Interval
-                    // 1 second = Live mode (max refresh rate)
-                    // 3, 5, 10, 15, 30, 60 = normal intervals
-                    static const std::vector<int> intervals = { 1, 3, 5, 10, 15, 30, 60 };
+                    // 0 = 100 ms REALTIME LIVE, 1 = 1s LIVE, then 3/5/10/15/30/60 s
+                    static const std::vector<int> intervals = { 0, 1, 3, 5, 10, 15, 30, 60 };
                     auto it = std::find(intervals.begin(), intervals.end(), g_tuiSettings.monitorIntervalSec);
-                    int idx = (it != intervals.end()) ? static_cast<int>(std::distance(intervals.begin(), it)) : 2;  // default to 5s (index 2)
+                    int idx = (it != intervals.end()) ? static_cast<int>(std::distance(intervals.begin(), it)) : 3;  // default to 5s (index 3)
                     if (sel.actionKey == OpenTUI::Key::Left) {
                         idx = (idx > 0) ? idx - 1 : static_cast<int>(intervals.size()) - 1;
                     } else {
@@ -814,154 +838,145 @@ public:
     }
 
     static void ShowDiskCleanerSubmenu(Cleaner& cleaner) {
+        // The Disk Cleaner Suite operates in UNION mode: built-in OS temp/cache
+        // targets (C:\ system deep clean) PLUS the user's custom target folders.
+        cleaner.SetIncludeBuiltInTargets(true);
         std::string driveName = SYSTEM_PRIMARY_DRIVE;
         std::vector<std::string> subOptions = {
             "Storage Scan (Preview All Cleanable Space)",
             "Deep Storage Scan & Hotspot Analyzer (Multi-Drive & Large File Bloat)",
-            "Smart Deep Clean (Clean All Temp & Cache Targets)",
-            "Preset: " + driveName + " System Temp & Update Downloads",
-            "Preset: " + driveName + " Crash Dumps & System Shader Logs",
-            "Preset: Web Browser Caches (Chrome/Edge/Firefox/Brave/Safari)",
-            "Preset: Developer Cache Suite (npm/pip/cargo/gradle/uv/pnpm)",
-            "Preset: IDE & Messaging Caches (VS Code/Cursor/Discord/Telegram)",
+            "Smart Deep Clean (ALL Safe Temp, Cache & Custom Targets)",
+            "Preset: " + driveName + " Windows System Deep Clean (Temp/Update/Prefetch/Logs)",
+            "Preset: Crash Dumps, Error Reports & Shader Caches",
+            "Preset: Web Browser Caches (Chrome/Edge/Firefox/Brave/Opera)",
+            "Preset: Developer Cache Suite (npm/pip/cargo/gradle/uv/pnpm/nuget)",
+            "Preset: IDE, Messaging & App Caches (VS Code/Discord/Slack/Telegram)",
+            "Preset: Custom Target Folders Only",
             "Secure Shred Wipe",
             "Empty OS Recycle Bin / Trash",
             "Deep Scan (Interactive Tree, Hotspot Analyzer & JSON Export)",
             "Back"
         };
         OpenTUI::Menu subMenu("DISK CLEANER SUITE (" + GetCurrentOSNameStr() + " - " + driveName + ")", subOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+        subMenu.SetHeaderSectionTitle("CLEAN OPERATIONS");
         int sel = subMenu.Show();
 
-        // CRITICAL: ESC (sel == -1) or "Back" option (sel == 11) returns to main menu.
-        if (sel == -1 || sel == 11) return;
+        // ESC (sel == -1) or "Back" option (last index) returns to main menu.
+        if (sel == -1 || sel == static_cast<int>(subOptions.size()) - 1) return;
 
         bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
 
-        if (sel == 0) {
-            uint64_t tid = TaskHistory::Instance().Register("TUI", "Storage Scan", "scan --dry-run", "Disk Cleaner");
-            std::thread worker([&cleaner, tid]() {
+        // Shared helper: run a category-scoped clean preset in the background.
+        auto runPresetClean = [&cleaner, currentDryRun](const std::string& taskName, const std::string& cmdLine, const std::vector<std::string>& categories) {
+            uint64_t tid = TaskHistory::Instance().Register("TUI", taskName, cmdLine, "Disk Cleaner");
+            std::thread worker([&cleaner, currentDryRun, tid, taskName, categories]() {
                 TaskHistory::Instance().MarkRunning(tid);
-                g_tuiStatus.SetActive("Storage Scan");
-                cleaner.SetDryRun(true);
-                auto reports = cleaner.Scan();
-                uintmax_t freed = 0;
-                for (const auto& r : reports) freed += r.sizeBytes;
-                g_tuiStatus.SetCompleted("Scan completed. Cleanable: " + Cleaner::FormatSize(freed));
-                TaskHistory::Instance().MarkCompleted(tid, "Scan found " + Cleaner::FormatSize(freed) + " cleanable across " + std::to_string(reports.size()) + " targets", freed, 0, 0, 0);
-            });
-            worker.detach();
-        } else if (sel == 1) {
-            uint64_t tid = TaskHistory::Instance().Register("TUI", "Deep Storage Hotspot Scan", "deepscan --all-drives", "Disk Cleaner");
-            std::thread worker([&cleaner, tid]() {
-                TaskHistory::Instance().MarkRunning(tid);
-                g_tuiStatus.SetActive("Deep Storage Hotspot Scan...");
-                DeepScanResult res = cleaner.DeepScan(100);
-                std::string summary = "Deep Scan found " + Cleaner::FormatSize(res.totalCleanableCachesBytes) + " caches and " + std::to_string(res.largeFiles.size()) + " large files (>100MB)";
-                g_tuiStatus.SetCompleted(summary);
-                TaskHistory::Instance().MarkCompleted(tid, summary, res.totalCleanableCachesBytes, 0, 0, 0);
-            });
-            worker.detach();
-        } else if (sel == 2) {
-            uint64_t tid = TaskHistory::Instance().Register("TUI", "Smart Deep Clean", currentDryRun ? "clean --dry-run" : "clean --real", "Disk Cleaner");
-            std::thread worker([&cleaner, currentDryRun, tid]() {
-                TaskHistory::Instance().MarkRunning(tid);
-                g_tuiStatus.SetActive(currentDryRun ? "Smart Deep Clean (DRY-RUN)" : "Smart Deep Clean (REAL DELETE)");
+                g_tuiStatus.SetActive(taskName + "...");
                 cleaner.SetDryRun(currentDryRun);
-                cleaner.Clean();
-                g_tuiStatus.SetCompleted("Smart Deep Clean finished.");
-                TaskHistory::Instance().MarkCompleted(tid, "Smart Deep Clean finished.", 0, 0, 0, 0);
-            });
-            worker.detach();
-        } else if (sel == 3) {
-            uint64_t tid = TaskHistory::Instance().Register("TUI", "Preset: OS Temp & Updates", "clean preset-temp", "Disk Cleaner");
-            std::thread worker([&cleaner, currentDryRun, tid]() {
-                TaskHistory::Instance().MarkRunning(tid);
-                g_tuiStatus.SetActive("Cleaning OS Temp & Updates...");
-                cleaner.SetDryRun(currentDryRun);
-                cleaner.SetIncludeCategories({"system"});
+                cleaner.SetIncludeCategories(categories);
                 cleaner.Clean();
                 cleaner.SetIncludeCategories({});
-                g_tuiStatus.SetCompleted("OS Temp & Update cleanup finished.");
-                TaskHistory::Instance().MarkCompleted(tid, "OS Temp & Update cleanup finished.", 0, 0, 0, 0);
+                g_tuiStatus.SetCompleted(taskName + " finished.");
+                TaskHistory::Instance().MarkCompleted(tid, taskName + " finished.", 0, 0, 0, 0);
             });
             worker.detach();
-        } else if (sel == 4) {
-            uint64_t tid = TaskHistory::Instance().Register("TUI", "Preset: Crash Dumps & Logs", "clean preset-logs", "Disk Cleaner");
-            std::thread worker([&cleaner, currentDryRun, tid]() {
-                TaskHistory::Instance().MarkRunning(tid);
-                g_tuiStatus.SetActive("Cleaning Crash Dumps & System Logs...");
-                cleaner.SetDryRun(currentDryRun);
-                cleaner.SetIncludeCategories({"system"});
-                cleaner.Clean();
-                cleaner.SetIncludeCategories({});
-                g_tuiStatus.SetCompleted("Crash Dumps & System Logs cleanup finished.");
-                TaskHistory::Instance().MarkCompleted(tid, "Crash Dumps & System Logs cleanup finished.", 0, 0, 0, 0);
-            });
-            worker.detach();
-        } else if (sel == 4) {
-            uint64_t tid = TaskHistory::Instance().Register("TUI", "Preset: Browser Caches", "clean preset-browser", "Disk Cleaner");
-            std::thread worker([&cleaner, currentDryRun, tid]() {
-                TaskHistory::Instance().MarkRunning(tid);
-                g_tuiStatus.SetActive("Cleaning Web Browser Caches...");
-                cleaner.SetDryRun(currentDryRun);
-                cleaner.SetIncludeCategories({"browser"});
-                cleaner.Clean();
-                cleaner.SetIncludeCategories({});
-                g_tuiStatus.SetCompleted("Browser Caches cleanup finished.");
-                TaskHistory::Instance().MarkCompleted(tid, "Browser Caches cleanup finished.", 0, 0, 0, 0);
-            });
-            worker.detach();
-        } else if (sel == 5) {
-            uint64_t tid = TaskHistory::Instance().Register("TUI", "Preset: Developer Caches", "clean preset-dev", "Disk Cleaner");
-            std::thread worker([&cleaner, currentDryRun, tid]() {
-                TaskHistory::Instance().MarkRunning(tid);
-                g_tuiStatus.SetActive("Cleaning Developer Cache Suite...");
-                cleaner.SetDryRun(currentDryRun);
-                cleaner.SetIncludeCategories({"developer"});
-                cleaner.Clean();
-                cleaner.SetIncludeCategories({});
-                g_tuiStatus.SetCompleted("Developer Caches cleanup finished.");
-                TaskHistory::Instance().MarkCompleted(tid, "Developer Caches cleanup finished.", 0, 0, 0, 0);
-            });
-            worker.detach();
-        } else if (sel == 6) {
-            uint64_t tid = TaskHistory::Instance().Register("TUI", "Preset: Messaging & IDE Caches", "clean preset-apps", "Disk Cleaner");
-            std::thread worker([&cleaner, currentDryRun, tid]() {
-                TaskHistory::Instance().MarkRunning(tid);
-                g_tuiStatus.SetActive("Cleaning Messaging & IDE Caches...");
-                cleaner.SetDryRun(currentDryRun);
-                cleaner.SetIncludeCategories({"messaging", "applications"});
-                cleaner.Clean();
-                cleaner.SetIncludeCategories({});
-                g_tuiStatus.SetCompleted("Messaging & IDE Caches cleanup finished.");
-                TaskHistory::Instance().MarkCompleted(tid, "Messaging & IDE Caches cleanup finished.", 0, 0, 0, 0);
-            });
-            worker.detach();
-        } else if (sel == 7) {
-            uint64_t tid = TaskHistory::Instance().Register("TUI", "Secure Shred Wipe", currentDryRun ? "shred --dry-run" : "shred --real", "Disk Cleaner");
-            std::thread worker([&cleaner, currentDryRun, tid]() {
-                TaskHistory::Instance().MarkRunning(tid);
-                g_tuiStatus.SetActive("Secure Shred Wipe");
-                cleaner.SetDryRun(currentDryRun);
-                cleaner.SetMode(CleanMode::Shred);
-                cleaner.Clean();
-                g_tuiStatus.SetCompleted("Secure Shred Wipe finished.");
-                TaskHistory::Instance().MarkCompleted(tid, "Secure Shred Wipe finished.", 0, 0, 0, 0);
-            });
-            worker.detach();
-        } else if (sel == 8) {
-            uint64_t tid = TaskHistory::Instance().Register("TUI", "Empty Recycle Bin / Trash", "empty-recycle-bin", "Disk Cleaner");
-            std::thread worker([&cleaner, tid]() {
-                TaskHistory::Instance().MarkRunning(tid);
-                g_tuiStatus.SetActive("Empty Recycle Bin / Trash");
-                cleaner.EmptyWindowsRecycleBin();
-                g_tuiStatus.SetCompleted("Recycle Bin / Trash emptied.");
-                TaskHistory::Instance().MarkCompleted(tid, "OS Recycle Bin / Trash purged.", 0, 0, 0, 0);
-            });
-            worker.detach();
-        } else if (sel == 9) {
-            // Delegate to ShowDeepScanSubmenu so Disk Cleaner also gets full Deep Scan power
-            ShowDeepScanSubmenu(cleaner);
+        };
+
+        // FIXED: dispatch indices now match the menu options exactly.
+        // (Previously a duplicated `sel == 4` branch shifted every action
+        // from index 5 onward off-by-one — the "wrong menu" bug.)
+        switch (sel) {
+            case 0: { // Storage Scan
+                uint64_t tid = TaskHistory::Instance().Register("TUI", "Storage Scan", "scan --dry-run", "Disk Cleaner");
+                std::thread worker([&cleaner, tid]() {
+                    TaskHistory::Instance().MarkRunning(tid);
+                    g_tuiStatus.SetActive("Storage Scan");
+                    cleaner.SetDryRun(true);
+                    auto reports = cleaner.Scan();
+                    uintmax_t freed = 0;
+                    for (const auto& r : reports) freed += r.sizeBytes;
+                    g_tuiStatus.SetCompleted("Scan completed. Cleanable: " + Cleaner::FormatSize(freed));
+                    TaskHistory::Instance().MarkCompleted(tid, "Scan found " + Cleaner::FormatSize(freed) + " cleanable across " + std::to_string(reports.size()) + " targets", freed, 0, 0, 0);
+                });
+                worker.detach();
+                break;
+            }
+            case 1: { // Deep Storage Scan & Hotspot Analyzer
+                uint64_t tid = TaskHistory::Instance().Register("TUI", "Deep Storage Hotspot Scan", "deepscan --all-drives", "Disk Cleaner");
+                std::thread worker([&cleaner, tid]() {
+                    TaskHistory::Instance().MarkRunning(tid);
+                    g_tuiStatus.SetActive("Deep Storage Hotspot Scan...");
+                    DeepScanResult res = cleaner.DeepScan(100);
+                    std::string summary = "Deep Scan found " + Cleaner::FormatSize(res.totalCleanableCachesBytes) + " caches and " + std::to_string(res.largeFiles.size()) + " large files (>100MB)";
+                    g_tuiStatus.SetCompleted(summary);
+                    TaskHistory::Instance().MarkCompleted(tid, summary, res.totalCleanableCachesBytes, 0, 0, 0);
+                });
+                worker.detach();
+                break;
+            }
+            case 2: { // Smart Deep Clean (all categories + custom targets)
+                uint64_t tid = TaskHistory::Instance().Register("TUI", "Smart Deep Clean", currentDryRun ? "clean --dry-run" : "clean --real", "Disk Cleaner");
+                std::thread worker([&cleaner, currentDryRun, tid]() {
+                    TaskHistory::Instance().MarkRunning(tid);
+                    g_tuiStatus.SetActive(currentDryRun ? "Smart Deep Clean (DRY-RUN)" : "Smart Deep Clean (REAL DELETE)");
+                    cleaner.SetDryRun(currentDryRun);
+                    cleaner.Clean();
+                    g_tuiStatus.SetCompleted("Smart Deep Clean finished.");
+                    TaskHistory::Instance().MarkCompleted(tid, "Smart Deep Clean finished.", 0, 0, 0, 0);
+                });
+                worker.detach();
+                break;
+            }
+            case 3: // Preset: Windows System (C:) Deep Clean
+                runPresetClean("Preset: Windows System Deep Clean", "clean --include system", {"system"});
+                break;
+            case 4: // Preset: Crash Dumps, Error Reports & Shader Caches
+                runPresetClean("Preset: Dumps & Diagnostic Caches", "clean --include diagnostics", {"diagnostics"});
+                break;
+            case 5: // Preset: Web Browser Caches
+                runPresetClean("Preset: Browser Caches", "clean --include browser", {"browser"});
+                break;
+            case 6: // Preset: Developer Cache Suite
+                runPresetClean("Preset: Developer Caches", "clean --include developer", {"developer"});
+                break;
+            case 7: // Preset: IDE, Messaging & App Caches
+                runPresetClean("Preset: IDE, Messaging & App Caches", "clean --include messaging,applications", {"messaging", "applications"});
+                break;
+            case 8: // Preset: Custom Target Folders Only
+                runPresetClean("Preset: Custom Target Folders", "clean --include custom", {"custom"});
+                break;
+            case 9: { // Secure Shred Wipe
+                uint64_t tid = TaskHistory::Instance().Register("TUI", "Secure Shred Wipe", currentDryRun ? "shred --dry-run" : "shred --real", "Disk Cleaner");
+                std::thread worker([&cleaner, currentDryRun, tid]() {
+                    TaskHistory::Instance().MarkRunning(tid);
+                    g_tuiStatus.SetActive("Secure Shred Wipe");
+                    cleaner.SetDryRun(currentDryRun);
+                    cleaner.SetMode(CleanMode::Shred);
+                    cleaner.Clean();
+                    g_tuiStatus.SetCompleted("Secure Shred Wipe finished.");
+                    TaskHistory::Instance().MarkCompleted(tid, "Secure Shred Wipe finished.", 0, 0, 0, 0);
+                });
+                worker.detach();
+                break;
+            }
+            case 10: { // Empty OS Recycle Bin / Trash
+                uint64_t tid = TaskHistory::Instance().Register("TUI", "Empty Recycle Bin / Trash", "empty-recycle-bin", "Disk Cleaner");
+                std::thread worker([&cleaner, tid]() {
+                    TaskHistory::Instance().MarkRunning(tid);
+                    g_tuiStatus.SetActive("Empty Recycle Bin / Trash");
+                    cleaner.SetEmptyRecycleBin(true); // self-guarded flag must be enabled for the explicit action
+                    cleaner.EmptyWindowsRecycleBin();
+                    g_tuiStatus.SetCompleted("Recycle Bin / Trash emptied.");
+                    TaskHistory::Instance().MarkCompleted(tid, "OS Recycle Bin / Trash purged.", 0, 0, 0, 0);
+                });
+                worker.detach();
+                break;
+            }
+            case 11: // Deep Scan (Interactive Tree, Hotspot Analyzer & JSON Export)
+                ShowDeepScanSubmenu(cleaner);
+                break;
+            default:
+                break;
         }
     }
 
@@ -1440,7 +1455,7 @@ public:
         };
 
         OpenTUI::Menu menu("SYSTEM-CLEANER-AGENT", options, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-        menu.SetRefreshIntervalMs(g_tuiSettings.monitorIntervalSec * 1000);
+        menu.SetRefreshIntervalMs(GetMonitorIntervalMs());
         bool firstRender = true;
 
         while (true) {
@@ -1458,12 +1473,13 @@ public:
                 OpenTUI::TerminalEngine::ClearScreen();
             }
             // Update refresh interval in case user changed the setting via Settings menu
-            menu.SetRefreshIntervalMs(g_tuiSettings.monitorIntervalSec * 1000);
+            menu.SetRefreshIntervalMs(GetMonitorIntervalMs());
             // Set initial header lines (will be auto-refreshed on every frame)
             {
                 auto headers = GetLiveResourceHeaders();
                 AppendTaskStatusToHeaders(headers);
                 menu.SetHeaderLines(headers);
+                menu.SetHeaderSectionTitle("SYSTEM RESOURCES");
             }
             // CRITICAL: Set callback to re-query live data on EVERY auto-refresh tick.
             // Without this, the auto-refresh re-renders the SAME cached data.
@@ -1473,6 +1489,7 @@ public:
                 return fresh;
             });
             menu.SetStatusLine(g_tuiStatus.GetStatusLine());
+            menu.SetStatusProvider([]() { return g_tuiStatus.GetStatusLine(); });
             int selected = menu.Show();
 
             if (selected == -1 || selected == 6) {
@@ -1549,7 +1566,7 @@ public:
                     {
                         uint64_t tid = TaskHistory::Instance().Register("DAEMON", "Smart Daemon Monitor", "daemon --mem-threshold 80% --disk-threshold", "OpenTUI Menu");
                         bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
-                        int interval = g_tuiSettings.monitorIntervalSec;
+                        int interval = (std::max)(1, g_tuiSettings.monitorIntervalSec); // daemon minimum granularity = 1s
                         std::thread worker([&cleaner, currentDryRun, interval, tid]() {
                             TaskHistory::Instance().MarkRunning(tid);
                             TaskHistory::Instance().UpdateProgress(tid, "Daemon watching RAM > 80% / Free Disk < 500MB...");

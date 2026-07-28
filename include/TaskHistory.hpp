@@ -279,8 +279,7 @@ public:
         for (auto& t : tasks) {
             if (t.status == Status::Running || t.status == Status::Queued || t.status == Status::Paused) {
                 t.status = Status::Cancelled;
-                t.finishSec = static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::seconds>(
-                    std::chrono::system_clock::now().time_since_epoch()).count());
+                t.finishedAt = std::chrono::system_clock::now();
                 t.resultSummary = "Interrupted by application restart.";
                 t.progressMsg = "Stopped.";
                 cleanedIds.push_back(t.id);

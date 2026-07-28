@@ -9,6 +9,7 @@
 #include <thread>
 #include <chrono>
 #include <atomic>
+#include <mutex>
 #include <algorithm>
 #include <sstream>
 #include <filesystem>
@@ -55,15 +56,41 @@ public:
     }
 
     // ----------------------------------------------------------------
+    // RAM usage statistics (accurate, Task Manager-grade)
+    // ----------------------------------------------------------------
+    struct MemoryStats {
+        uintmax_t usedBytes  = 0;
+        uintmax_t totalBytes = 0;
+        double    percent    = 0.0;
+    };
+
+    // Accurate RAM measurement: (TotalPhys - AvailPhys) / TotalPhys.
+    // This matches Task Manager's "In use" metric far more closely than
+    // the coarse approximate dwMemoryLoad value.
+    static MemoryStats GetMemoryStats() {
+        MemoryStats ms;
+#ifdef _WIN32
+        MEMORYSTATUSEX statex;
+        statex.dwLength = sizeof(statex);
+        if (GlobalMemoryStatusEx(&statex) && statex.ullTotalPhys > 0) {
+            ms.totalBytes = statex.ullTotalPhys;
+            ms.usedBytes  = statex.ullTotalPhys - statex.ullAvailPhys;
+            ms.percent    = (static_cast<double>(ms.usedBytes) / static_cast<double>(ms.totalBytes)) * 100.0;
+        }
+#else
+        ms.totalBytes = GetTotalMemoryBytes();
+        ms.percent    = GetMemoryUsagePercent(); // POSIX path computes directly (no recursion)
+        ms.usedBytes  = static_cast<uintmax_t>((ms.percent / 100.0) * static_cast<double>(ms.totalBytes));
+#endif
+        return ms;
+    }
+
+    // ----------------------------------------------------------------
     // RAM usage %
     // ----------------------------------------------------------------
     static double GetMemoryUsagePercent() {
 #ifdef _WIN32
-        MEMORYSTATUSEX statex;
-        statex.dwLength = sizeof(statex);
-        if (GlobalMemoryStatusEx(&statex)) {
-            return static_cast<double>(statex.dwMemoryLoad);
-        }
+        return GetMemoryStats().percent;
 #elif defined(__APPLE__)
         mach_msg_type_number_t count = HOST_VM_INFO64_COUNT;
         vm_statistics64_data_t vmstat;
@@ -93,6 +120,11 @@ public:
     // CPU usage % (sampled over a short interval for accuracy)
     // ----------------------------------------------------------------
     static double GetCpuUsagePercent() {
+        // Serialize concurrent samplers (TUI render thread, daemon thread,
+        // agent threads) so the shared delta state cannot be corrupted,
+        // which previously produced wild/inaccurate CPU readings.
+        static std::mutex s_cpuMutex;
+        std::lock_guard<std::mutex> cpuLock(s_cpuMutex);
         // Static cache of previous measurement for delta calculation
         static uint64_t s_lastIdle = 0;
         static uint64_t s_lastTotal = 0;

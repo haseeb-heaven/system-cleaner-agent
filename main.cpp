@@ -607,6 +607,9 @@ int main(int argc, char* argv[]) {
             Logger::Instance().Info("Service sleeping for " + std::to_string(cronIntervalSeconds) + " seconds...");
             std::this_thread::sleep_for(std::chrono::seconds(cronIntervalSeconds));
         }
+    } else {
+        executeTask();
+    }
     } catch (const std::exception& e) {
         std::cerr << "\n\033[1;31mFatal Exception: " << e.what() << "\033[0m\n";
         if (OpenTUI::TerminalEngine::IsLaunchedFromExplorer()) {

@@ -295,8 +295,8 @@ public:
                                    upper.find("RECYCLE") != std::string::npos);
             if (!hasPathOrAlias) {
                 result.isValid = false;
-                result.errorMessage = "Invalid AQL CLEAN query. Single-quoted path '...' or valid alias (TEMP_C, APPDATA, CACHE) missing.";
-                result.suggestedHint = "Correct Syntax:\n  - CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB\n  - CLEAN TEMP_C WHERE DISK_C < 500MB\n  - CLEAN APPDATA WHERE DISK_FREE < 1GB";
+                result.errorMessage = "Invalid AQL " + firstWord + " query. Single-quoted path '...' or valid alias (TEMP_C, APPDATA, CACHE, RECYCLE_BIN) missing.";
+                result.suggestedHint = "Correct Syntax:\n  - CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB\n  - CLEAN TEMP_C WHERE DISK_C < 500MB\n  - CLEAN APPDATA WHERE DISK_FREE < 1GB\n  - SHRED 'C:\\Temp' WHERE SIZE > 10MB";
                 return result;
             }
         }
@@ -307,8 +307,14 @@ public:
     static void Execute(const AQLQuery& q, Cleaner& cleaner, bool dryRun = true) {
         ValidationResult valRes = Validate(q.rawQuery);
         if (!valRes.isValid) {
-            std::cout << "\033[1;31m[AQL SYNTAX ERROR] " << valRes.errorMessage << "\033[0m\n";
-            std::cout << "\033[1;33m[AQL HINT]\n" << valRes.suggestedHint << "\033[0m\n\n";
+            // Route through Logger (TUI-safe: suppressed in console when the
+            // TUI is active) and record a Failed task in the library so the
+            // error is visible to the user in both the log file and the Task
+            // Library, without corrupting a live menu frame.
+            Logger::Instance().Error(std::string("[AQL SYNTAX ERROR] ") + valRes.errorMessage);
+            Logger::Instance().Warn(std::string("[AQL HINT]\n") + valRes.suggestedHint);
+            uint64_t errId = TaskHistory::Instance().Register("AQL", "AQL Syntax Error", q.rawQuery, "AQL Engine");
+            TaskHistory::Instance().MarkFailed(errId, "AQL SYNTAX ERROR: " + valRes.errorMessage);
             return;
         }
 

@@ -139,6 +139,12 @@ class Cleaner {
     bool dryRun = false;
     bool emptyRecycleBin = false;
     bool killLockingProcesses = true;
+    // When true, Scan()/Clean() use UNION behavior: built-in OS temp/cache
+    // targets (category-filtered) PLUS the user's custom folders. When false
+    // (default), legacy scoped behavior applies: a non-empty customPaths list
+    // restricts the operation to those folders only (used by the ReAct agent,
+    // AQL engine and unit tests for fast, targeted scans).
+    bool includeBuiltInTargets = false;
     size_t maxThreads = 8;
 
     std::string GetEnv(const char* name) {
@@ -199,22 +205,25 @@ class Cleaner {
             fixedTargets.push_back({winDir + "\\Temp", false, "Windows System Temp", "System"});
             fixedTargets.push_back({winDir + "\\SoftwareDistribution\\Download", false, "Windows Update Downloads", "System"});
             fixedTargets.push_back({winDir + "\\Prefetch", false, "Windows Prefetch", "System"});
-            fixedTargets.push_back({winDir + "\\Minidump", false, "Windows Minidumps", "System"});
             fixedTargets.push_back({winDir + "\\Logs", false, "Windows System Logs", "System"});
             fixedTargets.push_back({winDir + "\\System32\\LogFiles", false, "Windows LogFiles", "System"});
+            fixedTargets.push_back({winDir + "\\Minidump", false, "Windows Minidumps", "Diagnostics"});
+            fixedTargets.push_back({winDir + "\\LiveKernelReports", false, "Live Kernel Reports (Dumps)", "Diagnostics"});
         }
         fixedTargets.push_back({"D:\\tmp", false, "D: Drive Temp", "System"});
 
         if (!programData.empty()) {
-            fixedTargets.push_back({programData + "\\Microsoft\\Windows\\WER\\ReportArchive", false, "WER Archive", "System"});
-            fixedTargets.push_back({programData + "\\Microsoft\\Windows\\WER\\ReportQueue", false, "WER Queue", "System"});
-            fixedTargets.push_back({programData + "\\DockerDesktop", false, "Docker Desktop Storage Cache", "Developer"});
+            fixedTargets.push_back({programData + "\\Microsoft\\Windows\\WER\\ReportArchive", false, "WER Archive", "Diagnostics"});
+            fixedTargets.push_back({programData + "\\Microsoft\\Windows\\WER\\ReportQueue", false, "WER Queue", "Diagnostics"});
+            fixedTargets.push_back({programData + "\\Microsoft\\Windows\\DeliveryOptimization\\Cache", false, "Delivery Optimization Cache", "System"});
         }
         if (!localAppData.empty()) {
-            fixedTargets.push_back({localAppData + "\\CrashDumps", false, "Windows Crash Dumps", "System"});
-            fixedTargets.push_back({localAppData + "\\D3DSCache", false, "DirectX Shader Cache", "System"});
+            fixedTargets.push_back({localAppData + "\\CrashDumps", false, "Windows Crash Dumps", "Diagnostics"});
+            fixedTargets.push_back({localAppData + "\\D3DSCache", false, "DirectX Shader Cache", "Diagnostics"});
+            fixedTargets.push_back({localAppData + "\\Microsoft\\Windows\\WER", false, "Windows Error Reporting Cache", "Diagnostics"});
             fixedTargets.push_back({localAppData + "\\Microsoft\\Windows\\WebCache", false, "Windows WebCache", "System"});
             fixedTargets.push_back({localAppData + "\\Microsoft\\Windows\\INetCache", false, "Windows INetCache", "System"});
+            fixedTargets.push_back({localAppData + "\\Microsoft\\Windows\\Explorer", false, "Thumbnail & Icon Cache", "System"});
 
             fixedTargets.push_back({localAppData + "\\npm-cache", false, "npm cache", "Developer"});
             fixedTargets.push_back({localAppData + "\\uv\\cache", false, "uv cache", "Developer"});
@@ -225,9 +234,14 @@ class Cleaner {
 
             fixedTargets.push_back({localAppData + "\\Google\\Chrome\\User Data\\Default\\Cache", false, "Chrome Web Cache", "Browser"});
             fixedTargets.push_back({localAppData + "\\Google\\Chrome\\User Data\\Default\\Code Cache", false, "Chrome Code Cache", "Browser"});
+            fixedTargets.push_back({localAppData + "\\Google\\Chrome\\User Data\\Default\\GPUCache", false, "Chrome GPU Cache", "Browser"});
+            fixedTargets.push_back({localAppData + "\\Google\\Chrome\\User Data\\Default\\Service Worker\\CacheStorage", false, "Chrome Service Worker Cache", "Browser"});
             fixedTargets.push_back({localAppData + "\\Microsoft\\Edge\\User Data\\Default\\Cache", false, "Edge Web Cache", "Browser"});
             fixedTargets.push_back({localAppData + "\\Microsoft\\Edge\\User Data\\Default\\Code Cache", false, "Edge Code Cache", "Browser"});
+            fixedTargets.push_back({localAppData + "\\Microsoft\\Edge\\User Data\\Default\\GPUCache", false, "Edge GPU Cache", "Browser"});
+            fixedTargets.push_back({localAppData + "\\Microsoft\\Edge\\User Data\\Default\\Service Worker\\CacheStorage", false, "Edge Service Worker Cache", "Browser"});
             fixedTargets.push_back({localAppData + "\\BraveSoftware\\Brave-Browser\\User Data\\Default\\Cache", false, "Brave Cache", "Browser"});
+            fixedTargets.push_back({localAppData + "\\BraveSoftware\\Brave-Browser\\User Data\\Default\\GPUCache", false, "Brave GPU Cache", "Browser"});
             fixedTargets.push_back({localAppData + "\\Mozilla\\Firefox\\Profiles", false, "Firefox Profiles Cache", "Browser"});
 
             fixedTargets.push_back({localAppData + "\\Spotify\\Storage", false, "Spotify Cache", "Applications"});
@@ -304,6 +318,45 @@ class Cleaner {
         return true;
     }
 
+    // ----------------------------------------------------------------
+    // Build the active target list for Scan()/Clean().
+    //  - includeBuiltInTargets=true  -> UNION: fixed OS targets (category
+    //    filtered) + custom folders ("Custom" category).
+    //  - includeBuiltInTargets=false -> legacy scoped mode: customPaths
+    //    non-empty restricts to custom folders; otherwise fixed targets.
+    // ----------------------------------------------------------------
+    void AssembleActiveTargets(std::vector<Target>& activeTargets) {
+        auto addFixedTargets = [&]() {
+            for (const auto& target : fixedTargets) {
+                if (fs::exists(target.path) && IsCategoryAllowed(target.category)) {
+                    activeTargets.push_back(target);
+                }
+            }
+        };
+        auto addCustomTargets = [&]() {
+            for (const auto& cp : customPaths) {
+                if (fs::exists(cp)) {
+                    // Security audit: check path before accepting it
+                    SecurityReport sr = security.AuditPath(cp);
+                    if (sr.level == ThreatLevel::Critical) {
+                        SecurityGuard::PrintBlockedReport(sr);
+                        continue;
+                    }
+                    activeTargets.push_back({cp, true, "Custom Path [" + cp.string() + "]", "Custom"});
+                }
+            }
+        };
+
+        if (includeBuiltInTargets) {
+            addFixedTargets();
+            if (IsCategoryAllowed("Custom")) addCustomTargets();
+        } else if (!customPaths.empty()) {
+            addCustomTargets();
+        } else {
+            addFixedTargets();
+        }
+    }
+
     void SecureShredFile(const fs::path& filePath) {
         try {
             std::error_code ec;
@@ -350,6 +403,7 @@ public:
     void SetKillLockingProcesses(bool enable) { killLockingProcesses = enable; }
     void SetMaxThreads(size_t t) { maxThreads = (t > 0) ? t : 4; }
     void SetCustomPaths(const std::vector<fs::path>& paths) { customPaths = paths; }
+    void SetIncludeBuiltInTargets(bool enable) { includeBuiltInTargets = enable; }
     void SetTargetDrives(const std::vector<fs::path>& drives) { targetDrives = drives; }
     void SetProjectRoot(const fs::path& root) { projectRoot = root; }
     void SetInspectionConfig(const InspectionConfig& cfg) { config = cfg; }
@@ -567,26 +621,7 @@ public:
         security.PrintSecurityStatus();
 
         std::vector<Target> activeTargets;
-
-        if (!customPaths.empty()) {
-            for (const auto& cp : customPaths) {
-                if (fs::exists(cp)) {
-                    // Security audit: check path before accepting it
-                    SecurityReport sr = security.AuditPath(cp);
-                    if (sr.level == ThreatLevel::Critical) {
-                        SecurityGuard::PrintBlockedReport(sr);
-                        continue;
-                    }
-                    activeTargets.push_back({cp, true, "Custom Path [" + cp.string() + "]", "Custom"});
-                }
-            }
-        } else {
-            for (const auto& target : fixedTargets) {
-                if (fs::exists(target.path) && IsCategoryAllowed(target.category)) {
-                    activeTargets.push_back(target);
-                }
-            }
-        }
+        AssembleActiveTargets(activeTargets);
 
         std::vector<std::future<TargetReport>> futures;
         std::vector<TargetReport> reports;
@@ -609,9 +644,8 @@ public:
             }
         }
 
-        if (customPaths.empty()) {
-            EmptyWindowsRecycleBin();
-        }
+        // Recycle bin purge is self-guarded by the emptyRecycleBin flag.
+        EmptyWindowsRecycleBin();
 
         Logger::Instance().Info("------------------------------------------------------------------");
         Logger::Instance().Info("Scan Summary: Found " + std::to_string(itemsCount) + " cleanable locations.");
@@ -630,19 +664,7 @@ public:
         std::atomic<size_t> cleanedCount{0};
 
         std::vector<Target> activeTargets;
-        if (!customPaths.empty()) {
-            for (const auto& cp : customPaths) {
-                if (fs::exists(cp)) {
-                    activeTargets.push_back({cp, true, "Custom Path [" + cp.string() + "]", "Custom"});
-                }
-            }
-        } else {
-            for (const auto& target : fixedTargets) {
-                if (fs::exists(target.path) && IsCategoryAllowed(target.category)) {
-                    activeTargets.push_back(target);
-                }
-            }
-        }
+        AssembleActiveTargets(activeTargets);
 
         std::vector<std::future<void>> futures;
 
@@ -679,9 +701,8 @@ public:
             fut.get();
         }
 
-        if (customPaths.empty()) {
-            EmptyWindowsRecycleBin();
-        }
+        // Recycle bin purge is self-guarded by the emptyRecycleBin flag.
+        EmptyWindowsRecycleBin();
 
         Logger::Instance().Info("------------------------------------------------------------------");
         std::string verb = dryRun ? "Would free total" : "Total space freed";
