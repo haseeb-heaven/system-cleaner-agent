@@ -59,7 +59,7 @@ if(WIN32)
     endif()
 endif()
 
-if(UNIX AND NOT APPLE)
+if(UNIX)
     target_link_libraries(system-cleaner-agent PRIVATE pthread)
     target_link_libraries(unit_tests PRIVATE pthread)
 endif()

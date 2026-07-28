@@ -1126,15 +1126,13 @@ public:
                             std::cout << "\n\033[90mTotal processes > 200 MB: " << highProcs.size() << "\033[0m\n";
                             std::cout.flush();
 
-                            int ch = _getch();
-                            if (ch == 0 || ch == 224) {
-                                int ext = _getch();
-                                if (ext == 72) { // Up arrow
-                                    if (selected > 0) selected--;
-                                } else if (ext == 80) { // Down arrow
-                                    if (selected + 1 < highProcs.size()) selected++;
-                                }
-                            } else if (ch == 27) { // ESC
+                            // Use cross-platform ReadKey for arrow key input
+                            OpenTUI::KeyEvent keyEv = OpenTUI::TerminalEngine::ReadKey();
+                            if (keyEv.key == OpenTUI::Key::Up) {
+                                if (selected > 0) selected--;
+                            } else if (keyEv.key == OpenTUI::Key::Down) {
+                                if (selected + 1 < highProcs.size()) selected++;
+                            } else if (keyEv.key == OpenTUI::Key::Escape) { // ESC
                                 procListDone = true;
                             } else if (ch == 13) { // Enter - kill with confirm
                                 if (selected < highProcs.size()) {
