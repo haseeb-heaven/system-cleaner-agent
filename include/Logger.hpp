@@ -51,18 +51,31 @@ class Logger {
     }
 
 public:
+    static std::string GetDefaultLogFilePath() {
+#ifdef _WIN32
+        const char* localAppData = std::getenv("LOCALAPPDATA");
+        if (localAppData && std::string(localAppData).length() > 0) {
+            std::error_code ec;
+            std::filesystem::path appDir = std::filesystem::path(localAppData) / "system-cleaner-agent";
+            std::filesystem::create_directories(appDir, ec);
+            return (appDir / "system-cleaner-agent.log").string();
+        }
+#endif
+        return "system-cleaner-agent.log";
+    }
+
     static Logger& Instance() {
         static Logger instance;
         return instance;
     }
 
-    void Init(const std::string& filepath, bool enableVerbose = false, bool enableColor = true) {
-        logFilePath = filepath;
+    void Init(const std::string& filepath = "", bool enableVerbose = false, bool enableColor = true) {
+        logFilePath = filepath.empty() ? GetDefaultLogFilePath() : filepath;
         verbose = enableVerbose;
         colorEnabled = enableColor;
         CheckLogSizeLimit();
         if (file.is_open()) file.close();
-        file.open(filepath, std::ios::app);
+        file.open(logFilePath, std::ios::app);
         if (!file.is_open()) {
             file.open("system-cleaner-agent.log", std::ios::app);
         }

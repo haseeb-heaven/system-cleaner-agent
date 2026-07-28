@@ -1,5 +1,5 @@
 // system-cleaner-agent Windows Resource File
-// Embeds multi-size ICO into the .exe
+// Embeds multi-size ICO and Version info into the .exe
 
 #include <windows.h>
 
@@ -8,8 +8,8 @@ IDI_APP_ICON ICON "app_icon.ico"
 
 // Version Information
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION      5,3,1,0
-PRODUCTVERSION   5,3,1,0
+FILEVERSION      5,7,5,0
+PRODUCTVERSION   5,7,5,0
 FILEFLAGSMASK    0x3fL
 FILEFLAGS        0x0L
 FILEOS           VOS_NT_WINDOWS32
@@ -22,12 +22,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName",      "Haseeb Mir"
             VALUE "FileDescription",  "System Cleaner Agent - Autonomous AI Agent"
-            VALUE "FileVersion",      "5.3.1.0"
+            VALUE "FileVersion",      "5.7.5.0"
             VALUE "InternalName",     "system-cleaner-agent"
             VALUE "LegalCopyright",   "Copyright 2026 Haseeb Mir"
             VALUE "OriginalFilename", "system-cleaner-agent.exe"
             VALUE "ProductName",      "System Cleaner Agent"
-            VALUE "ProductVersion",   "5.3.1"
+            VALUE "ProductVersion",   "5.7.5"
         END
     END
     BLOCK "VarFileInfo"

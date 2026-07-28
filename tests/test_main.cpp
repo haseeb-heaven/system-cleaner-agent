@@ -1,5 +1,5 @@
 // =============================================================================
-//  system-cleaner-agent v5.7.4 — Comprehensive Unit Test Suite
+//  system-cleaner-agent v5.7.5 — Comprehensive Unit Test Suite
 //  Tests: ContentInspector | Cleaner | SecurityGuard | LocalLLMBrain
 //         SmartScheduler | AgentEngine | OpenTUI | ProcessManager | Logger
 // =============================================================================

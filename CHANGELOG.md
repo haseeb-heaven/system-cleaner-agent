@@ -2,6 +2,15 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.7.5] - 2026-07-28
+
+### Added
+- **Windows Application Manifest Resource Embedding (`resources/app.manifest`)**:
+  Embedded Windows Application Manifest into executable resource block (`1 24 "app.manifest"`). Explicitly declares `asInvoker` privilege level, DPI awareness, and Windows 10/11 OS compatibility (`supportedOS`). Bypasses Windows Program Compatibility Assistant (PCA) shims when running unsigned binaries inside `Downloads` or `Downloads/Programs` directories, preventing `0xC0000135` (`STATUS_DLL_NOT_FOUND`) crash.
+
+### Test Results
+- 27 Test Suites | 292 Assertions | 0 Failures | 100% Pass Rate
+
 ## [5.7.4] - 2026-07-28
 
 ### Fixed

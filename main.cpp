@@ -190,7 +190,7 @@ void ExportJsonReport(const std::string& jsonPath, const std::vector<TargetRepor
         if (!jsonFile.is_open()) return;
 
         jsonFile << "{\n";
-        jsonFile << "  \"engine\": \"system-cleaner-agent v5.7.4 (C++17 ReAct Agentic Engine)\",\n";
+        jsonFile << "  \"engine\": \"system-cleaner-agent v5.7.5 (C++17 ReAct Agentic Engine)\",\n";
         jsonFile << "  \"targets\": [\n";
 
         uintmax_t grandTotal = 0;
@@ -260,20 +260,22 @@ std::vector<std::string> PreprocessArgs(int argc, char* argv[]) {
 }
 
 int main(int argc, char* argv[]) {
-    auto args = PreprocessArgs(argc, argv);
+    try {
+        auto args = PreprocessArgs(argc, argv);
 
-    bool verbose = false;
-    for (const auto& arg : args) {
-        if (arg == "--verbose" || arg == "-v") verbose = true;
-    }
+        bool verbose = false;
+        for (const auto& arg : args) {
+            if (arg == "--verbose" || arg == "-v") verbose = true;
+        }
 
-    Logger::Instance().Init("system-cleaner-agent.log", verbose);
-    LoadTUISettings();
-    TaskHistory::Instance().LoadFromFile();
-    auto resumedTaskIds = TaskHistory::Instance().ResumeUnfinishedTasksOnStartup();
-    if (!resumedTaskIds.empty()) {
-        Logger::Instance().Info("TaskHistory: Loaded & resumed " + std::to_string(resumedTaskIds.size()) + " unfinished task(s) from persistent configuration file.");
-    }
+        std::string logPath = Logger::GetDefaultLogFilePath();
+        Logger::Instance().Init(logPath, verbose);
+        LoadTUISettings();
+        TaskHistory::Instance().LoadFromFile();
+        auto resumedTaskIds = TaskHistory::Instance().ResumeUnfinishedTasksOnStartup();
+        if (!resumedTaskIds.empty()) {
+            Logger::Instance().Info("TaskHistory: Loaded & resumed " + std::to_string(resumedTaskIds.size()) + " unfinished task(s) from persistent configuration file.");
+        }
 
     Cleaner cleaner;
 
@@ -295,7 +297,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (cmd == "version" || cmd == "--version" || cmd == "-v") {
-        std::cout << "system-cleaner-agent v5.7.4 (C++17 Autonomous ReAct Agentic Engine - 64-bit Architecture)\n";
+        std::cout << "system-cleaner-agent v5.7.5 (C++17 Autonomous ReAct Agentic Engine - 64-bit Architecture)\n";
         return 0;
     }
 
@@ -605,8 +607,20 @@ int main(int argc, char* argv[]) {
             Logger::Instance().Info("Service sleeping for " + std::to_string(cronIntervalSeconds) + " seconds...");
             std::this_thread::sleep_for(std::chrono::seconds(cronIntervalSeconds));
         }
-    } else {
-        executeTask();
+    } catch (const std::exception& e) {
+        std::cerr << "\n\033[1;31mFatal Exception: " << e.what() << "\033[0m\n";
+        if (OpenTUI::TerminalEngine::IsLaunchedFromExplorer()) {
+            std::cout << "\n\033[1;36mPress Enter to close window...\033[0m\n";
+            std::cin.get();
+        }
+        return 1;
+    } catch (...) {
+        std::cerr << "\n\033[1;31mFatal Unknown Exception occurred.\033[0m\n";
+        if (OpenTUI::TerminalEngine::IsLaunchedFromExplorer()) {
+            std::cout << "\n\033[1;36mPress Enter to close window...\033[0m\n";
+            std::cin.get();
+        }
+        return 1;
     }
 
     return 0;

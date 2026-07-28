@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 cmake_policy(SET CMP0091 NEW)
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-project(system-cleaner-agent VERSION 5.7.4 LANGUAGES CXX)
+project(system-cleaner-agent VERSION 5.7.5 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -52,7 +52,7 @@ if(WIN32)
         set_property(TARGET unit_tests PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
     endif()
 
-    # Embed Windows icon and version info resource into the main executable
+    # Embed Windows icon, version info, and manifest resource into the main executable
     set(RC_FILE "${CMAKE_CURRENT_SOURCE_DIR}/resources/app_icon.rc")
     if(EXISTS "${RC_FILE}")
         configure_file("${RC_FILE}" "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc" COPYONLY)
@@ -61,7 +61,7 @@ if(WIN32)
             "${CMAKE_CURRENT_BINARY_DIR}/app_icon.ico"
             COPYONLY
         )
-        target_sources(system-cleaner-agent PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc")
+        target_sources(system-cleaner-agent PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/app_icon.rc" "${CMAKE_CURRENT_SOURCE_DIR}/resources/app.manifest")
     endif()
 endif()
 
