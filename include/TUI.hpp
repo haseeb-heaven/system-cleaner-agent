@@ -699,6 +699,10 @@ public:
         OpenTUI::Menu agentMenu("AGENT QUERY CONSOLE", queryMenuOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
         int choice = agentMenu.Show();
 
+        // CRITICAL: ESC at the AQL menu returns -1 to go back to the main menu.
+        // The user should NOT be forced into the custom query loop.
+        if (choice == -1) return "";
+
         static const std::vector<std::string> suggestions = {
             "CLEAN", "SCAN", "SHRED", "KILL", "MONITOR", "PURGE", "SELECT", "WIPE", "EMPTY",
             "WHERE", "RAM", "FREE_DISK", "DISK_C", "DISK_FREE", "SIZE", "AGE", "EVERY", "WHEN", "PROCESS",
@@ -827,6 +831,9 @@ public:
         };
         OpenTUI::Menu subMenu("DISK CLEANER SUITE (" + GetCurrentOSNameStr() + " - " + driveName + ")", subOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
         int sel = subMenu.Show();
+
+        // CRITICAL: ESC (sel == -1) or "Back" option (sel == 11) returns to main menu.
+        if (sel == -1 || sel == 11) return;
 
         bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
 
@@ -1425,8 +1432,7 @@ public:
         LoadTUISettings();
 
         std::vector<std::string> options = {
-            "Deep Scan",
-            "Disk Cleaner",
+            "Disk Cleaner (with Deep Scan)",
             "RAM Cleaner",
             "AQL Query",
             "Daemon Monitor",
@@ -1471,7 +1477,7 @@ public:
             menu.SetStatusLine(g_tuiStatus.GetStatusLine());
             int selected = menu.Show();
 
-            if (selected == -1 || selected == 7) {
+            if (selected == -1 || selected == 6) {
                 std::cout << "\n\033[32mExiting system-cleaner-agent. Goodbye!\033[0m\n";
                 break;
             }
@@ -1481,18 +1487,14 @@ public:
 
             switch (selected) {
                 case 0: {
-                    ShowDeepScanSubmenu(cleaner);
-                    break;
-                }
-                case 1: {
                     ShowDiskCleanerSubmenu(cleaner);
                     break;
                 }
-                case 2: {
+                case 1: {
                     ShowRamCleanerSubmenu(cleaner);
                     break;
                 }
-                case 3: {
+                case 2: {
                     std::string selectedQuery = SelectAgentQuery();
                     if (selectedQuery.empty()) {
                         std::cout << "\033[1;33m[AQL CANCELLED] Operation cancelled by user.\033[0m\n";
@@ -1544,7 +1546,7 @@ public:
                     }
                     break;
                 }
-                case 4: {
+                case 3: {
                     std::cout << "\033[1;36mLaunching background Smart Daemon Service...\033[0m\n";
                     {
                         uint64_t tid = TaskHistory::Instance().Register("DAEMON", "Smart Daemon Monitor", "daemon --mem-threshold 80% --disk-threshold", "OpenTUI Menu");
@@ -1561,11 +1563,11 @@ public:
                     }
                     break;
                 }
-                case 5: {
+                case 4: {
                     ShowTaskLibrary();
                     break;
                 }
-                case 6: {
+                case 5: {
                     ShowSettingsMenu(cleaner);
                     break;
                 }
