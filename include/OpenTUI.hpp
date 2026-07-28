@@ -654,7 +654,6 @@ public:
     MenuSelection ShowExtended() {
         TerminalEngine::EnableVirtualTerminal();
         TerminalEngine::HideCursor();
-        TerminalEngine::ClearScreen();
 
         // Calculate banner line count for vertical offset
         int topLines = 0;
@@ -668,7 +667,18 @@ public:
             }
         }
 
+        bool firstRender = true;
         while (true) {
+            // Clear screen on each re-render so live refresh doesn't leave artifacts
+            // (the previous frame's menu box content stays on screen otherwise)
+            if (firstRender) {
+                TerminalEngine::ClearScreen();
+                firstRender = false;
+            } else {
+                // Move to top-left and clear entire screen for clean re-render
+                std::cout << "\033[2J\033[H" << std::flush;
+            }
+
             // Refresh banner content each frame so live data updates (RAM/Disk etc.)
             if (topBannerCallback) {
                 bannerContent = topBannerCallback();

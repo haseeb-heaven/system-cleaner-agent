@@ -27,3 +27,17 @@ gemini-sys-cleaner.log
 
 # Worktrees
 .worktrees/
+
+# Scratch / temporary scripts (not part of the build)
+scratch/
+*.tmp
+*.bak
+*.orig
+
+# Editor / IDE scratch files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
