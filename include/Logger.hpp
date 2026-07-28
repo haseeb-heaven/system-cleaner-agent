@@ -22,6 +22,7 @@ class Logger {
     bool verbose = false;
     bool colorEnabled = true;
     bool tuiActive = false;
+    bool fileLoggingEnabled = true;
 
     std::string CurrentTime() {
         auto now = std::chrono::system_clock::now();
@@ -70,6 +71,7 @@ public:
     void SetVerbose(bool v) { verbose = v; }
     void SetColor(bool c) { colorEnabled = c; }
     void SetTUIActive(bool active) { tuiActive = active; }
+    void SetFileLogging(bool enabled) { fileLoggingEnabled = enabled; }
 
     void Log(LogLevel level, const std::string& msg, bool consoleOnly = false) {
         std::lock_guard<std::mutex> lock(mtx);
@@ -94,7 +96,7 @@ public:
             }
         }
 
-        if (!consoleOnly) {
+        if (!consoleOnly && fileLoggingEnabled) {
             if (!file.is_open()) {
                 file.open(logFilePath.empty() ? "system-cleaner-agent.log" : logFilePath, std::ios::app);
             }

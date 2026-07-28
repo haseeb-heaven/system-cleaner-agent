@@ -93,6 +93,8 @@ inline void LoadTUISettings() {
         ConfigManager::Save(cfg);
     }
     g_tuiSettings.SyncFromAppConfig(cfg);
+    // Sync Logger file-write gate with the loaded setting
+    Logger::Instance().SetFileLogging(g_tuiSettings.enableLogging);
     // Restore custom protected processes into the GTLibc runtime list
     for (const auto& proc : g_tuiSettings.customProtectedProcesses) {
         GTLIBC::GTLibc::AddCustomProtectedProcess(proc);
@@ -160,7 +162,7 @@ public:
                   << "   /     \\    / ___)( \\/ )( ___)(_  _)(  __)( \\/ )  \n"
                   << "  |   *   |   \\___ \\ )  /  )__)   )(   ) _) / \\/ \\  \n"
                   << "   \\     /    (____/(__/  (____) (__) (____)\\_/\\_/  \n"
-                  << "    \\___/     \033[1;33mSYSTEM-CLEANER-AGENT \033[1;32mv5.6.0\033[0m\n"
+                  << "    \\___/     \033[1;33mSYSTEM-CLEANER-AGENT \033[1;32mv5.6.1\033[0m\n"
                   << style.secondaryColor << "  " << osBanner << "\033[0m\n";
     }
 
@@ -214,32 +216,36 @@ public:
     static void ShowSystemResourceMonitor() {
         while (true) {
             auto style = OpenTUI::GetThemeStyle(g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-            OpenTUI::TerminalEngine::ClearScreen(style.panelBg);
-            PrintBanner();
             std::ostringstream ss;
+            // Build banner inline so the full frame is flushed atomically
+            std::string osBanner = "[ AUTONOMOUS REACT AGENT | OS: " + GetCurrentOSNameStr() + " (" + SYSTEM_PRIMARY_DRIVE + ") | AQL ENGINE ]";
+            ss << style.primaryColor
+               << "    _/_\\_      ____  _  _  ____  ____  ____  _  _   \n"
+               << "   /     \\    / ___)( \\/ )( ___)(_  _)(  __)( \\/ )  \n"
+               << "  |   *   |   \\___ \\ )  /  )__)   )(   ) _) / \\/ \\  \n"
+               << "   \\     /    (____/(__/  (____) (__) (____)\\_/\\_/  \n"
+               << "    \\___/     \033[1;33mSYSTEM-CLEANER-AGENT \033[1;32mv5.6.1\033[0m\n"
+               << style.secondaryColor << "  " << osBanner << "\033[0m\n";
             ss << OpenTUI::Box::DrawBorder(80, "SYSTEM RESOURCE & DRIVE MONITOR", g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-
             double memPercent = SmartScheduler::GetMemoryUsagePercent();
             std::string ramBar = OpenTUI::ProgressBar::Render(memPercent, 35, "% used");
             ss << OpenTUI::Box::DrawLine(80, "System Memory (RAM): " + ramBar, false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             ss << OpenTUI::Box::DrawDivider(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-
             auto driveStats = SmartScheduler::GetAllDriveStats();
             for (const auto& ds : driveStats) {
-                double freePercent = 100.0 - ds.usedPercent;
                 std::string diskBar = OpenTUI::ProgressBar::Render(ds.usedPercent, 20, "% used");
                 std::ostringstream dss;
                 dss << "Drive " << ds.driveName << " " << diskBar << " (Free: " << Cleaner::FormatSize(ds.freeBytes) << " / " << Cleaner::FormatSize(ds.capacityBytes) << ")";
                 ss << OpenTUI::Box::DrawLine(80, dss.str(), false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             }
-
             ss << OpenTUI::Box::DrawDivider(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-            std::string hint = "Press 'A'/Enter to run AQL Query │ ESC/'q' to return (Refreshing every " + std::to_string(g_tuiSettings.monitorIntervalSec) + "s)";
+            std::string hint = "Press 'A'/Enter to run AQL Query | ESC/'q' to return (Refreshing every " + std::to_string(g_tuiSettings.monitorIntervalSec) + "s)";
             ss << OpenTUI::Box::DrawLine(80, hint, false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             ss << OpenTUI::Box::DrawFooter(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-
+            // Clear, home, then flush entire frame atomically (no partial-render artifacts)
+            OpenTUI::TerminalEngine::ClearScreen(style.panelBg);
             OpenTUI::TerminalEngine::MoveCursorToHome();
-            std::cout << style.panelBg << ss.str() << style.panelBg << "\033[J" << std::flush;
+            std::cout << style.panelBg << ss.str() << "\033[J" << std::flush;
 
             // Sleep in 100ms intervals to allow ESC/q/A responsiveness
             int checkCycles = g_tuiSettings.monitorIntervalSec * 10;
@@ -567,7 +573,10 @@ public:
                     g_tuiSettings.tuiBgColor = bgColors[idx];
                     break;
                 }
-                case 4: g_tuiSettings.enableLogging = !g_tuiSettings.enableLogging; break;
+                case 4:
+                    g_tuiSettings.enableLogging = !g_tuiSettings.enableLogging;
+                    Logger::Instance().SetFileLogging(g_tuiSettings.enableLogging);
+                    break;
                 case 5: { // Log Level
                     auto it = std::find(logLevels.begin(), logLevels.end(), g_tuiSettings.logLevel);
                     int idx = (it != logLevels.end()) ? static_cast<int>(std::distance(logLevels.begin(), it)) : 0;

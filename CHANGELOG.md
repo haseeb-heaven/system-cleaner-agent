@@ -2,7 +2,14 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.6.1] - 2026-07-28
+
+### Fixed
+- **TUI Live Monitor Refresh (`include/TUI.hpp`)**: The System Resource & Drive Monitor screen no longer flickers or renders artifacts. Previously `PrintBanner()` was called before the stats were assembled, then `MoveCursorToHome()` caused the monitor box to overwrite the banner. The fix assembles the full frame (banner + stats box) in a single `ostringstream` and flushes it atomically after clear+home, eliminating all partial-render tearing.
+- **Log File Toggle (`include/Logger.hpp`, `include/TUI.hpp`)**: Turning "Logs File Output" OFF in Settings now actually stops writing to `system-cleaner-agent.log`. Previously toggling `g_tuiSettings.enableLogging` only changed the UI label but `Logger::Log()` continued writing unconditionally. Added `SetFileLogging(bool)` gate to `Logger` and wired it into the settings toggle and startup config load.
+
 ## [5.6.0] - 2026-07-28
+
 
 ### Added / Features
 - **Deep Disk Scan Engine (`include/DeepScanner.hpp`)**:
