@@ -1,6 +1,7 @@
-cmake_minimum_required(VERSION 3.14)
-project(system-cleaner-agent VERSION 5.7.2 LANGUAGES CXX)
-
+cmake_minimum_required(VERSION 3.15)
+cmake_policy(SET CMP0091 NEW)
+set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+project(system-cleaner-agent VERSION 5.7.3 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -42,8 +43,13 @@ if(WIN32)
     target_link_libraries(system-cleaner-agent PRIVATE shell32)
     target_link_libraries(unit_tests PRIVATE shell32)
     if(MSVC)
-        set_property(TARGET system-cleaner-agent PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-        set_property(TARGET unit_tests PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        foreach(flag_var CMAKE_CXX_FLAGS CMAKE_CXX_FLAGS_DEBUG CMAKE_CXX_FLAGS_RELEASE CMAKE_CXX_FLAGS_MINSIZEREL CMAKE_CXX_FLAGS_RELWITHDEBINFO)
+            if(${flag_var} MATCHES "/MD")
+                string(REGEX REPLACE "/MD" "/MT" ${flag_var} "${${flag_var}}")
+            endif()
+        endforeach()
+        set_property(TARGET system-cleaner-agent PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
+        set_property(TARGET unit_tests PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded")
     endif()
 
     # Embed Windows icon and version info resource into the main executable

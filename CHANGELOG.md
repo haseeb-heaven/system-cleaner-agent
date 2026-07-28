@@ -2,6 +2,15 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.7.3] - 2026-07-28
+
+### Changed
+- **Static CRT MultiThreaded Linking (`CMakeLists.txt`)**:
+  Enforced static C++ runtime linking (`/MT`) via `CMAKE_MSVC_RUNTIME_LIBRARY` and `CMP0091`. All Visual C++ runtime functions are statically embedded into `system-cleaner-agent.exe` so the executable requires zero external DLLs and runs on any clean Windows machine without needing VC++ Redistributable installed.
+
+### Test Results
+- 27 Test Suites | 292 Assertions | 0 Failures | 100% Pass Rate
+
 ## [5.7.2] - 2026-07-28
 
 ### Fixed

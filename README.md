@@ -1,4 +1,4 @@
-# system-cleaner-agent v5.7.2
+# system-cleaner-agent v5.7.3
 
 > **100% Pure C++17 Autonomous ReAct Agentic Storage Optimization Engine & OpenTUI Framework**
 
@@ -7,7 +7,7 @@
 [![Architecture](https://img.shields.io/badge/Architecture-ReAct%20Loop-magenta.svg)](https://github.com/haseeb-heaven/system-cleaner-agent)
 [![OpenTUI](https://img.shields.io/badge/TUI-OpenTUI%20Framework-orange.svg)](https://github.com/haseeb-heaven/system-cleaner-agent)
 [![Tests](https://img.shields.io/badge/unit--tests-100%25%20passing-success.svg)](https://github.com/haseeb-heaven/system-cleaner-agent)
-[![Release](https://img.shields.io/badge/release-v5.7.2-blue.svg)](https://github.com/haseeb-heaven/system-cleaner-agent/releases/latest)
+[![Release](https://img.shields.io/badge/release-v5.7.3-blue.svg)](https://github.com/haseeb-heaven/system-cleaner-agent/releases/latest)
 
 ---
 
@@ -108,7 +108,7 @@ For detailed guides, grammar specifications, and engine design:
 
 Download the latest pre-compiled binary for Windows x64:
 
-**[⬇ Download system-cleaner-agent v5.7.2 (Windows x64)](https://github.com/haseeb-heaven/system-cleaner-agent/releases/latest)**
+**[⬇ Download system-cleaner-agent v5.7.3 (Windows x64)](https://github.com/haseeb-heaven/system-cleaner-agent/releases/latest)**
 
 ---
 
