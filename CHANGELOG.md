@@ -2,6 +2,25 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.7.1] - 2026-07-28
+
+### Added
+- **Dedicated Command Specification Guide (`COMMANDS.md`)**:
+  Created a standalone document for complete Agent Query Language (AQL) syntax, command verbs, `WHERE` operators, target path aliases, cron-style daemon jobs, and CLI flag references.
+- **Windows Piped Input Support (`include/OpenTUI.hpp`)**:
+  Added `PeekNamedPipe` and `_isatty(_fileno(stdin))` check in `TerminalEngine::HasKeyPending()` & `ReadKey()` to support automated stdin key input scripts on Windows.
+- **Security Shield & Path Protection Notice (`README.md`)**:
+  Added explicit callouts and safety recommendations for keeping Path Protection Guard and Sandbox Dry-Run Mode enabled.
+
+### Changed
+- **Streamlined README Documentation**:
+  Refactored `README.md` to be clean, professional, and concise, linking directly to `COMMANDS.md`, `CHANGELOG.md`, and `docs/ARCHITECTURE.md`.
+- **Updated SVG Screenshots**:
+  Re-captured and generated full-frame SVG screenshots for Main Menu, Disk Cleaner Suite, RAM Cleaner, Task Library, Settings, and CLI subcommands.
+
+### Test Results
+- 27 Test Suites | 292 Assertions | 0 Failures | 100% Pass Rate
+
 ## [5.7.0] - 2026-07-28
 
 ### Changed
