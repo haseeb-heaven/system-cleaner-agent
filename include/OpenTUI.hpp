@@ -494,8 +494,16 @@ public:
         size_t i = 0;
         while (i < str.length()) {
             if (str[i] == '\033') {
-                while (i < str.length() && str[i] != 'm') i++;
-                if (i < str.length()) i++;
+                i++;
+                if (i < str.length() && str[i] == '[') {
+                    i++;
+                    while (i < str.length() && ((str[i] >= '0' && str[i] <= '?') || (str[i] >= ' ' && str[i] <= '/'))) {
+                        i++;
+                    }
+                    if (i < str.length() && str[i] >= '@' && str[i] <= '~') {
+                        i++;
+                    }
+                }
             } else {
                 unsigned char c1 = static_cast<unsigned char>(str[i]);
                 if (c1 < 0x80) {
@@ -535,8 +543,16 @@ public:
         size_t i = 0;
         while (i < str.length() && width < maxVisible - 3) {
             if (str[i] == '\033') {
-                while (i < str.length() && str[i] != 'm') res += str[i++];
-                if (i < str.length()) res += str[i++];
+                res += str[i++];
+                if (i < str.length() && str[i] == '[') {
+                    res += str[i++];
+                    while (i < str.length() && ((str[i] >= '0' && str[i] <= '?') || (str[i] >= ' ' && str[i] <= '/'))) {
+                        res += str[i++];
+                    }
+                    if (i < str.length() && str[i] >= '@' && str[i] <= '~') {
+                        res += str[i++];
+                    }
+                }
             } else {
                 unsigned char c1 = static_cast<unsigned char>(str[i]);
                 int charWidth = 1;
@@ -555,10 +571,14 @@ public:
                     charBytes = 3;
                 } else if ((c1 & 0xF8) == 0xF0) {
                     charWidth = 2; charBytes = 4;
+                } else {
+                    charWidth = 1; charBytes = 1;
                 }
 
                 if (width + charWidth > maxVisible - 3) break;
-                for (size_t b = 0; b < charBytes && i < str.length(); ++b) res += str[i++];
+                for (size_t b = 0; b < charBytes && i < str.length(); ++b) {
+                    res += str[i++];
+                }
                 width += charWidth;
             }
         }
