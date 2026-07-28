@@ -41,3 +41,6 @@ scratch/
 *.swo
 *~
 .DS_Store
+
+# Temporary text captures in assets (the .svg screenshots are tracked)
+assets/*.txt

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="948" height="686" viewBox="0 0 948 686">
+<defs><linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="#0a0e14"/><stop offset="100%" stop-color="#060a0f"/></linearGradient></defs>
+<rect width="948" height="686" fill="url(#bg)"/>
+<text x="24" y="22" font-family="Consolas, monospace" font-size="16" font-weight="bold" fill="#88c0d0">CLI: system-cleaner-agent help</text>
+<text x="24.0" y="36" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">[2026-07-28 20:20:29] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
+<text x="24.0" y="50" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">[2026-07-28 20:20:29] [INFO ] TaskHistory: Loaded &amp; resumed 4 unfinished task(s) from persistent configuration file.</text>
+<text x="24.0" y="64" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">[2026-07-28 20:20:29] [INFO ] Successfully loaded persistent configuration from C:\Users\hasee\AppData\Local\system-cleaner-agent\cleaner_config.json</text>
+<text x="24.0" y="78" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0">USAGE:</text>
+<text x="24.0" y="92" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0">  system-cleaner-agent [COMMAND] [FLAGS]</text>
+<text x="24.0" y="106" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce"></text>
+<text x="24.0" y="120" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0">COMMANDS:</text>
+<text x="24.0" y="134" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#5e81ac">  chat         Launch Interactive Local LLM ReAct Prompt Shell (try &#x27;menu&#x27; for queries).</text>
+<text x="24.0" y="148" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#5e81ac">  agent        Launch Autonomous ReAct Agent Loop (Thought-&gt;Action-&gt;Observation).</text>
+<text x="24.0" y="162" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  daemon       Run Smart Background Scheduler &amp; Memory Threshold Monitoring Daemon.</text>
+<text x="24.0" y="176" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  scan         Analyze system/drive targets and report cleanable storage.</text>
+<text x="24.0" y="190" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  clean        Execute multi-threaded cleanup using active policy rules.</text>
+<text x="24.0" y="204" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  deep-clean   Perform full system cache cleanup + empty OS Recycle Bin / Trash.</text>
+<text x="24.0" y="218" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  aql          Execute a single Agent Query Language (AQL) statement (e.g. aql &quot;CLEAN ...&quot;).</text>
+<text x="24.0" y="232" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  history      Show the unified Task Library (all clean/scan/AQL/agent/daemon tasks).</text>
+<text x="24.0" y="246" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  tui          Launch interactive Terminal User Interface (TUI) - default mode.</text>
+<text x="24.0" y="260" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  test         Execute automated engine diagnostic &amp; unit test suite.</text>
+<text x="24.0" y="274" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  version      Display version, engine build, and architecture details.</text>
+<text x="24.0" y="288" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">  help         Show this help and usage specification.</text>
+<text x="24.0" y="302" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce"></text>
+<text x="24.0" y="316" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">SMART SCHEDULER &amp; THRESHOLD MONITORING:</text>
+<text x="24.0" y="330" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --mem-threshold &lt;pct&gt; Automatic cleanup trigger when system RAM exceeds percentage (e.g. 80%).</text>
+<text x="24.0" y="344" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --disk-threshold &lt;pct&gt; Automatic cleanup trigger when Disk space exceeds percentage (e.g. 90%).</text>
+<text x="24.0" y="358" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --schedule &lt;rule&gt;     Set folder-specific rule (e.g. &quot;D:/Temp:15m:mem&gt;80%&quot;).</text>
+<text x="24.0" y="372" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --interval &lt;dur&gt;      Check interval duration for daemon monitor (default: 15s).</text>
+<text x="24.0" y="386" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce"></text>
+<text x="24.0" y="400" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#88c0d0">AGENTIC REACT OPTIONS:</text>
+<text x="24.0" y="414" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#5e81ac">  --task &lt;goal&gt;        Specify custom natural language goal for ReAct loop.</text>
+<text x="24.0" y="428" font-family="Consolas, monospace" font-size="12" font-weight="bold" fill="#5e81ac">  --agent              Enable autonomous reasoning and action trajectory.</text>
+<text x="24.0" y="442" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce"></text>
+<text x="24.0" y="456" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">FILTERING &amp; TARGET SELECTION:</text>
+<text x="24.0" y="470" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --category &lt;list&gt;     Target categories: system, browser, dev, messaging, app.</text>
+<text x="24.0" y="484" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --exclude-category &lt;c&gt; Exclude target categories from operation.</text>
+<text x="24.0" y="498" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --only-ext &lt;ext1,ext2&gt; Only operate on matching file extensions (e.g. .log,.tmp).</text>
+<text x="24.0" y="512" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --exclude-ext &lt;exts&gt;   Protect specific extensions from deletion (e.g. .py,.cpp).</text>
+<text x="24.0" y="526" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --older-than &lt;dur&gt;     Filter files older than duration (e.g. 30m, 24h, 7d, 30d).</text>
+<text x="24.0" y="540" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --min-size &lt;size&gt;      Minimum file size threshold (e.g. 10MB, 100MB, 1GB).</text>
+<text x="24.0" y="554" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --max-size &lt;size&gt;      Maximum file size threshold.</text>
+<text x="24.0" y="568" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --strategy &lt;mode&gt;      Inspection policy: smart (default), force, safe.</text>
+<text x="24.0" y="582" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce"></text>
+<text x="24.0" y="596" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce">LOCATION &amp; SCOPE:</text>
+<text x="24.0" y="610" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --path &lt;p1,p2&gt;         Specify custom directory path(s) to process.</text>
+<text x="24.0" y="624" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --drive &lt;drives&gt;       Target specific drive(s) (e.g. C:\, D:\) or &#x27;all&#x27;.</text>
+<text x="24.0" y="638" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#5e81ac">  --project-root &lt;dir&gt;   Root directory for recursive dev build cache discovery.</text>
+<text x="24.0" y="652" font-family="Consolas, monospace" font-size="12" font-weight="normal" fill="#c0c5ce"></text>
+<text x="24" y="680" font-family="Consolas, monospace" font-size="9" fill="#4c566a">system-cleaner-agent v5.6.9 | CLI Help</text>
+</svg>
