@@ -133,6 +133,86 @@ public:
         uintmax_t capacityBytes = 0;
     };
 
+    struct MultiDriveScanResult {
+        std::string driveName;
+        uintmax_t totalBytes = 0;
+        uintmax_t usedBytes = 0;
+        uintmax_t freeBytes = 0;
+        double usedPercent = 0.0;
+        bool isWarning = false;
+        std::string usageBar;
+    };
+
+    static std::string RenderDufUsageBar(double usedPercent, size_t barWidth = 20) {
+        size_t filled = static_cast<size_t>((usedPercent / 100.0) * barWidth);
+        if (filled > barWidth) filled = barWidth;
+        if (filled == 0 && usedPercent > 0.0) filled = 1;
+
+        std::string bar = "[";
+        for (size_t i = 0; i < filled; ++i) bar += "█";
+        for (size_t i = filled; i < barWidth; ++i) bar += ".";
+        bar += "]";
+
+        std::stringstream ss;
+        ss << bar << " " << std::fixed << std::setprecision(1) << std::setw(5) << usedPercent << "%";
+        return ss.str();
+    }
+
+    static std::vector<MultiDriveScanResult> ScanAllDrivesSimultaneously(double warningThreshold = 90.0) {
+        std::vector<std::string> drivePaths;
+#ifdef _WIN32
+        DWORD drives = GetLogicalDrives();
+        for (char letter = 'A'; letter <= 'Z'; ++letter) {
+            if (drives & (1 << (letter - 'A'))) {
+                std::string dPath = std::string(1, letter) + ":\\";
+                UINT dType = GetDriveTypeA(dPath.c_str());
+                if (dType == DRIVE_FIXED || dType == DRIVE_REMOVABLE) {
+                    drivePaths.push_back(dPath);
+                }
+            }
+        }
+#else
+        drivePaths.push_back("/");
+        std::vector<std::string> mountRoots = {"/Volumes", "/mnt", "/media"};
+        for (const auto& mr : mountRoots) {
+            std::error_code ec;
+            if (fs::exists(mr, ec)) {
+                for (const auto& entry : fs::directory_iterator(mr, ec)) {
+                    if (entry.is_directory(ec)) drivePaths.push_back(entry.path().string());
+                }
+            }
+        }
+#endif
+        if (drivePaths.empty()) drivePaths.push_back("C:\\");
+
+        std::vector<MultiDriveScanResult> results(drivePaths.size());
+        std::vector<std::thread> threads;
+
+        for (size_t i = 0; i < drivePaths.size(); ++i) {
+            threads.push_back(std::thread([i, &drivePaths, &results, warningThreshold]() {
+                MultiDriveScanResult res;
+                res.driveName = drivePaths[i];
+                std::error_code ec;
+                fs::space_info si = fs::space(drivePaths[i], ec);
+                if (!ec && si.capacity > 0) {
+                    res.totalBytes = si.capacity;
+                    res.freeBytes = si.available;
+                    res.usedBytes = si.capacity - si.available;
+                    res.usedPercent = (static_cast<double>(res.usedBytes) / static_cast<double>(si.capacity)) * 100.0;
+                }
+                res.isWarning = (res.usedPercent >= warningThreshold);
+                res.usageBar = RenderDufUsageBar(res.usedPercent);
+                results[i] = res;
+            }));
+        }
+
+        for (auto& t : threads) {
+            if (t.joinable()) t.join();
+        }
+
+        return results;
+    }
+
     static std::vector<DriveStat> GetAllDriveStats() {
         std::vector<DriveStat> stats;
 #ifdef _WIN32
@@ -236,12 +316,7 @@ public:
     // ----------------------------------------------------------------
     static void PrintDaemonStatus(double memPct, uintmax_t diskFreeBytes,
                                   double diskUsedPct, const fs::path& drive) {
-        std::cout << "\033[1;36m[MONITOR] "
-                  << "RAM: "   << static_cast<int>(memPct)    << "%  |  "
-                  << "Disk("   << drive.string()              << ") used: "
-                  << static_cast<int>(diskUsedPct)            << "%  |  free: "
-                  << Cleaner::FormatSize(diskFreeBytes)
-                  << "\033[0m\n";
+        Logger::Instance().Info("[MONITOR] RAM: " + std::to_string(static_cast<int>(memPct)) + "% | Disk(" + drive.string() + ") used: " + std::to_string(static_cast<int>(diskUsedPct)) + "% | free: " + Cleaner::FormatSize(diskFreeBytes));
     }
 
     // ----------------------------------------------------------------
@@ -263,14 +338,6 @@ public:
             "% | Free-below: " + Cleaner::FormatSize(diskFreeBelowBytes) +
             " | Drive: " + monitorDrive.string() +
             " | Check interval: " + std::to_string(checkIntervalSecs) + "s");
-
-        std::cout << "\033[1;36m"
-                  << "+--[ Smart Daemon Service Active ]----------------------------------+\n"
-                  << "|  Monitoring: RAM / Disk Thresholds + Free Space Triggers          |\n"
-                  << "|  Drive: " << monitorDrive.string()
-                  << "  |  Check interval: " << checkIntervalSecs << "s"
-                  << "\n+-------------------------------------------------------------------+\n"
-                  << "\033[0m\n";
 
         while (true) {
             double currentMem     = GetMemoryUsagePercent();
@@ -329,9 +396,7 @@ public:
                 }
 
                 if (ruleTriggered) {
-                    std::cout << "\033[1;33m[TRIGGER] " << reason << " -> Cleaning: "
-                              << rule.targetFolder.string() << "\033[0m\n";
-                    Logger::Instance().Warn("THRESHOLD TRIGGERED: " + reason);
+                    Logger::Instance().Warn("THRESHOLD TRIGGERED: " + reason + " -> Cleaning: " + rule.targetFolder.string());
                     cleaner.SetCustomPaths({rule.targetFolder});
                     cleaner.Clean();
                     cleaner.SetCustomPaths({});
@@ -339,8 +404,7 @@ public:
             }
 
             if (triggerCleanup && rules.empty()) {
-                std::cout << "\033[1;33m[TRIGGER] " << reason << " -> Executing global cleanup!\033[0m\n";
-                Logger::Instance().Warn("THRESHOLD TRIGGERED: " + reason);
+                Logger::Instance().Warn("THRESHOLD TRIGGERED: " + reason + " -> Executing global cleanup!");
                 cleaner.Clean();
             }
 

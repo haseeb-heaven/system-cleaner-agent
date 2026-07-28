@@ -7,7 +7,7 @@
   \____/  \_/\____/  \_/ \____/\_|  |_/ \____/\____/\____\_| |_/\_| \_/\____/\____/\_| \_/ \_/  
 ```
 
-# system-cleaner-agent v5.0.0
+# system-cleaner-agent v5.6.0
 
 > **100% Pure C++17 Autonomous ReAct Agentic Storage Optimization Engine & OpenTUI Framework**
 

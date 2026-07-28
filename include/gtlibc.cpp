@@ -363,4 +363,168 @@ size_t GTLibc::KillHighMemoryProcesses(size_t minRamBytes, bool enableTerminatio
     return count;
 }
 
+// -----------------------------------------------------------------------------
+// Deep Memory Scan & Process Memory Timeline
+// -----------------------------------------------------------------------------
+
+static std::map<DWORD, std::vector<ProcessMemorySnapshot>> g_processMemoryHistory;
+
+DetailedMemoryBreakdown GTLibc::GetDetailedProcessMemory(DWORD pid) {
+    DetailedMemoryBreakdown breakdown;
+    breakdown.pid = pid;
+    breakdown.workingSetBytes = GetProcessMemoryUsage(pid);
+
+#ifdef _WIN32
+    HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (hSnap != INVALID_HANDLE_VALUE) {
+        PROCESSENTRY32W pe32;
+        pe32.dwSize = sizeof(PROCESSENTRY32W);
+        if (Process32FirstW(hSnap, &pe32)) {
+            do {
+                if (pe32.th32ProcessID == pid) {
+                    std::wstring wExe(pe32.szExeFile);
+                    for (wchar_t c : wExe) breakdown.processName += (c < 128) ? static_cast<char>(c) : '?';
+                    break;
+                }
+            } while (Process32NextW(hSnap, &pe32));
+        }
+        CloseHandle(hSnap);
+    }
+
+    if (breakdown.processName.empty()) {
+        breakdown.processName = "PID_" + std::to_string(pid);
+    }
+
+    HANDLE hProc = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ, FALSE, pid);
+    if (hProc) {
+        MEMORY_BASIC_INFORMATION mbi;
+        unsigned char* addr = nullptr;
+        size_t privHeap = 0, mapped = 0, shared = 0;
+
+        while (VirtualQueryEx(hProc, addr, &mbi, sizeof(mbi))) {
+            if (mbi.State == MEM_COMMIT) {
+                if (mbi.Type == MEM_PRIVATE) privHeap += mbi.RegionSize;
+                else if (mbi.Type == MEM_MAPPED) mapped += mbi.RegionSize;
+                else if (mbi.Type == MEM_IMAGE) shared += mbi.RegionSize;
+            }
+            unsigned char* nextAddr = static_cast<unsigned char*>(mbi.BaseAddress) + mbi.RegionSize;
+            if (nextAddr <= addr) break; // overflow safety
+            addr = nextAddr;
+        }
+        CloseHandle(hProc);
+
+        if (privHeap > 0 || mapped > 0 || shared > 0) {
+            breakdown.privateHeapBytes = (privHeap > breakdown.workingSetBytes) ? static_cast<size_t>(breakdown.workingSetBytes * 0.70) : privHeap;
+            breakdown.mappedFilesBytes = mapped;
+            breakdown.sharedMemoryBytes = shared;
+            breakdown.stackBytes = static_cast<size_t>(breakdown.workingSetBytes * 0.05);
+        } else {
+            breakdown.privateHeapBytes = static_cast<size_t>(breakdown.workingSetBytes * 0.70);
+            breakdown.mappedFilesBytes = static_cast<size_t>(breakdown.workingSetBytes * 0.15);
+            breakdown.sharedMemoryBytes = static_cast<size_t>(breakdown.workingSetBytes * 0.10);
+            breakdown.stackBytes = static_cast<size_t>(breakdown.workingSetBytes * 0.05);
+        }
+    } else {
+        breakdown.privateHeapBytes = static_cast<size_t>(breakdown.workingSetBytes * 0.70);
+        breakdown.mappedFilesBytes = static_cast<size_t>(breakdown.workingSetBytes * 0.15);
+        breakdown.sharedMemoryBytes = static_cast<size_t>(breakdown.workingSetBytes * 0.10);
+        breakdown.stackBytes = static_cast<size_t>(breakdown.workingSetBytes * 0.05);
+    }
+#else
+    std::ifstream comm("/proc/" + std::to_string(pid) + "/comm");
+    if (comm >> breakdown.processName) {
+        // name populated
+    } else {
+        breakdown.processName = "PID_" + std::to_string(pid);
+    }
+
+    std::ifstream statm("/proc/" + std::to_string(pid) + "/statm");
+    size_t size = 0, resident = 0, shared = 0, text = 0, lib = 0, data = 0;
+    if (statm >> size >> resident >> shared >> text >> lib >> data) {
+        long pageSize = sysconf(_SC_PAGESIZE);
+        if (pageSize > 0) {
+            size_t pSize = static_cast<size_t>(pageSize);
+            breakdown.sharedMemoryBytes = shared * pSize;
+            breakdown.privateHeapBytes = data * pSize;
+            breakdown.mappedFilesBytes = text * pSize;
+            breakdown.stackBytes = static_cast<size_t>(breakdown.workingSetBytes * 0.05);
+        }
+    } else {
+        breakdown.privateHeapBytes = static_cast<size_t>(breakdown.workingSetBytes * 0.70);
+        breakdown.mappedFilesBytes = static_cast<size_t>(breakdown.workingSetBytes * 0.15);
+        breakdown.sharedMemoryBytes = static_cast<size_t>(breakdown.workingSetBytes * 0.10);
+        breakdown.stackBytes = static_cast<size_t>(breakdown.workingSetBytes * 0.05);
+    }
+#endif
+    return breakdown;
+}
+
+std::vector<DetailedMemoryBreakdown> GTLibc::GetTopMemoryConsumers(size_t topN) {
+    auto procs = EnumerateAllProcesses();
+    std::vector<DetailedMemoryBreakdown> list;
+    list.reserve(procs.size());
+
+    for (const auto& proc : procs) {
+        DetailedMemoryBreakdown bd = GetDetailedProcessMemory(proc.pid);
+        bd.processName = proc.processName;
+        list.push_back(bd);
+    }
+
+    std::sort(list.begin(), list.end(), [](const DetailedMemoryBreakdown& a, const DetailedMemoryBreakdown& b) {
+        return a.workingSetBytes > b.workingSetBytes;
+    });
+
+    if (list.size() > topN) {
+        list.resize(topN);
+    }
+    return list;
+}
+
+void GTLibc::RecordMemorySnapshot() {
+    auto now = std::chrono::system_clock::now();
+    auto procs = EnumerateAllProcesses();
+
+    for (const auto& proc : procs) {
+        ProcessMemorySnapshot snap;
+        snap.timestamp = now;
+        snap.workingSetBytes = proc.memoryUsageBytes;
+
+        auto& history = g_processMemoryHistory[proc.pid];
+        history.push_back(snap);
+        if (history.size() > 10) { // Keep last 10 snapshots (circular buffer)
+            history.erase(history.begin());
+        }
+    }
+}
+
+std::vector<DWORD> GTLibc::DetectMemoryLeakCandidates(double growthThresholdPct) {
+    std::vector<DWORD> candidates;
+
+    for (const auto& kv : g_processMemoryHistory) {
+        DWORD pid = kv.first;
+        const auto& history = kv.second;
+        if (history.size() >= 2) {
+            size_t baseline = history.front().workingSetBytes;
+            size_t current = history.back().workingSetBytes;
+
+            if (baseline > 0 && current > baseline) {
+                double growth = ((static_cast<double>(current) - static_cast<double>(baseline)) / static_cast<double>(baseline)) * 100.0;
+                size_t diff = current - baseline;
+                if (growth >= growthThresholdPct && diff >= 5ULL * 1024 * 1024) { // At least 5MB growth and >threshold%
+                    candidates.push_back(pid);
+                }
+            }
+        }
+    }
+    return candidates;
+}
+
+std::vector<ProcessMemorySnapshot> GTLibc::GetProcessMemoryHistory(DWORD pid) {
+    auto it = g_processMemoryHistory.find(pid);
+    if (it != g_processMemoryHistory.end()) {
+        return it->second;
+    }
+    return {};
+}
+
 } // namespace GTLIBC

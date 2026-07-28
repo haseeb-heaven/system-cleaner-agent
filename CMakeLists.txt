@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.14)
-project(system-cleaner-agent VERSION 5.3.1 LANGUAGES CXX)
+project(system-cleaner-agent VERSION 5.6.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -20,6 +20,7 @@ set(HEADERS
     include/SecurityGuard.hpp
     include/AgentQueryLanguage.hpp
     include/TaskHistory.hpp
+    include/DeepScanner.hpp
 
     include/gtlibc.hpp
 )

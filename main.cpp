@@ -10,6 +10,7 @@
 #include "include/SecurityGuard.hpp"
 #include "include/AgentQueryLanguage.hpp"
 #include "include/TaskHistory.hpp"
+#include "include/DeepScanner.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -189,7 +190,7 @@ void ExportJsonReport(const std::string& jsonPath, const std::vector<TargetRepor
         if (!jsonFile.is_open()) return;
 
         jsonFile << "{\n";
-        jsonFile << "  \"engine\": \"system-cleaner-agent v5.0 (C++17 ReAct Agentic Engine)\",\n";
+        jsonFile << "  \"engine\": \"system-cleaner-agent v5.6.0 (C++17 ReAct Agentic Engine)\",\n";
         jsonFile << "  \"targets\": [\n";
 
         uintmax_t grandTotal = 0;
@@ -285,7 +286,7 @@ int main(int argc, char* argv[]) {
     }
 
     if (cmd == "version" || cmd == "--version" || cmd == "-v") {
-        std::cout << "system-cleaner-agent v5.0.0 (C++17 Autonomous ReAct Agentic Engine - 64-bit Architecture)\n";
+        std::cout << "system-cleaner-agent v5.6.0 (C++17 Autonomous ReAct Agentic Engine - 64-bit Architecture)\n";
         return 0;
     }
 
@@ -364,6 +365,9 @@ int main(int argc, char* argv[]) {
     std::vector<ScheduleRule> scheduleRules;
 
     size_t threadCount = 0;
+    size_t topN = 20;
+    size_t deepDepth = 0;
+    bool multiDrive = false;
     std::string jsonReportPath = "";
     std::string agentTaskGoal = "Perform autonomous system optimization and storage cleanup";
     bool runAgentLoop = (cmd == "agent" || cmd == "--agent" || cmd == "-a");
@@ -385,6 +389,12 @@ int main(int argc, char* argv[]) {
             pathProtection = false;
         } else if (lowerArg == "--agent") {
             runAgentLoop = true;
+        } else if (lowerArg == "--top" && i + 1 < args.size()) {
+            try { topN = std::stoul(args[++i]); } catch (...) {}
+        } else if (lowerArg == "--depth" && i + 1 < args.size()) {
+            try { deepDepth = std::stoul(args[++i]); } catch (...) {}
+        } else if (lowerArg == "--multi-drive") {
+            multiDrive = true;
         } else if (lowerArg == "--task" && i + 1 < args.size()) {
             agentTaskGoal = args[++i];
             runAgentLoop = true;
@@ -476,6 +486,53 @@ int main(int argc, char* argv[]) {
 #else
         system("./unit_tests");
 #endif
+        return 0;
+    }
+
+    if (cmd == "deep-scan") {
+        PrintHeader();
+        std::string scanRoot = customPaths.empty() ? "." : customPaths[0].string();
+        DeepScanFilter filter;
+        filter.topN = topN > 0 ? topN : 20;
+        filter.maxDepth = deepDepth;
+        filter.minSizeBytes = cfg.minSizeBytes;
+        filter.excludeExts = cfg.excludeExts;
+
+        if (multiDrive) {
+            Logger::Instance().Info("Running Multi-Drive Parallel Deep Scan...");
+            auto driveResults = SmartScheduler::ScanAllDrivesSimultaneously(90.0);
+            std::cout << "\n\033[1;33m+--[ Multi-Drive Deep Storage Matrix ]-------------------------------------------+\033[0m\n";
+            for (const auto& dr : driveResults) {
+                std::string badge = dr.isWarning ? "\033[1;31m [WARNING: LOW SPACE > 90%]\033[0m" : "\033[1;32m [OK]\033[0m";
+                std::cout << "  Drive " << std::left << std::setw(8) << dr.driveName
+                          << " " << dr.usageBar
+                          << "  (Free: " << Cleaner::FormatSize(dr.freeBytes) << " / " << Cleaner::FormatSize(dr.totalBytes) << ")"
+                          << badge << "\n";
+            }
+            std::cout << "\033[1;33m+--------------------------------------------------------------------------------+\033[0m\n\n";
+        }
+
+        Logger::Instance().Info("Deep Scanning directory tree: " + scanRoot);
+        auto rootNode = DeepScanner::ScanDirectory(scanRoot, filter);
+        auto topNodes = DeepScanner::GetTopN(rootNode, filter.topN);
+
+        std::cout << "\n\033[1;36m=== Deep Disk Scan Summary ('" << scanRoot << "') ===\033[0m\n";
+        std::cout << "Total Size: " << Cleaner::FormatSize(rootNode ? rootNode->sizeBytes : 0)
+                  << " | Total Files: " << (rootNode ? rootNode->fileCount : 0)
+                  << " | Total Dirs: " << (rootNode ? rootNode->dirCount : 0) << "\n\n";
+
+        std::cout << "\033[1;33mTop " << topNodes.size() << " Largest Items:\033[0m\n";
+        uintmax_t rootTotal = rootNode ? rootNode->sizeBytes : 0;
+        for (size_t idx = 0; idx < topNodes.size(); ++idx) {
+            std::string bar = DeepScanner::RenderVisualSizeBar(topNodes[idx]->sizeBytes, rootTotal, 12);
+            std::cout << "  #" << std::setw(2) << (idx + 1) << "  "
+                      << std::left << std::setw(45) << (topNodes[idx]->name + (topNodes[idx]->isDirectory ? "/" : ""))
+                      << " " << bar << "\n";
+        }
+
+        if (!jsonReportPath.empty()) {
+            DeepScanner::ExportToJson(scanRoot, rootNode, jsonReportPath);
+        }
         return 0;
     }
 

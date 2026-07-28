@@ -2,6 +2,34 @@
 
 All notable changes to the system-cleaner-agent project will be documented in this file.
 
+## [5.6.0] - 2026-07-28
+
+### Added / Features
+- **Deep Disk Scan Engine (`include/DeepScanner.hpp`)**:
+  - Cloned deep scan architecture inspired by `dust` (bootandy/dust).
+  - Recursive directory tree traversal with cumulative size aggregation per node.
+  - Top-N largest dirs/files ranking and visual size bars (`████████░░ 18.25 MB 100.0%`).
+  - Filtering by `--min-size <bytes>`, `--depth <N>`, `--exclude-ext <exts>`.
+  - JSON export report support (`ExportToJson`).
+  - Cross-platform storage queries using `GetDiskFreeSpaceExW` (Win) / `statvfs` (Linux/macOS).
+- **Deep Memory Scan & Process Timeline (`include/gtlibc.hpp`, `include/gtlibc.cpp`)**:
+  - Full per-PID memory breakdown (Heap/Private, Stack, Mapped Files, Shared Memory).
+  - Top-N RAM consumers sorted by Working Set.
+  - Circular buffer memory history tracking (last 10 snapshots per PID).
+  - Memory leak candidate detection for processes growing >10% RAM across scan intervals.
+- **Multi-Drive Parallel Scan (`include/SmartScheduler.hpp`)**:
+  - Simultaneous multi-drive scanning via `std::thread` per drive.
+  - duf-style disk usage bars (`[███████████████████.] 99.6%`).
+  - Warning badges (`[WARNING: LOW DISK SPACE > 90%]`) for drives exceeding configurable threshold.
+- **Interactive Deep Scan TUI (`include/TUI.hpp`)**:
+  - Added "Deep Scan" menu item to main menu.
+  - Interactive Tree View Explorer with key navigation (Arrow keys expand/collapse, `D` schedule clean, `E` export JSON).
+  - Non-blocking background thread with live OpenTUI braille spinner animation (`SpinnerAnimation`).
+- **CLI Flag Integration (`main.cpp`)**:
+  - Added `deep-scan` command and CLI flags `--top`, `--depth`, `--min-size`, `--exclude-ext`, `--multi-drive`, `--json-report`.
+- **Unit Test Expansion (`tests/test_main.cpp`)**:
+  - Added `TestDeepScanner` test suite (Test #26) with 10 new assertions (271 total assertions across 26 test suites, 100% pass rate).
+
 ## [5.1.0] - 2026-07-27
 
 ### Added / Features

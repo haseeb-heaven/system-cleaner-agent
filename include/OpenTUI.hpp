@@ -115,6 +115,16 @@ public:
                 SetConsoleMode(hOut, dwMode);
             }
         }
+
+        HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+        if (hIn != INVALID_HANDLE_VALUE) {
+            DWORD dwMode = 0;
+            if (GetConsoleMode(hIn, &dwMode)) {
+                dwMode &= ~(ENABLE_LINE_INPUT | ENABLE_ECHO_INPUT);
+                dwMode |= ENABLE_VIRTUAL_TERMINAL_INPUT;
+                SetConsoleMode(hIn, dwMode);
+            }
+        }
 #endif
     }
 
@@ -154,6 +164,18 @@ public:
 
     static void HideCursor() { std::cout << "\033[?25l" << std::flush; }
     static void ShowCursor() { std::cout << "\033[?25h" << std::flush; }
+
+    static bool HasKeyPending() {
+#ifdef _WIN32
+        return _kbhit() != 0;
+#else
+        struct timeval tv = { 0, 0 };
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(STDIN_FILENO, &fds);
+        return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0;
+#endif
+    }
 
     static KeyEvent ReadKey() {
         KeyEvent event;
@@ -279,7 +301,25 @@ inline ThemeStyle GetThemeStyle(const std::string& themeName, const std::string&
     }
 
     // Explicit Color Scheme Preset Overrides
-    if (colorScheme == "Cyan Matrix") {
+    if (colorScheme == "Dracula Dark") {
+        pri = "\033[1;38;5;141m"; sec = "\033[38;5;212m"; hdr = "\033[1;38;5;231m"; acc = "\033[38;5;84m"; st = "\033[38;5;84m";
+        pBg = "\033[48;5;235m"; bg = "\033[48;5;61m\033[1;38;5;231m";
+    } else if (colorScheme == "Tokyo Night") {
+        pri = "\033[1;38;5;117m"; sec = "\033[38;5;176m"; hdr = "\033[1;38;5;231m"; acc = "\033[38;5;120m"; st = "\033[38;5;120m";
+        pBg = "\033[48;5;234m"; bg = "\033[48;5;62m\033[1;38;5;231m";
+    } else if (colorScheme == "Nordic Frost") {
+        pri = "\033[1;38;5;111m"; sec = "\033[38;5;153m"; hdr = "\033[1;38;5;231m"; acc = "\033[38;5;117m"; st = "\033[38;5;117m";
+        pBg = "\033[48;5;236m"; bg = "\033[48;5;24m\033[1;38;5;231m";
+    } else if (colorScheme == "Catppuccin Mocha") {
+        pri = "\033[1;38;5;218m"; sec = "\033[38;5;183m"; hdr = "\033[1;38;5;231m"; acc = "\033[38;5;115m"; st = "\033[38;5;115m";
+        pBg = "\033[48;5;235m"; bg = "\033[48;5;98m\033[1;38;5;231m";
+    } else if (colorScheme == "Cyberpunk 2077") {
+        pri = "\033[1;38;5;226m"; sec = "\033[38;5;51m"; hdr = "\033[1;38;5;231m"; acc = "\033[38;5;226m"; st = "\033[38;5;51m";
+        pBg = "\033[48;5;233m"; bg = "\033[48;5;220m\033[1;38;5;16m";
+    } else if (colorScheme == "Solarized Ocean") {
+        pri = "\033[1;38;5;37m"; sec = "\033[38;5;136m"; hdr = "\033[1;38;5;231m"; acc = "\033[38;5;64m"; st = "\033[38;5;37m";
+        pBg = "\033[48;5;17m"; bg = "\033[48;5;25m\033[1;38;5;231m";
+    } else if (colorScheme == "Cyan Matrix") {
         pri = Color::BrightCyan + Color::Bold; sec = Color::BrightCyan; hdr = Color::BrightWhite + Color::Bold; acc = Color::BrightGreen; st = Color::BrightGreen;
         pBg = "\033[40m"; bg = "\033[46m\033[1;30m";
     } else if (colorScheme == "Electric Magenta") {
@@ -311,6 +351,10 @@ inline ThemeStyle GetThemeStyle(const std::string& themeName, const std::string&
 
     // Granular Background Color Setting Override
     if (bgOverride == "Black") pBg = "\033[40m";
+    else if (bgOverride == "Dracula Charcoal") pBg = "\033[48;5;235m";
+    else if (bgOverride == "Tokyo Night") pBg = "\033[48;5;234m";
+    else if (bgOverride == "Nordic Frost") pBg = "\033[48;5;236m";
+    else if (bgOverride == "Solarized Ocean") pBg = "\033[48;5;17m";
     else if (bgOverride == "Navy Blue") pBg = "\033[44m";
     else if (bgOverride == "Electric Magenta") pBg = "\033[45m";
     else if (bgOverride == "Amber Gold") pBg = "\033[43m";
@@ -484,6 +528,18 @@ public:
            << std::fixed << std::setprecision(1) << percentage << unitLabel << Color::Reset;
         return ss.str();
     }
+
+    static bool HasKeyPending() {
+#ifdef _WIN32
+        return _kbhit() != 0;
+#else
+        struct timeval tv = { 0, 0 };
+        fd_set fds;
+        FD_ZERO(&fds);
+        FD_SET(STDIN_FILENO, &fds);
+        return select(STDIN_FILENO + 1, &fds, NULL, NULL, &tv) > 0;
+#endif
+    }
 };
 
 // =============================================================================
@@ -592,10 +648,10 @@ public:
     MenuSelection ShowExtended() {
         TerminalEngine::EnableVirtualTerminal();
         TerminalEngine::HideCursor();
+        TerminalEngine::ClearScreen();
 
         while (true) {
             auto style = GetThemeStyle(themeName, colorScheme, fgColor, bgColor);
-            TerminalEngine::ClearScreen(style.panelBg);
             std::ostringstream frame;
 
             if (onPreRender) {
@@ -604,8 +660,7 @@ public:
                 std::cout.rdbuf(oldBuf);
             }
 
-            frame << style.panelBg;
-
+            frame << "\033[H";
             if (themeName == "TermOx") {
                 // =============================================================
                 // TERMOX C++20 REACTIVE WIDGET TREE & WINDOW LAYOUT ENGINE
@@ -697,10 +752,22 @@ public:
                 frame << Box::DrawFooter(80, themeName, colorScheme, fgColor, bgColor);
             }
 
-            TerminalEngine::MoveCursorToHome();
-            std::cout << style.panelBg << frame.str() << style.panelBg << "\033[J" << std::flush;
+            frame << "\033[J";
+            std::cout << frame.str() << std::flush;
 
             KeyEvent ev = TerminalEngine::ReadKey();
+
+            while (TerminalEngine::HasKeyPending()) {
+                KeyEvent nextEv = TerminalEngine::ReadKey();
+                if ((nextEv.key == Key::Up || nextEv.key == Key::Down) && nextEv.key == ev.key) {
+                    if (ev.key == Key::Up) selectedIndex = (selectedIndex > 0) ? selectedIndex - 1 : static_cast<int>(options.size()) - 1;
+                    else if (ev.key == Key::Down) selectedIndex = (selectedIndex + 1) % static_cast<int>(options.size());
+                } else {
+                    ev = nextEv;
+                    break;
+                }
+            }
+
             if (ev.key == Key::Up) {
                 selectedIndex = (selectedIndex > 0) ? selectedIndex - 1 : static_cast<int>(options.size()) - 1;
             } else if (ev.key == Key::Down) {
@@ -730,7 +797,6 @@ public:
 
         std::string input = "";
         std::string ghost = "";
-        int historyIdx = static_cast<int>(history.size());
 
         auto updateDisplay = [&](const std::string& newInput) {
             std::cout << "\r\033[K" << Color::BrightCyan << Color::Bold << promptStr << Color::Reset << newInput;
@@ -739,21 +805,51 @@ public:
             if (!newInput.empty() && !suggestions.empty()) {
                 std::string inputLower = newInput;
                 std::transform(inputLower.begin(), inputLower.end(), inputLower.begin(), ::tolower);
+
+                // 1. Try full suggestion prefix match
                 for (const auto& sug : suggestions) {
                     std::string sugLower = sug;
                     std::transform(sugLower.begin(), sugLower.end(), sugLower.begin(), ::tolower);
                     if (sugLower.find(inputLower) == 0 && sug.length() > newInput.length()) {
                         ghost = sug.substr(newInput.length());
-                        std::cout << Color::Dim << ghost << Color::Reset;
-                        for (size_t g = 0; g < ghost.length(); ++g) std::cout << "\b";
                         break;
                     }
+                }
+
+                // 2. Try last token prefix match against suggestion tokens
+                if (ghost.empty()) {
+                    size_t lastSpace = newInput.find_last_of(" '\"");
+                    std::string lastToken = (lastSpace != std::string::npos) ? newInput.substr(lastSpace + 1) : newInput;
+                    if (!lastToken.empty()) {
+                        std::string tokenLower = lastToken;
+                        std::transform(tokenLower.begin(), tokenLower.end(), tokenLower.begin(), ::tolower);
+                        for (const auto& sug : suggestions) {
+                            std::stringstream ss(sug);
+                            std::string word;
+                            while (ss >> word) {
+                                std::string wLower = word;
+                                std::transform(wLower.begin(), wLower.end(), wLower.begin(), ::tolower);
+                                if (wLower.find(tokenLower) == 0 && word.length() > lastToken.length()) {
+                                    ghost = word.substr(lastToken.length());
+                                    break;
+                                }
+                            }
+                            if (!ghost.empty()) break;
+                        }
+                    }
+                }
+
+                if (!ghost.empty()) {
+                    std::cout << Color::Dim << ghost << Color::Reset;
+                    for (size_t g = 0; g < ghost.length(); ++g) std::cout << "\b";
                 }
             }
             std::cout << std::flush;
         };
 
         std::cout << Color::BrightCyan << Color::Bold << promptStr << Color::Reset << std::flush;
+        const auto& activeHistory = !history.empty() ? history : suggestions;
+        int historyIdx = static_cast<int>(activeHistory.size());
 
         while (true) {
             KeyEvent ev = TerminalEngine::ReadKey();
@@ -764,29 +860,46 @@ public:
             } else if (ev.key == Key::Escape) {
                 std::cout << "\n";
                 return "";
-            } else if (ev.key == Key::Up) {
-                if (!history.empty() && historyIdx > 0) {
-                    historyIdx--;
-                    input = history[historyIdx];
+            } else if (ev.key == Key::Tab || (ev.key == Key::Char && ev.ch == 9)) {
+                if (!ghost.empty()) {
+                    input += ghost;
+                    updateDisplay(input);
+                } else if (!input.empty() && !suggestions.empty()) {
+                    std::string inputLower = input;
+                    std::transform(inputLower.begin(), inputLower.end(), inputLower.begin(), ::tolower);
+                    for (const auto& sug : suggestions) {
+                        std::string sugLower = sug;
+                        std::transform(sugLower.begin(), sugLower.end(), sugLower.begin(), ::tolower);
+                        if (sugLower.find(inputLower) == 0 && sug.length() > input.length()) {
+                            input = sug;
+                            updateDisplay(input);
+                            break;
+                        }
+                    }
+                } else if (input.empty() && !suggestions.empty()) {
+                    input = suggestions.front();
                     updateDisplay(input);
                 }
+            } else if (ev.key == Key::Up) {
+                if (!activeHistory.empty() && historyIdx > 0) {
+                    historyIdx--;
+                    if (historyIdx >= 0 && historyIdx < static_cast<int>(activeHistory.size())) {
+                        input = activeHistory[historyIdx];
+                        updateDisplay(input);
+                    }
+                }
             } else if (ev.key == Key::Down) {
-                if (!history.empty() && historyIdx < static_cast<int>(history.size()) - 1) {
+                if (!activeHistory.empty() && historyIdx < static_cast<int>(activeHistory.size()) - 1) {
                     historyIdx++;
-                    input = history[historyIdx];
+                    input = activeHistory[historyIdx];
                     updateDisplay(input);
-                } else if (historyIdx == static_cast<int>(history.size()) - 1) {
-                    historyIdx = static_cast<int>(history.size());
+                } else if (!activeHistory.empty() && historyIdx == static_cast<int>(activeHistory.size()) - 1) {
+                    historyIdx = static_cast<int>(activeHistory.size());
                     input = "";
                     updateDisplay(input);
                 }
             } else if (ev.key == Key::Char) {
-                if (ev.ch == 9) { // TAB key autocompletes ghost text!
-                    if (!ghost.empty()) {
-                        input += ghost;
-                        updateDisplay(input);
-                    }
-                } else if (ev.ch == 8 || ev.ch == 127) { // Backspace
+                if (ev.ch == 8 || ev.ch == 127) { // Backspace
                     if (!input.empty()) {
                         input.pop_back();
                         updateDisplay(input);

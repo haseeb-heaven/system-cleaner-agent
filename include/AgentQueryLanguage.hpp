@@ -362,14 +362,40 @@ public:
                         uintmax_t curFree = SmartScheduler::GetDiskFreeBytes(q.drive);
                         if (curFree <= q.diskFreeBelowBytes) conditionMet = true;
                     }
+                    if (q.minSizeBytes > 0) {
+                        if (!q.targetPaths.empty()) {
+                            auto groups = ProcessManager::GetAggregatedProcessGroups(0);
+                            uintmax_t procRam = 0;
+                            for (const auto& tp : q.targetPaths) {
+                                std::string tpLower = tp.string();
+                                std::transform(tpLower.begin(), tpLower.end(), tpLower.begin(), ::tolower);
+                                for (const auto& grp : groups) {
+                                    std::string gLower = grp.processName;
+                                    std::transform(gLower.begin(), gLower.end(), gLower.begin(), ::tolower);
+                                    if (gLower.find(tpLower) != std::string::npos || tpLower.find(gLower) != std::string::npos) {
+                                        procRam += grp.totalMemoryUsageBytes;
+                                    }
+                                }
+                            }
+                            if (procRam >= q.minSizeBytes) conditionMet = true;
+                        } else {
+                            auto candidates = ProcessManager::GetHighMemoryCandidates(q.minSizeBytes);
+                            if (!candidates.empty()) conditionMet = true;
+                        }
+                    }
 
                     if (conditionMet) {
                         Logger::Instance().Info("[AQL CRON TRIGGER MATCHED] Executing action for: " + q.rawQuery);
                         if (q.command == "KILL") {
                             if (!q.targetPaths.empty()) {
                                 for (const auto& tp : q.targetPaths) {
-                                    GTLIBC::GTLibc::KillProcessByName(tp.string(), !dryRun, true);
+                                    size_t kCount = GTLIBC::GTLibc::KillProcessByName(tp.string(), !dryRun, true);
+                                    Logger::Instance().Info("[AQL CRON PROCESS KILL] Terminated " + std::to_string(kCount) + " instance(s) of " + tp.string());
                                 }
+                            } else {
+                                bool allowKill = false;
+                                size_t kCount = ProcessManager::KillHighMemoryProcesses(q.minSizeBytes > 0 ? q.minSizeBytes : (200ULL * 1024 * 1024), !dryRun, allowKill);
+                                Logger::Instance().Info("[AQL CRON PROCESS KILL] High-RAM process cleanup killed " + std::to_string(kCount) + " process(es)");
                             }
                         } else if (q.command == "CLEAN") {
                             if (cleanerPtr) cleanerPtr->Clean();
@@ -377,7 +403,9 @@ public:
                             if (cleanerPtr) cleanerPtr->EmptyWindowsRecycleBin();
                         }
                         TaskHistory::Instance().MarkCompleted(taskId, "Cron trigger executed for: " + q.rawQuery);
-                        break;
+                        if (q.rawQuery.find("EVERY") == std::string::npos && q.rawQuery.find("every") == std::string::npos) {
+                            break;
+                        }
                     }
 
                     std::this_thread::sleep_for(std::chrono::seconds(q.intervalSeconds > 0 ? q.intervalSeconds : 3));

@@ -8,6 +8,7 @@
 #include "ConfigManager.hpp"
 #include "TaskHistory.hpp"
 #include "SecurityGuard.hpp"
+#include "DeepScanner.hpp"
 
 #include <iostream>
 #include <vector>
@@ -153,13 +154,14 @@ public:
     static void PrintBanner(const std::string& themeOverride = "") {
         std::string theme = themeOverride.empty() ? g_tuiSettings.tuiThemeEngine : themeOverride;
         auto style = OpenTUI::GetThemeStyle(theme);
+        std::string osBanner = "[ AUTONOMOUS REACT AGENT | OS: " + GetCurrentOSNameStr() + " (" + SYSTEM_PRIMARY_DRIVE + ") | AQL ENGINE ]";
         std::cout << style.primaryColor
                   << "    _/_\\_      ____  _  _  ____  ____  ____  _  _   \n"
                   << "   /     \\    / ___)( \\/ )( ___)(_  _)(  __)( \\/ )  \n"
                   << "  |   *   |   \\___ \\ )  /  )__)   )(   ) _) / \\/ \\  \n"
                   << "   \\     /    (____/(__/  (____) (__) (____)\\_/\\_/  \n"
-                  << "    \\___/     \033[1;33mSYSTEM-CLEANER-AGENT \033[1;32mv5.5.0\033[0m\n"
-                  << style.secondaryColor << "  " << style.bannerSubtitle << "\033[0m\n";
+                  << "    \\___/     \033[1;33mSYSTEM-CLEANER-AGENT \033[1;32mv5.6.0\033[0m\n"
+                  << style.secondaryColor << "  " << osBanner << "\033[0m\n";
     }
 
     static void FlushInputBuffer() {
@@ -267,33 +269,34 @@ public:
 
 
     static void ShowTaskActionDialog(uint64_t tid) {
-        TaskEntry t;
-        if (!TaskHistory::Instance().GetTask(tid, t)) {
-            std::cout << "\033[1;31m[ERROR] Task ID #" << tid << " not found in Task Library.\033[0m\n";
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-            return;
-        }
-
         while (true) {
-            OpenTUI::TerminalEngine::ClearScreen();
-            PrintBanner();
+            TaskEntry t;
+            if (!TaskHistory::Instance().GetTask(tid, t)) {
+                std::cout << "\033[1;31m[ERROR] Task ID #" << tid << " not found in Task Library.\033[0m\n";
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                return;
+            }
+
             bool isLive = (t.status == TaskStatus::Running || t.status == TaskStatus::Queued);
             std::string timeStr = TaskHistoryNS::FormatTimestamp(isLive ? t.startedAt : t.finishedAt);
             std::string durStr  = TaskHistoryNS::FormatDuration(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now() - t.startedAt));
+            std::string statusStr = isLive ? "RUNNING" : TaskHistoryNS::StatusLabel(t.status);
+            std::string detail = isLive ? (t.progressMsg.empty() ? statusStr : t.progressMsg) : (t.resultSummary.empty() ? statusStr : t.resultSummary);
 
-            std::cout << "\033[1;36m╔══════════════════════════════════════════════════════════════════════════════════════════╗\033[0m\n";
-            std::cout << "\033[1;36m║\033[1;97m   ◈  TASK ACTION CONTROL  ─  Task #" << std::left << std::setw(55) << std::to_string(t.id) << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m╠══════════════════════════════════════════════════════════════════════════════════════════╣\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m  ID:          #" << std::setw(6) << t.id << "                                                                 \033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m  Name:        " << std::left << std::setw(70) << t.name << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m  Category:    " << std::left << std::setw(70) << t.category << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m  Command:     " << std::left << std::setw(70) << t.command << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m  Source:      " << std::left << std::setw(70) << t.source << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m  Status:      " << TaskHistoryNS::StatusColor(t.status) << std::left << std::setw(60) << TaskHistoryNS::StatusLabel(t.status) << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m  Progress:    " << std::left << std::setw(70) << (t.progressMsg.empty() ? t.resultSummary : t.progressMsg) << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m  Runtime:     " << std::left << std::setw(70) << (timeStr + " (" + durStr + ")") << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m║\033[0m  Bytes Freed: " << std::left << std::setw(70) << Cleaner::FormatSize(t.bytesFreed) << "\033[1;36m║\033[0m\n";
-            std::cout << "\033[1;36m╚══════════════════════════════════════════════════════════════════════════════════════════╝\033[0m\n\n";
+            std::vector<std::string> headers = {
+                "TASK STATUS DETAILS & RUNTIME INFORMATION",
+                "----------------------------------------------------------------",
+                "  Task ID:      #" + std::to_string(t.id),
+                "  Task Name:    " + t.name,
+                "  Category:     " + t.category,
+                "  Command:      " + t.command,
+                "  Source:       " + t.source,
+                "  Status:       " + statusStr,
+                "  Progress:     " + detail,
+                "  Runtime:      " + timeStr + " (" + durStr + ")",
+                "  Bytes Freed:  " + Cleaner::FormatSize(t.bytesFreed),
+                "----------------------------------------------------------------"
+            };
 
             std::vector<std::string> actionOpts = {
                 "Pause / Stop Task",
@@ -301,22 +304,26 @@ public:
                 "Kill / Terminate Task",
                 "Return to Task Library"
             };
-            OpenTUI::Menu actMenu("TASK ACTIONS (#" + std::to_string(t.id) + ")", actionOpts);
+
+            OpenTUI::Menu actMenu("TASK ACTIONS & MONITORING (#" + std::to_string(t.id) + ")", actionOpts, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+            actMenu.SetPreRenderCallback([]() { PrintBanner(); });
+            actMenu.SetHeaderLines(headers);
             int aSel = actMenu.Show();
+
             if (aSel == -1 || aSel == 3) break;
 
             if (aSel == 0) {
                 if (TaskHistory::Instance().PauseTask(t.id)) {
                     std::cout << "\033[1;35m[OK] Task #" << t.id << " paused.\033[0m\n";
                 } else {
-                    std::cout << "\033[1;31m[WARN] Could not pause Task #" << t.id << " (Task not in running state).\033[0m\n";
+                    std::cout << "\033[1;31m[WARN] Could not pause Task #" << t.id << " (Task not running).\033[0m\n";
                 }
                 std::this_thread::sleep_for(std::chrono::seconds(1));
             } else if (aSel == 1) {
                 if (TaskHistory::Instance().ResumeTask(t.id)) {
                     std::cout << "\033[1;32m[OK] Task #" << t.id << " resumed.\033[0m\n";
                 } else {
-                    std::cout << "\033[1;31m[WARN] Could not resume Task #" << t.id << " (Task not in paused state).\033[0m\n";
+                    std::cout << "\033[1;31m[WARN] Could not resume Task #" << t.id << " (Task not paused).\033[0m\n";
                 }
                 std::this_thread::sleep_for(std::chrono::seconds(1));
             } else if (aSel == 2) {
@@ -327,17 +334,23 @@ public:
                 }
                 std::this_thread::sleep_for(std::chrono::seconds(1));
             }
-            TaskHistory::Instance().GetTask(t.id, t);
         }
     }
 
     static void ShowTaskLibrary() {
         int selectedRow = 0;
+        auto initialStyle = OpenTUI::GetThemeStyle(g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+        OpenTUI::TerminalEngine::ClearScreen(initialStyle.panelBg);
 
         while (true) {
             auto style = OpenTUI::GetThemeStyle(g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-            OpenTUI::TerminalEngine::ClearScreen(style.panelBg);
+            std::ostringstream ss;
+            ss << "\033[H" << style.panelBg;
+
+            // Capture banner into ss buffer
+            auto* oldBuf = std::cout.rdbuf(ss.rdbuf());
             PrintBanner();
+            std::cout.rdbuf(oldBuf);
 
             auto tasks = TaskHistory::Instance().Snapshot();
             int nRunning = 0, nDone = 0, nFailed = 0;
@@ -355,10 +368,9 @@ public:
                 selectedRow = 0;
             }
 
-            std::ostringstream ss;
             ss << OpenTUI::Box::DrawBorder(80, "INTERACTIVE TASK MANAGER", g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
 
-            std::string hotkeyBar = "[HOTKEYS] K: Kill │ P: Pause │ R: Resume │ D: Details │ C: Clear Finished │ ESC: Exit";
+            std::string hotkeyBar = "[HOTKEYS] Enter/D/V: Details │ K: Kill │ P: Pause │ R: Resume │ C: Clear │ ESC: Exit";
             ss << OpenTUI::Box::DrawLine(80, hotkeyBar, false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             ss << OpenTUI::Box::DrawDivider(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
 
@@ -392,20 +404,37 @@ public:
             }
 
             ss << OpenTUI::Box::DrawDivider(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
-            std::string footerHint = "Use UP/DOWN to select task · Press K/P/R/D/C hotkeys · ESC to return";
+            std::string footerHint = "Use UP/DOWN to select task · Press Enter/D to view Details · ESC to return";
             ss << OpenTUI::Box::DrawLine(80, footerHint, false, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             ss << OpenTUI::Box::DrawFooter(80, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
 
-            OpenTUI::TerminalEngine::MoveCursorToHome();
-            std::cout << style.panelBg << ss.str() << style.panelBg << "\033[J" << std::flush;
+            ss << style.panelBg << "\033[0m\033[J";
+            std::cout << ss.str() << std::flush;
 
             OpenTUI::KeyEvent ev = OpenTUI::TerminalEngine::ReadKey();
+
+            while (OpenTUI::TerminalEngine::HasKeyPending()) {
+                OpenTUI::KeyEvent nextEv = OpenTUI::TerminalEngine::ReadKey();
+                if ((nextEv.key == OpenTUI::Key::Up || nextEv.key == OpenTUI::Key::Down) && nextEv.key == ev.key) {
+                    if (ev.key == OpenTUI::Key::Up) {
+                        if (!tasks.empty()) selectedRow = (selectedRow > 0) ? selectedRow - 1 : static_cast<int>(tasks.size()) - 1;
+                    } else if (ev.key == OpenTUI::Key::Down) {
+                        if (!tasks.empty()) selectedRow = (selectedRow + 1) % static_cast<int>(tasks.size());
+                    }
+                } else {
+                    ev = nextEv;
+                    break;
+                }
+            }
+
             if (ev.key == OpenTUI::Key::Up) {
                 if (!tasks.empty()) selectedRow = (selectedRow > 0) ? selectedRow - 1 : static_cast<int>(tasks.size()) - 1;
             } else if (ev.key == OpenTUI::Key::Down) {
                 if (!tasks.empty()) selectedRow = (selectedRow + 1) % static_cast<int>(tasks.size());
             } else if (ev.key == OpenTUI::Key::Escape || (ev.key == OpenTUI::Key::Char && (ev.ch == 'q' || ev.ch == 'Q'))) {
                 break;
+            } else if ((ev.key == OpenTUI::Key::Enter || (ev.key == OpenTUI::Key::Char && (ev.ch == 'd' || ev.ch == 'D' || ev.ch == 'v' || ev.ch == 'V'))) && !tasks.empty() && selectedRow >= 0 && selectedRow < static_cast<int>(tasks.size())) {
+                ShowTaskActionDialog(tasks[selectedRow].id);
             } else if (ev.key == OpenTUI::Key::Char && !tasks.empty() && selectedRow >= 0 && selectedRow < static_cast<int>(tasks.size())) {
                 uint64_t targetId = tasks[selectedRow].id;
                 char c = static_cast<char>(std::tolower(ev.ch));
@@ -415,12 +444,6 @@ public:
                     TaskHistory::Instance().PauseTask(targetId);
                 } else if (c == 'r') {
                     TaskHistory::Instance().ResumeTask(targetId);
-                } else if (c == 'd') {
-                    TaskEntry detailsTask;
-                    if (TaskHistory::Instance().GetTask(targetId, detailsTask)) {
-                        std::string resInfo = detailsTask.resultSummary.empty() ? detailsTask.progressMsg : detailsTask.resultSummary;
-                        g_tuiStatus.SetActive("Task #" + std::to_string(targetId) + " (" + detailsTask.name + "): " + resInfo);
-                    }
                 } else if (c == 'c') {
                     TaskHistory::Instance().Clear();
                     selectedRow = 0;
@@ -487,13 +510,13 @@ public:
 
             static const std::vector<std::string> engines = { "OpenTUI", "TermOx", "FTXUI" };
             static const std::vector<std::string> schemes = {
-                "Default", "Cyan Matrix", "Electric Magenta", "Amber Gold", "Emerald Cyber", "Neon Cyberpunk", "Monochrome Slate"
+                "Default", "Dracula Dark", "Tokyo Night", "Nordic Frost", "Catppuccin Mocha", "Cyberpunk 2077", "Solarized Ocean", "Cyan Matrix", "Electric Magenta", "Amber Gold", "Emerald Cyber", "Neon Cyberpunk", "Monochrome Slate"
             };
             static const std::vector<std::string> fgColors = {
                 "Default", "Cyan", "Electric Magenta", "Amber Gold", "Emerald Green", "Neon Pink", "Bright White", "Yellow", "Royal Blue"
             };
             static const std::vector<std::string> bgColors = {
-                "Default", "Black", "Navy Blue", "Electric Magenta", "Amber Gold", "Emerald Green", "Dark Slate", "Charcoal Gray"
+                "Default", "Black", "Dracula Charcoal", "Tokyo Night", "Nordic Frost", "Solarized Ocean", "Navy Blue", "Electric Magenta", "Amber Gold", "Emerald Green", "Dark Slate", "Charcoal Gray"
             };
             static const std::vector<std::string> logLevels = {
                 "INFO", "WARN", "ERROR", "VERBOSE"
@@ -608,12 +631,26 @@ public:
         int choice = agentMenu.Show();
 
         static const std::vector<std::string> suggestions = {
-            "KILL PROCESS WHERE RAM > 70%",
-            "KILL PROCESS WHERE RAM > 200MB",
+            "CLEAN", "SCAN", "SHRED", "KILL", "MONITOR", "PURGE", "SELECT", "WIPE", "EMPTY",
+            "WHERE", "RAM", "FREE_DISK", "DISK_C", "DISK_FREE", "SIZE", "AGE", "EVERY", "WHEN", "PROCESS",
+            "KILL chrome.exe FROM PROCESS WHERE RAM > 200MB",
+            "KILL chrome.exe WHEN RAM > 1GB",
+            "KILL msedge.exe FROM PROCESS WHERE RAM > 300MB",
+            "KILL notepad.exe FROM PROCESS WHERE RAM > 80%",
             "CLEAN 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE FREE_DISK < 500MB",
+            "CLEAN TEMP_C WHERE DISK_C < 500MB",
+            "CLEAN APPDATA WHERE DISK_C < 1GB",
+            "CLEAN CACHE WHERE DISK_C < 2GB",
+            "CLEAN '/tmp' WHERE FREE_DISK < 500MB",
+            "CLEAN '/var/log' WHERE SIZE > 100MB",
+            "CLEAN '~/.cache' WHERE SIZE > 500MB",
+            "CLEAN '~/Library/Caches' WHERE SIZE > 1GB",
             "MONITOR WHERE RAM > 80% EVERY 15S",
-            "SHRED 'C:\\Users\\hasee\\AppData\\Local\\Temp' WHERE SIZE > 10MB",
+            "MONITOR WHERE EXT IN ('.pyc', '.cache', 'node_modules') EVERY 5H",
+            "SHRED 'C:\\Temp' WHERE SIZE > 10MB",
             "PURGE RECYCLE_BIN",
+            "PURGE TRASH",
+            "SELECT chrome.exe FROM PROCESS",
             "SCAN 'C:\\' WHERE AGE > 24H"
         };
 
@@ -705,16 +742,25 @@ public:
     }
 
     static void ShowDiskCleanerSubmenu(Cleaner& cleaner) {
+        std::string driveName = SYSTEM_PRIMARY_DRIVE;
         std::vector<std::string> subOptions = {
-            "Storage Scan",
-            "Smart Deep Clean",
+            "Storage Scan (Preview All Cleanable Space)",
+            "Deep Storage Scan & Hotspot Analyzer (Multi-Drive & Large File Bloat)",
+            "Smart Deep Clean (Clean All Temp & Cache Targets)",
+            "Preset: " + driveName + " System Temp & Update Downloads",
+            "Preset: " + driveName + " Crash Dumps & System Shader Logs",
+            "Preset: Web Browser Caches (Chrome/Edge/Firefox/Brave/Safari)",
+            "Preset: Developer Cache Suite (npm/pip/cargo/gradle/uv/pnpm)",
+            "Preset: IDE & Messaging Caches (VS Code/Cursor/Discord/Telegram)",
             "Secure Shred Wipe",
-            "Empty Recycle Bin",
+            "Empty OS Recycle Bin / Trash",
             "Back"
         };
-        OpenTUI::Menu subMenu("DISK CLEANER SUITE", subOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+        OpenTUI::Menu subMenu("DISK CLEANER SUITE (" + GetCurrentOSNameStr() + " - " + driveName + ")", subOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
         subMenu.SetPreRenderCallback([]() { PrintBanner(); });
         int sel = subMenu.Show();
+
+        bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
 
         if (sel == 0) {
             uint64_t tid = TaskHistory::Instance().Register("TUI", "Storage Scan", "scan --dry-run", "Disk Cleaner");
@@ -730,7 +776,17 @@ public:
             });
             worker.detach();
         } else if (sel == 1) {
-            bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
+            uint64_t tid = TaskHistory::Instance().Register("TUI", "Deep Storage Hotspot Scan", "deepscan --all-drives", "Disk Cleaner");
+            std::thread worker([&cleaner, tid]() {
+                TaskHistory::Instance().MarkRunning(tid);
+                g_tuiStatus.SetActive("Deep Storage Hotspot Scan...");
+                DeepScanResult res = cleaner.DeepScan(100);
+                std::string summary = "Deep Scan found " + Cleaner::FormatSize(res.totalCleanableCachesBytes) + " caches and " + std::to_string(res.largeFiles.size()) + " large files (>100MB)";
+                g_tuiStatus.SetCompleted(summary);
+                TaskHistory::Instance().MarkCompleted(tid, summary, res.totalCleanableCachesBytes, 0, 0, 0);
+            });
+            worker.detach();
+        } else if (sel == 2) {
             uint64_t tid = TaskHistory::Instance().Register("TUI", "Smart Deep Clean", currentDryRun ? "clean --dry-run" : "clean --real", "Disk Cleaner");
             std::thread worker([&cleaner, currentDryRun, tid]() {
                 TaskHistory::Instance().MarkRunning(tid);
@@ -741,8 +797,72 @@ public:
                 TaskHistory::Instance().MarkCompleted(tid, "Smart Deep Clean finished.", 0, 0, 0, 0);
             });
             worker.detach();
-        } else if (sel == 2) {
-            bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
+        } else if (sel == 3) {
+            uint64_t tid = TaskHistory::Instance().Register("TUI", "Preset: OS Temp & Updates", "clean preset-temp", "Disk Cleaner");
+            std::thread worker([&cleaner, currentDryRun, tid]() {
+                TaskHistory::Instance().MarkRunning(tid);
+                g_tuiStatus.SetActive("Cleaning OS Temp & Updates...");
+                cleaner.SetDryRun(currentDryRun);
+                cleaner.SetIncludeCategories({"system"});
+                cleaner.Clean();
+                cleaner.SetIncludeCategories({});
+                g_tuiStatus.SetCompleted("OS Temp & Update cleanup finished.");
+                TaskHistory::Instance().MarkCompleted(tid, "OS Temp & Update cleanup finished.", 0, 0, 0, 0);
+            });
+            worker.detach();
+        } else if (sel == 3) {
+            uint64_t tid = TaskHistory::Instance().Register("TUI", "Preset: Crash Dumps & Logs", "clean preset-logs", "Disk Cleaner");
+            std::thread worker([&cleaner, currentDryRun, tid]() {
+                TaskHistory::Instance().MarkRunning(tid);
+                g_tuiStatus.SetActive("Cleaning Crash Dumps & System Logs...");
+                cleaner.SetDryRun(currentDryRun);
+                cleaner.SetIncludeCategories({"system"});
+                cleaner.Clean();
+                cleaner.SetIncludeCategories({});
+                g_tuiStatus.SetCompleted("Crash Dumps & System Logs cleanup finished.");
+                TaskHistory::Instance().MarkCompleted(tid, "Crash Dumps & System Logs cleanup finished.", 0, 0, 0, 0);
+            });
+            worker.detach();
+        } else if (sel == 4) {
+            uint64_t tid = TaskHistory::Instance().Register("TUI", "Preset: Browser Caches", "clean preset-browser", "Disk Cleaner");
+            std::thread worker([&cleaner, currentDryRun, tid]() {
+                TaskHistory::Instance().MarkRunning(tid);
+                g_tuiStatus.SetActive("Cleaning Web Browser Caches...");
+                cleaner.SetDryRun(currentDryRun);
+                cleaner.SetIncludeCategories({"browser"});
+                cleaner.Clean();
+                cleaner.SetIncludeCategories({});
+                g_tuiStatus.SetCompleted("Browser Caches cleanup finished.");
+                TaskHistory::Instance().MarkCompleted(tid, "Browser Caches cleanup finished.", 0, 0, 0, 0);
+            });
+            worker.detach();
+        } else if (sel == 5) {
+            uint64_t tid = TaskHistory::Instance().Register("TUI", "Preset: Developer Caches", "clean preset-dev", "Disk Cleaner");
+            std::thread worker([&cleaner, currentDryRun, tid]() {
+                TaskHistory::Instance().MarkRunning(tid);
+                g_tuiStatus.SetActive("Cleaning Developer Cache Suite...");
+                cleaner.SetDryRun(currentDryRun);
+                cleaner.SetIncludeCategories({"developer"});
+                cleaner.Clean();
+                cleaner.SetIncludeCategories({});
+                g_tuiStatus.SetCompleted("Developer Caches cleanup finished.");
+                TaskHistory::Instance().MarkCompleted(tid, "Developer Caches cleanup finished.", 0, 0, 0, 0);
+            });
+            worker.detach();
+        } else if (sel == 6) {
+            uint64_t tid = TaskHistory::Instance().Register("TUI", "Preset: Messaging & IDE Caches", "clean preset-apps", "Disk Cleaner");
+            std::thread worker([&cleaner, currentDryRun, tid]() {
+                TaskHistory::Instance().MarkRunning(tid);
+                g_tuiStatus.SetActive("Cleaning Messaging & IDE Caches...");
+                cleaner.SetDryRun(currentDryRun);
+                cleaner.SetIncludeCategories({"messaging", "applications"});
+                cleaner.Clean();
+                cleaner.SetIncludeCategories({});
+                g_tuiStatus.SetCompleted("Messaging & IDE Caches cleanup finished.");
+                TaskHistory::Instance().MarkCompleted(tid, "Messaging & IDE Caches cleanup finished.", 0, 0, 0, 0);
+            });
+            worker.detach();
+        } else if (sel == 7) {
             uint64_t tid = TaskHistory::Instance().Register("TUI", "Secure Shred Wipe", currentDryRun ? "shred --dry-run" : "shred --real", "Disk Cleaner");
             std::thread worker([&cleaner, currentDryRun, tid]() {
                 TaskHistory::Instance().MarkRunning(tid);
@@ -754,14 +874,14 @@ public:
                 TaskHistory::Instance().MarkCompleted(tid, "Secure Shred Wipe finished.", 0, 0, 0, 0);
             });
             worker.detach();
-        } else if (sel == 3) {
-            uint64_t tid = TaskHistory::Instance().Register("TUI", "Empty Recycle Bin", "empty-recycle-bin", "Disk Cleaner");
+        } else if (sel == 8) {
+            uint64_t tid = TaskHistory::Instance().Register("TUI", "Empty Recycle Bin / Trash", "empty-recycle-bin", "Disk Cleaner");
             std::thread worker([&cleaner, tid]() {
                 TaskHistory::Instance().MarkRunning(tid);
-                g_tuiStatus.SetActive("Empty Recycle Bin");
+                g_tuiStatus.SetActive("Empty Recycle Bin / Trash");
                 cleaner.EmptyWindowsRecycleBin();
-                g_tuiStatus.SetCompleted("Recycle Bin emptied.");
-                TaskHistory::Instance().MarkCompleted(tid, "Windows Recycle Bin purged.", 0, 0, 0, 0);
+                g_tuiStatus.SetCompleted("Recycle Bin / Trash emptied.");
+                TaskHistory::Instance().MarkCompleted(tid, "OS Recycle Bin / Trash purged.", 0, 0, 0, 0);
             });
             worker.detach();
         }
@@ -795,8 +915,11 @@ public:
             }
 
             std::vector<std::string> ramMenuOptions = {
-                "Terminate Process",
-                "Add Process Name to Whitelist",
+                "Quick RAM Optimization (Flush Candidate Background Processes)",
+                "OS System Memory Working Set Trimming",
+                "Browser Memory Purge (Clean High-RAM Browser Instances)",
+                "Terminate Specific High-RAM Process (> 200 MB)",
+                "Add Process Name to Protection Whitelist",
                 "Release Process Lock Handles",
                 "Return to Dashboard"
             };
@@ -804,9 +927,26 @@ public:
             OpenTUI::Menu ramMenu("RAM CLEANER PERMISSIONS", ramMenuOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
             int ramChoice = ramMenu.Show();
 
-            if (ramChoice == -1 || ramChoice == 3) break;
+            if (ramChoice == -1 || ramChoice == 6) break;
 
             if (ramChoice == 0) {
+                bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
+                size_t count = ProcessManager::KillHighMemoryProcesses(200ULL * 1024 * 1024, !currentDryRun, true);
+                std::cout << "\033[1;32mQuick RAM Optimization complete. Candidate processes processed: " << count << "\033[0m\n";
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+            } else if (ramChoice == 1) {
+                size_t trimmed = ProcessManager::TrimSystemWorkingSet();
+                std::cout << "\033[1;32mOS System Memory Working Set Trimmed across " << trimmed << " process(es).\033[0m\n";
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+            } else if (ramChoice == 2) {
+                bool currentDryRun = g_tuiSettings.dryRun || g_tuiSettings.sandboxMode;
+                size_t k1 = GTLIBC::GTLibc::KillProcessByName("chrome.exe", !currentDryRun, true);
+                size_t k2 = GTLIBC::GTLibc::KillProcessByName("msedge.exe", !currentDryRun, true);
+                size_t k3 = GTLIBC::GTLibc::KillProcessByName("firefox.exe", !currentDryRun, true);
+                size_t k4 = GTLIBC::GTLibc::KillProcessByName("brave.exe", !currentDryRun, true);
+                std::cout << "\033[1;32mBrowser Memory Purge finished. Terminated " << (k1 + k2 + k3 + k4) << " browser instance(s).\033[0m\n";
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+            } else if (ramChoice == 3) {
                 auto groups = ProcessManager::GetAggregatedProcessGroups(200ULL * 1024 * 1024);
                 if (groups.empty()) {
                     std::cout << "\033[1;32m[SAFE] No process applications consuming > 200 MB RAM currently detected on system.\033[0m\n";
@@ -831,7 +971,7 @@ public:
                         std::string details = (targetGrp.instanceCount > 1) 
                             ? ("all " + std::to_string(targetGrp.instanceCount) + " process instance(s) of " + targetGrp.processName + " (Total RAM: " + Cleaner::FormatSize(targetGrp.totalMemoryUsageBytes) + ")")
                             : (targetGrp.processName + " (PID: " + (targetGrp.pids.empty() ? "?" : std::to_string(targetGrp.pids[0])) + ", RAM: " + Cleaner::FormatSize(targetGrp.totalMemoryUsageBytes) + ")");
-                        
+
                         std::string confirmPrompt = "Grant explicit permission to terminate " + details + "? [y/N]: ";
                         std::string confirm = OpenTUI::TextInput::ReadLine(confirmPrompt, "n");
                         if (confirm == "y" || confirm == "Y" || confirm == "yes") {
@@ -854,7 +994,7 @@ public:
                         }
                     }
                 }
-            } else if (ramChoice == 1) {
+            } else if (ramChoice == 4) {
                 OpenTUI::TerminalEngine::ClearScreen();
                 PrintBanner();
                 std::string procName = OpenTUI::TextInput::ReadLine("Enter Process Name to Add to Protection Whitelist (e.g. myapp.exe): ", "");
@@ -865,9 +1005,236 @@ public:
                     std::cout << "\033[1;32mProcess '" << procName << "' added to protection whitelist & saved to cleaner_config.json!\033[0m\n";
                     std::this_thread::sleep_for(std::chrono::seconds(2));
                 }
-            } else if (ramChoice == 2) {
+            } else if (ramChoice == 5) {
                 size_t released = ProcessManager::StopLockingProcesses(true);
                 std::cout << "\033[1;32mReleased " << released << " process lock handle(s).\033[0m\n";
+                std::this_thread::sleep_for(std::chrono::seconds(2));
+            }
+        }
+    }
+
+    static void BuildVisibleNodes(std::shared_ptr<DeepScanNode> node, int depth, std::vector<std::pair<std::shared_ptr<DeepScanNode>, int>>& visible) {
+        if (!node) return;
+        visible.push_back({node, depth});
+        if (node->expanded) {
+            for (auto& child : node->children) {
+                BuildVisibleNodes(child, depth + 1, visible);
+            }
+        }
+    }
+
+    static void ShowDeepScanSubmenu(Cleaner& cleaner) {
+        std::vector<std::string> subOptions = {
+            "Interactive Directory Tree Explorer",
+            "Multi-Drive Parallel Scan (duf-style visualizer)",
+            "Deep Memory Scan & Process Timeline",
+            "Top-20 Largest Bloat Items",
+            "Export Full Deep Scan to JSON Report",
+            "Back"
+        };
+
+        OpenTUI::Menu deepMenu("DEEP DISK & MEMORY SCAN ENGINE (dust-architecture)", subOptions, g_tuiSettings.tuiThemeEngine, g_tuiSettings.tuiColorScheme, g_tuiSettings.tuiFgColor, g_tuiSettings.tuiBgColor);
+        deepMenu.SetPreRenderCallback([]() { PrintBanner(); });
+
+        while (true) {
+            int sel = deepMenu.Show();
+            if (sel == -1 || sel == 5) break;
+
+            OpenTUI::TerminalEngine::ClearScreen();
+            PrintBanner();
+            std::cout << "--------------------------------------------------------------------------------\n";
+
+            if (sel == 0) { // Interactive Directory Tree Explorer
+                std::string scanPath = OpenTUI::TextInput::ReadLine("Enter directory path to deep scan: ", ".");
+                if (scanPath.empty()) continue;
+
+                std::atomic<bool> scanDone{false};
+                std::string statusMsg = "Scanning directory tree...";
+                std::shared_ptr<DeepScanNode> rootNode = nullptr;
+
+                OpenTUI::SpinnerAnimation spinner;
+                std::thread scanThread([&scanPath, &rootNode, &scanDone, &statusMsg]() {
+                    DeepScanFilter filter;
+                    rootNode = DeepScanner::ScanDirectory(scanPath, filter, [&statusMsg](const std::string& msg) {
+                        statusMsg = msg;
+                    });
+                    scanDone = true;
+                });
+
+                while (!scanDone) {
+                    OpenTUI::TerminalEngine::ClearScreen();
+                    PrintBanner();
+                    std::cout << "\033[1;36m" << spinner.GetNextFrame() << " Deep Scanning '" << scanPath << "'... " << statusMsg << "\033[0m\n";
+                    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+                }
+                if (scanThread.joinable()) scanThread.join();
+
+                if (!rootNode) {
+                    std::cout << "\033[1;31m[ERROR] Failed to scan path: " << scanPath << "\033[0m\n";
+                    std::this_thread::sleep_for(std::chrono::seconds(2));
+                    continue;
+                }
+
+                rootNode->expanded = true;
+                size_t cursor = 0;
+
+                while (true) {
+                    std::vector<std::pair<std::shared_ptr<DeepScanNode>, int>> visible;
+                    BuildVisibleNodes(rootNode, 0, visible);
+
+                    if (visible.empty()) break;
+                    if (cursor >= visible.size()) cursor = visible.size() - 1;
+
+                    OpenTUI::TerminalEngine::ClearScreen();
+                    PrintBanner();
+                    std::cout << "\033[1;33m+--[ Deep Scan Interactive Tree Explorer ]---------------------------------------+\033[0m\n";
+                    std::cout << "\033[90m| Controls: UP/DOWN=Navigate | RIGHT/ENTER=Expand | LEFT=Collapse | D=Clean | E=Export | Q=Exit |\033[0m\n";
+                    std::cout << "\033[1;33m+--------------------------------------------------------------------------------+\033[0m\n\n";
+
+                    uintmax_t totalSize = rootNode->sizeBytes;
+                    size_t displayCount = std::min<size_t>(visible.size(), 20);
+                    size_t startIndex = 0;
+                    if (cursor >= 10) startIndex = cursor - 10;
+                    if (startIndex + displayCount > visible.size()) startIndex = visible.size() > displayCount ? visible.size() - displayCount : 0;
+
+                    for (size_t i = startIndex; i < startIndex + displayCount && i < visible.size(); ++i) {
+                        auto n = visible[i].first;
+                        int depth = visible[i].second;
+
+                        std::string indent = "";
+                        for (int d = 0; d < depth; ++d) indent += "  ";
+
+                        std::string icon = n->isDirectory ? (n->expanded ? "📂 " : "📁 ") : "📄 ";
+                        std::string bar = DeepScanner::RenderVisualSizeBar(n->sizeBytes, totalSize, 10);
+
+                        std::string line = indent + icon + n->name;
+                        if (line.size() > 40) line = line.substr(0, 37) + "...";
+                        
+                        std::stringstream rowSs;
+                        rowSs << std::left << std::setw(42) << line << "  " << bar;
+
+                        if (i == cursor) {
+                            std::cout << "\033[1;36m > " << OpenTUI::Color::Reverse << rowSs.str() << OpenTUI::Color::Reset << "\033[0m\n";
+                        } else {
+                            std::cout << "   " << rowSs.str() << "\n";
+                        }
+                    }
+
+                    std::cout << "\n\033[90mNode: " << visible[cursor].first->path.string() << " (" << Cleaner::FormatSize(visible[cursor].first->sizeBytes) << ")\033[0m\n";
+
+                    OpenTUI::KeyEvent ev = OpenTUI::TerminalEngine::ReadKey();
+                    if (ev.key == OpenTUI::Key::Up) {
+                        if (cursor > 0) cursor--;
+                    } else if (ev.key == OpenTUI::Key::Down) {
+                        if (cursor + 1 < visible.size()) cursor++;
+                    } else if (ev.key == OpenTUI::Key::Right || ev.key == OpenTUI::Key::Enter) {
+                        if (visible[cursor].first->isDirectory) visible[cursor].first->expanded = true;
+                    } else if (ev.key == OpenTUI::Key::Left) {
+                        if (visible[cursor].first->isDirectory && visible[cursor].first->expanded) {
+                            visible[cursor].first->expanded = false;
+                        } else if (visible[cursor].first->parent) {
+                            for (size_t idx = 0; idx < visible.size(); ++idx) {
+                                if (visible[idx].first.get() == visible[cursor].first->parent) {
+                                    cursor = idx;
+                                    break;
+                                }
+                            }
+                        }
+                    } else if (ev.key == OpenTUI::Key::Char) {
+                        char c = std::tolower(ev.ch);
+                        if (c == 'q') break;
+                        if (c == 'e') {
+                            DeepScanner::ExportToJson(scanPath, rootNode, "deep_scan_report.json");
+                            std::cout << "\033[1;32m[OK] Exported JSON report to deep_scan_report.json\033[0m\n";
+                            std::this_thread::sleep_for(std::chrono::seconds(2));
+                        } else if (c == 'd') {
+                            auto targetPath = visible[cursor].first->path;
+                            std::cout << "\033[1;33mSchedule cleaning for target directory: " << targetPath.string() << "? (y/N): \033[0m";
+                            char confirm = 0;
+                            std::cin >> confirm;
+                            if (confirm == 'y' || confirm == 'Y') {
+                                cleaner.SetCustomPaths({targetPath});
+                                cleaner.Clean();
+                                std::cout << "\033[1;32m[OK] Cleanup executed on target path!\033[0m\n";
+                                std::this_thread::sleep_for(std::chrono::seconds(2));
+                            }
+                        }
+                    }
+                }
+            } else if (sel == 1) { // Multi-Drive Parallel Scan
+                std::cout << "\033[1;36mScanning all mounted drives simultaneously in parallel threads...\033[0m\n\n";
+                auto driveResults = SmartScheduler::ScanAllDrivesSimultaneously(90.0);
+
+                std::cout << "\033[1;33m+--[ Multi-Drive Deep Storage Matrix ]-------------------------------------------+\033[0m\n";
+                for (const auto& dr : driveResults) {
+                    std::string badge = dr.isWarning ? "\033[1;31m [WARNING: LOW DISK SPACE > 90%]\033[0m" : "\033[1;32m [OK]\033[0m";
+                    std::cout << "  Drive " << std::left << std::setw(8) << dr.driveName
+                              << " " << dr.usageBar
+                              << "  (Free: " << Cleaner::FormatSize(dr.freeBytes) << " / " << Cleaner::FormatSize(dr.totalBytes) << ")"
+                              << badge << "\n";
+                }
+                std::cout << "\033[1;33m+--------------------------------------------------------------------------------+\033[0m\n\n";
+                std::cout << "\033[90m(Press Enter to return...)\033[0m";
+                std::cin.get();
+            } else if (sel == 2) { // Deep Memory Scan & Process Timeline
+                GTLIBC::GTLibc::RecordMemorySnapshot();
+                auto topProcs = GTLIBC::GTLibc::GetTopMemoryConsumers(15);
+                auto leakCandidates = GTLIBC::GTLibc::DetectMemoryLeakCandidates(10.0);
+
+                std::cout << "\033[1;36m=== Deep Process Memory Breakdown & RAM Timeline ===\033[0m\n\n";
+                if (!leakCandidates.empty()) {
+                    std::cout << "\033[1;31m[MEMORY LEAK WARNING] Detected process(es) growing >10% RAM across snapshots:\033[0m\n";
+                    for (DWORD leakPid : leakCandidates) {
+                        std::cout << "  - PID " << leakPid << "\n";
+                    }
+                    std::cout << "\n";
+                }
+
+                std::cout << std::left << std::setw(8) << "PID"
+                          << std::setw(25) << "PROCESS"
+                          << std::setw(14) << "WORKING SET"
+                          << std::setw(14) << "HEAP/PRIV"
+                          << std::setw(14) << "MAPPED"
+                          << std::setw(14) << "SHARED" << "\n";
+                std::cout << std::string(89, '-') << "\n";
+
+                for (const auto& proc : topProcs) {
+                    std::cout << std::left << std::setw(8) << proc.pid
+                              << std::setw(25) << proc.processName
+                              << std::setw(14) << Cleaner::FormatSize(proc.workingSetBytes)
+                              << std::setw(14) << Cleaner::FormatSize(proc.privateHeapBytes)
+                              << std::setw(14) << Cleaner::FormatSize(proc.mappedFilesBytes)
+                              << std::setw(14) << Cleaner::FormatSize(proc.sharedMemoryBytes) << "\n";
+                }
+                std::cout << "\n\033[90m(Press Enter to return...)\033[0m";
+                std::cin.get();
+            } else if (sel == 3) { // Top-20 Largest Bloat Items
+                std::string p = OpenTUI::TextInput::ReadLine("Enter search path for top bloat items: ", ".");
+                if (p.empty()) continue;
+
+                DeepScanFilter filter;
+                filter.topN = 20;
+                auto rootNode = DeepScanner::ScanDirectory(p, filter);
+                auto topNodes = DeepScanner::GetTopN(rootNode, 20);
+
+                std::cout << "\033[1;36m=== Top " << topNodes.size() << " Largest Disk Bloat Items in '" << p << "' ===\033[0m\n\n";
+                uintmax_t rootTotal = rootNode ? rootNode->sizeBytes : 0;
+
+                for (size_t i = 0; i < topNodes.size(); ++i) {
+                    std::string bar = DeepScanner::RenderVisualSizeBar(topNodes[i]->sizeBytes, rootTotal, 12);
+                    std::cout << "  #" << std::setw(2) << (i + 1) << "  "
+                              << std::left << std::setw(45) << (topNodes[i]->name + (topNodes[i]->isDirectory ? "/" : ""))
+                              << " " << bar << "\n";
+                }
+                std::cout << "\n\033[90m(Press Enter to return...)\033[0m";
+                std::cin.get();
+            } else if (sel == 4) { // Export Full Deep Scan to JSON Report
+                std::string p = OpenTUI::TextInput::ReadLine("Enter root directory to scan & export: ", ".");
+                std::string outFile = OpenTUI::TextInput::ReadLine("Enter output JSON filename: ", "deep_scan_report.json");
+
+                auto rootNode = DeepScanner::ScanDirectory(p);
+                DeepScanner::ExportToJson(p, rootNode, outFile);
+                std::cout << "\033[1;32m[OK] Deep scan JSON report exported to: " << outFile << "\033[0m\n";
                 std::this_thread::sleep_for(std::chrono::seconds(2));
             }
         }
@@ -878,6 +1245,7 @@ public:
         LoadTUISettings();
 
         std::vector<std::string> options = {
+            "Deep Scan",
             "Disk Cleaner",
             "RAM Cleaner",
             "AQL Query",
@@ -905,7 +1273,7 @@ public:
             menu.SetStatusLine(g_tuiStatus.GetStatusLine());
             int selected = menu.Show();
 
-            if (selected == -1 || selected == 6) {
+            if (selected == -1 || selected == 7) {
                 std::cout << "\n\033[32mExiting system-cleaner-agent. Goodbye!\033[0m\n";
                 break;
             }
@@ -916,14 +1284,18 @@ public:
 
             switch (selected) {
                 case 0: {
-                    ShowDiskCleanerSubmenu(cleaner);
+                    ShowDeepScanSubmenu(cleaner);
                     break;
                 }
                 case 1: {
-                    ShowRamCleanerSubmenu(cleaner);
+                    ShowDiskCleanerSubmenu(cleaner);
                     break;
                 }
                 case 2: {
+                    ShowRamCleanerSubmenu(cleaner);
+                    break;
+                }
+                case 3: {
                     std::string selectedQuery = SelectAgentQuery();
                     if (selectedQuery.empty()) {
                         std::cout << "\033[1;33m[AQL CANCELLED] Operation cancelled by user.\033[0m\n";
@@ -975,7 +1347,7 @@ public:
                     }
                     break;
                 }
-                case 3: {
+                case 4: {
                     std::cout << "\033[1;36mLaunching background Smart Daemon Service...\033[0m\n";
                     {
                         uint64_t tid = TaskHistory::Instance().Register("DAEMON", "Smart Daemon Monitor", "daemon --mem-threshold 80% --disk-threshold", "OpenTUI Menu");
@@ -992,11 +1364,11 @@ public:
                     }
                     break;
                 }
-                case 4: {
+                case 5: {
                     ShowTaskLibrary();
                     break;
                 }
-                case 5: {
+                case 6: {
                     ShowSettingsMenu(cleaner);
                     break;
                 }

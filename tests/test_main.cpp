@@ -1,5 +1,5 @@
 // =============================================================================
-//  system-cleaner-agent v5.0 — Comprehensive Unit Test Suite
+//  system-cleaner-agent v5.6.0 — Comprehensive Unit Test Suite
 //  Tests: ContentInspector | Cleaner | SecurityGuard | LocalLLMBrain
 //         SmartScheduler | AgentEngine | OpenTUI | ProcessManager | Logger
 // =============================================================================
@@ -16,6 +16,7 @@
 #include "AgentQueryLanguage.hpp"
 #include "ConfigManager.hpp"
 #include "gtlibc.hpp"
+#include "DeepScanner.hpp"
 
 #include <iostream>
 #include <cassert>
@@ -882,17 +883,85 @@ void TestAQLRealUserScenariosLive() {
     assert(p5.intervalSeconds == 18000); // 5 hours = 18000s
     AQLEngine::Execute(p5, cleaner, true);
 
-    PASS("AQLRealUserScenariosLive", 20);
+    // 6. KILL chrome.exe WHEN RAM > 1GB (Cron trigger size evaluation)
+    std::string q6 = "KILL chrome.exe WHEN RAM > 1GB";
+    auto val6 = AQLEngine::Validate(q6);
+    assert(val6.isValid == true);
+    auto p6 = AQLEngine::Parse(q6);
+    assert(p6.command == "KILL");
+    assert(p6.minSizeBytes == 1024ULL * 1024 * 1024);
+    assert(!p6.targetPaths.empty());
+    assert(p6.targetPaths.front().string() == "chrome.exe");
+    AQLEngine::Execute(p6, cleaner, true);
+
+    PASS("AQLRealUserScenariosLive", 25);
 }
 
 // ===========================================================================
-// MAIN — Run all 25 test suites
+// 26. Deep Disk Scan Engine Architecture & Multi-Drive
+// ===========================================================================
+void TestDeepScanner() {
+    std::cout << "[TEST 26] Deep Scan Engine Architecture........... ";
+
+    fs::path tempRoot = fs::temp_directory_path() / "test_deep_scan_root";
+    std::error_code ec;
+    fs::remove_all(tempRoot, ec);
+    fs::create_directories(tempRoot / "dirA" / "subA1", ec);
+    fs::create_directories(tempRoot / "dirB", ec);
+
+    {
+        std::ofstream f1(tempRoot / "dirA" / "subA1" / "file1.bin", std::ios::binary);
+        std::string d1(1000, 'A'); f1.write(d1.data(), d1.size());
+    }
+    {
+        std::ofstream f2(tempRoot / "dirA" / "file2.log", std::ios::binary);
+        std::string d2(500, 'B'); f2.write(d2.data(), d2.size());
+    }
+    {
+        std::ofstream f3(tempRoot / "dirB" / "file3.dat", std::ios::binary);
+        std::string d3(2000, 'C'); f3.write(d3.data(), d3.size());
+    }
+
+    DeepScanFilter filter;
+    auto rootNode = DeepScanner::ScanDirectory(tempRoot, filter);
+
+    assert(rootNode != nullptr);
+    assert(rootNode->sizeBytes == 3500);
+    assert(rootNode->fileCount == 3);
+
+    auto topNodes = DeepScanner::GetTopN(rootNode, 10);
+    assert(!topNodes.empty());
+    assert(topNodes[0]->sizeBytes >= topNodes.back()->sizeBytes);
+
+    fs::path jsonOut = tempRoot / "report.json";
+    DeepScanner::ExportToJson(tempRoot, rootNode, jsonOut.string());
+    assert(fs::exists(jsonOut));
+    std::ifstream jsonIn(jsonOut);
+    std::string jsonStr((std::istreambuf_iterator<char>(jsonIn)), std::istreambuf_iterator<char>());
+    assert(jsonStr.find("\"total_size_bytes\": 3500") != std::string::npos);
+    assert(jsonStr.find("\"top_nodes\": [") != std::string::npos);
+
+    std::string bar = DeepScanner::RenderVisualSizeBar(1750, 3500, 10);
+    assert(!bar.empty());
+    assert(bar.find("50.0%") != std::string::npos);
+
+    auto driveResults = SmartScheduler::ScanAllDrivesSimultaneously(90.0);
+    assert(!driveResults.empty());
+    assert(!driveResults[0].driveName.empty());
+
+    fs::remove_all(tempRoot, ec);
+
+    PASS("DeepScanner", 10);
+}
+
+// ===========================================================================
+// MAIN — Run all 26 test suites
 // ===========================================================================
 int main() {
     std::cout << "\033[1;36m"
               << "=====================================================================\n"
-              << "  system-cleaner-agent v5.5 — Comprehensive Unit Test Suite          \n"
-              << "  25 Test Functions | 250+ Assertions                                \n"
+              << "  system-cleaner-agent v5.6.0 — Comprehensive Unit Test Suite          \n"
+              << "  26 Test Functions | 270+ Assertions                                \n"
               << "=====================================================================\n"
               << "\033[0m\n";
 
@@ -921,6 +990,7 @@ int main() {
     TestTUIThemesAndTaskActions();
     TestAQLStrictGrammarAndValidation();
     TestAQLRealUserScenariosLive();
+    TestDeepScanner();
 
     std::cout << "\n\033[1;33m"
               << "---------------------------------------------------------------------\n"

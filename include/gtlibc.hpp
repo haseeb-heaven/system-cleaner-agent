@@ -47,6 +47,21 @@ struct AggregatedProcessGroup {
     bool isProtected = false;
 };
 
+struct DetailedMemoryBreakdown {
+    DWORD pid = 0;
+    std::string processName;
+    size_t workingSetBytes = 0;
+    size_t privateHeapBytes = 0;
+    size_t stackBytes = 0;
+    size_t mappedFilesBytes = 0;
+    size_t sharedMemoryBytes = 0;
+};
+
+struct ProcessMemorySnapshot {
+    std::chrono::system_clock::time_point timestamp;
+    size_t workingSetBytes = 0;
+};
+
 class GTLibc {
 public:
     // Process Discovery & Enumeration
@@ -60,6 +75,13 @@ public:
     static std::vector<AggregatedProcessGroup> GetAggregatedProcessGroups(size_t minGroupRamBytes = 5ULL * 1024 * 1024);
     static size_t GetProcessMemoryUsage(DWORD pid);
     static bool IsElevatedProcess();
+
+    // Deep Memory Scan & Timeline
+    static DetailedMemoryBreakdown GetDetailedProcessMemory(DWORD pid);
+    static std::vector<DetailedMemoryBreakdown> GetTopMemoryConsumers(size_t topN = 20);
+    static void RecordMemorySnapshot();
+    static std::vector<DWORD> DetectMemoryLeakCandidates(double growthThresholdPct = 10.0);
+    static std::vector<ProcessMemorySnapshot> GetProcessMemoryHistory(DWORD pid);
 
     // Process Termination & Resource Management
     static bool KillProcess(DWORD pid);

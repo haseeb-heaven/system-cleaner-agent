@@ -18,6 +18,7 @@
 #include <iomanip>
 #include <chrono>
 #include <set>
+#include <map>
 #include <fstream>
 
 #ifdef _WIN32
@@ -28,6 +29,58 @@
 #include <shellapi.h>
 #pragma comment(lib, "shell32.lib")
 #endif
+
+// =============================================================================
+// Cross-Platform OS Detection & Environment Utility Macros
+// =============================================================================
+#if defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__)
+    #ifndef TARGET_OS_WINDOWS
+    #define TARGET_OS_WINDOWS 1
+    #endif
+    #define SYSTEM_OS_NAME "Windows"
+    #define SYSTEM_PRIMARY_DRIVE "C:\\"
+#elif defined(__APPLE__) || defined(__MACH__)
+    #ifndef TARGET_OS_MAC
+    #define TARGET_OS_MAC 1
+    #endif
+    #define SYSTEM_OS_NAME "macOS"
+    #define SYSTEM_PRIMARY_DRIVE "/"
+#elif defined(__linux__) || defined(__linux) || defined(linux)
+    #ifndef TARGET_OS_LINUX
+    #define TARGET_OS_LINUX 1
+    #endif
+    #define SYSTEM_OS_NAME "Linux"
+    #define SYSTEM_PRIMARY_DRIVE "/"
+#else
+    #ifndef TARGET_OS_POSIX
+    #define TARGET_OS_POSIX 1
+    #endif
+    #define SYSTEM_OS_NAME "POSIX OS"
+    #define SYSTEM_PRIMARY_DRIVE "/"
+#endif
+
+enum class OperatingSystemKind {
+    Windows,
+    macOS,
+    Linux,
+    POSIX
+};
+
+inline OperatingSystemKind GetCurrentOSKind() {
+#if defined(TARGET_OS_WINDOWS)
+    return OperatingSystemKind::Windows;
+#elif defined(TARGET_OS_MAC)
+    return OperatingSystemKind::macOS;
+#elif defined(TARGET_OS_LINUX)
+    return OperatingSystemKind::Linux;
+#else
+    return OperatingSystemKind::POSIX;
+#endif
+}
+
+inline std::string GetCurrentOSNameStr() {
+    return SYSTEM_OS_NAME;
+}
 
 namespace fs = std::filesystem;
 
@@ -52,6 +105,25 @@ struct TargetReport {
     uintmax_t sizeBytes = 0;
     size_t fileCount = 0;
     bool skippedProtectedFiles = false;
+};
+
+struct LargeFileInfo {
+    fs::path path;
+    uintmax_t sizeBytes = 0;
+};
+
+struct FolderHotspot {
+    fs::path path;
+    uintmax_t sizeBytes = 0;
+};
+
+struct DeepScanResult {
+    uintmax_t totalCleanableCachesBytes = 0;
+    uintmax_t scannedFilesCount = 0;
+    uintmax_t scannedFoldersCount = 0;
+    std::vector<TargetReport> cacheReports;
+    std::vector<LargeFileInfo> largeFiles;
+    std::vector<FolderHotspot> folderHotspots;
 };
 
 class Cleaner {
@@ -128,16 +200,21 @@ class Cleaner {
             fixedTargets.push_back({winDir + "\\SoftwareDistribution\\Download", false, "Windows Update Downloads", "System"});
             fixedTargets.push_back({winDir + "\\Prefetch", false, "Windows Prefetch", "System"});
             fixedTargets.push_back({winDir + "\\Minidump", false, "Windows Minidumps", "System"});
+            fixedTargets.push_back({winDir + "\\Logs", false, "Windows System Logs", "System"});
+            fixedTargets.push_back({winDir + "\\System32\\LogFiles", false, "Windows LogFiles", "System"});
         }
         fixedTargets.push_back({"D:\\tmp", false, "D: Drive Temp", "System"});
 
         if (!programData.empty()) {
             fixedTargets.push_back({programData + "\\Microsoft\\Windows\\WER\\ReportArchive", false, "WER Archive", "System"});
             fixedTargets.push_back({programData + "\\Microsoft\\Windows\\WER\\ReportQueue", false, "WER Queue", "System"});
+            fixedTargets.push_back({programData + "\\DockerDesktop", false, "Docker Desktop Storage Cache", "Developer"});
         }
         if (!localAppData.empty()) {
             fixedTargets.push_back({localAppData + "\\CrashDumps", false, "Windows Crash Dumps", "System"});
             fixedTargets.push_back({localAppData + "\\D3DSCache", false, "DirectX Shader Cache", "System"});
+            fixedTargets.push_back({localAppData + "\\Microsoft\\Windows\\WebCache", false, "Windows WebCache", "System"});
+            fixedTargets.push_back({localAppData + "\\Microsoft\\Windows\\INetCache", false, "Windows INetCache", "System"});
 
             fixedTargets.push_back({localAppData + "\\npm-cache", false, "npm cache", "Developer"});
             fixedTargets.push_back({localAppData + "\\uv\\cache", false, "uv cache", "Developer"});
@@ -163,6 +240,7 @@ class Cleaner {
             fixedTargets.push_back({appData + "\\Code\\Cache", false, "VS Code Cache", "Developer"});
             fixedTargets.push_back({appData + "\\Code\\CachedData", false, "VS Code Cached Data", "Developer"});
             fixedTargets.push_back({appData + "\\Cursor\\Cache", false, "Cursor IDE Cache", "Developer"});
+            fixedTargets.push_back({appData + "\\Opera Software\\Opera Stable\\Cache", false, "Opera Browser Cache", "Browser"});
         }
         if (!userProfile.empty()) {
             fixedTargets.push_back({userProfile / ".cache", false, "User .cache Folder", "System"});
@@ -174,10 +252,15 @@ class Cleaner {
             fixedTargets.push_back({"D:\\npm-cache", false, "D: npm Cache", "Developer"});
         }
 #else
-        // POSIX / Linux & macOS Cache Targets
+        // POSIX / Linux & macOS Deep Cache Targets
         fixedTargets.push_back({"/tmp", false, "System Temp (/tmp)", "System"});
         fixedTargets.push_back({"/var/tmp", false, "System Temp (/var/tmp)", "System"});
         fixedTargets.push_back({"/var/log", false, "System Logs (/var/log)", "System"});
+        fixedTargets.push_back({"/var/crash", false, "Linux System Crash Reports", "System"});
+        fixedTargets.push_back({"/var/cache/apt/archives", false, "APT Package Archives Cache", "System"});
+        fixedTargets.push_back({"/var/cache/pacman/pkg", false, "Pacman Package Cache", "System"});
+        fixedTargets.push_back({"/var/cache/dnf", false, "DNF Package Cache", "System"});
+        fixedTargets.push_back({"/var/lib/docker/tmp", false, "Docker Temp Storage", "Developer"});
 
         if (!userProfile.empty()) {
             fixedTargets.push_back({userProfile / ".cache", false, "User ~/.cache", "System"});
@@ -187,8 +270,11 @@ class Cleaner {
             fixedTargets.push_back({userProfile / ".cache/pip", false, "User pip Cache", "Developer"});
             fixedTargets.push_back({userProfile / ".cargo/registry/cache", false, "Cargo Registry Cache", "Developer"});
             fixedTargets.push_back({userProfile / ".gradle/caches", false, "Gradle Build Cache", "Developer"});
-            fixedTargets.push_back({userProfile / ".config/google-chrome/Default/Cache", false, "Chrome Web Cache", "Browser"});
-            fixedTargets.push_back({userProfile / ".config/microsoft-edge/Default/Cache", false, "Edge Web Cache", "Browser"});
+            fixedTargets.push_back({userProfile / ".m2/repository", false, "Maven Repository Cache", "Developer"});
+            fixedTargets.push_back({userProfile / ".cache/yarn", false, "Yarn Build Cache", "Developer"});
+            fixedTargets.push_back({userProfile / ".cache/google-chrome", false, "Chrome Web Cache", "Browser"});
+            fixedTargets.push_back({userProfile / ".cache/chromium", false, "Chromium Web Cache", "Browser"});
+            fixedTargets.push_back({userProfile / ".cache/microsoft-edge", false, "Edge Web Cache", "Browser"});
             fixedTargets.push_back({userProfile / ".mozilla/firefox", false, "Firefox Profiles Cache", "Browser"});
             fixedTargets.push_back({userProfile / ".config/Code/Cache", false, "VS Code Cache", "Developer"});
             fixedTargets.push_back({userProfile / ".config/Cursor/Cache", false, "Cursor IDE Cache", "Developer"});
@@ -198,9 +284,13 @@ class Cleaner {
             fixedTargets.push_back({userProfile / "Library/Logs", false, "macOS User Logs", "System"});
             fixedTargets.push_back({userProfile / "Library/Application Support/CrashReporter", false, "macOS Crash Dumps", "System"});
             fixedTargets.push_back({userProfile / ".Trash", false, "macOS Trash Bin", "System"});
+            fixedTargets.push_back({userProfile / "Library/Developer/Xcode/DerivedData", false, "Xcode DerivedData Build Artifacts", "Developer"});
+            fixedTargets.push_back({userProfile / "Library/Caches/com.apple.dt.Xcode", false, "Xcode IDE Caches", "Developer"});
+            fixedTargets.push_back({userProfile / "Library/Caches/Homebrew", false, "Homebrew Formulae Cache", "Developer"});
             fixedTargets.push_back({userProfile / "Library/Caches/Google/Chrome", false, "macOS Chrome Cache", "Browser"});
             fixedTargets.push_back({userProfile / "Library/Caches/Firefox", false, "macOS Firefox Cache", "Browser"});
             fixedTargets.push_back({userProfile / "Library/Caches/com.apple.Safari", false, "macOS Safari Cache", "Browser"});
+            fixedTargets.push_back({userProfile / "Library/Caches/com.microsoft.Edge", false, "macOS Edge Cache", "Browser"});
 #endif
         }
 #endif
@@ -263,6 +353,22 @@ public:
     void SetTargetDrives(const std::vector<fs::path>& drives) { targetDrives = drives; }
     void SetProjectRoot(const fs::path& root) { projectRoot = root; }
     void SetInspectionConfig(const InspectionConfig& cfg) { config = cfg; }
+    void SetIncludeCategories(const std::vector<std::string>& cats) {
+        config.includeCategories.clear();
+        for (const auto& c : cats) {
+            std::string cLower = c;
+            std::transform(cLower.begin(), cLower.end(), cLower.begin(), ::tolower);
+            config.includeCategories.insert(cLower);
+        }
+    }
+    void SetExcludeCategories(const std::vector<std::string>& cats) {
+        config.excludeCategories.clear();
+        for (const auto& c : cats) {
+            std::string cLower = c;
+            std::transform(cLower.begin(), cLower.end(), cLower.begin(), ::tolower);
+            config.excludeCategories.insert(cLower);
+        }
+    }
     const SecurityGuard& GetSecurity() const { return security; }
 
     static std::string FormatSize(uintmax_t bytes) {
@@ -327,6 +433,90 @@ public:
             }
         } catch (...) {}
         return report;
+    }
+
+    DeepScanResult DeepScan(uintmax_t thresholdMB = 100) {
+        DeepScanResult res;
+        res.cacheReports = Scan();
+        for (const auto& r : res.cacheReports) {
+            res.totalCleanableCachesBytes += r.sizeBytes;
+        }
+
+        std::vector<fs::path> drivesToScan = targetDrives;
+        if (drivesToScan.empty()) {
+#ifdef _WIN32
+            drivesToScan.push_back("C:\\");
+            drivesToScan.push_back("D:\\");
+#else
+            drivesToScan.push_back("/");
+#endif
+        }
+
+        uintmax_t limitSizeBytes = thresholdMB * 1024 * 1024;
+        std::map<std::string, uintmax_t> folderSizes;
+        std::map<std::string, std::vector<std::string>> folderSubdirs;
+        std::mutex mtx;
+
+        for (const auto& drive : drivesToScan) {
+            std::error_code ec;
+            if (!fs::exists(drive, ec)) continue;
+
+            std::vector<fs::path> topItems;
+            auto options = fs::directory_options::skip_permission_denied;
+            for (const auto& entry : fs::directory_iterator(drive, options, ec)) {
+                try {
+                    if (entry.is_directory(ec) && !entry.is_symlink(ec)) {
+                        std::string nameLower = entry.path().filename().string();
+                        std::transform(nameLower.begin(), nameLower.end(), nameLower.begin(), ::tolower);
+                        if (nameLower != "$recycle.bin" && nameLower != "system volume information" && nameLower != "windows" && nameLower != "$winre_backup_partition.marker") {
+                            topItems.push_back(entry.path());
+                        }
+                    }
+                } catch (...) {}
+            }
+
+            std::vector<std::thread> workers;
+            for (const auto& item : topItems) {
+                workers.emplace_back([this, item, limitSizeBytes, &folderSizes, &folderSubdirs, &res, &mtx]() {
+                    try {
+                        std::error_code ec;
+                        auto options = fs::directory_options::skip_permission_denied;
+                        auto it = fs::recursive_directory_iterator(item, options, ec);
+                        while (it != fs::recursive_directory_iterator()) {
+                            try {
+                                if (it->is_symlink(ec)) {
+                                    it.disable_recursion_pending();
+                                } else if (it->is_regular_file(ec)) {
+                                    uintmax_t sz = it->file_size(ec);
+                                    if (!ec && sz >= limitSizeBytes) {
+                                        std::lock_guard<std::mutex> lock(mtx);
+                                        res.largeFiles.push_back({ it->path(), sz });
+                                        res.scannedFilesCount++;
+                                    }
+                                } else if (it->is_directory(ec)) {
+                                    std::lock_guard<std::mutex> lock(mtx);
+                                    res.scannedFoldersCount++;
+                                    std::string pStr = it->path().string();
+                                    std::string parentStr = it->path().parent_path().string();
+                                    folderSubdirs[parentStr].push_back(pStr);
+                                }
+                            } catch (...) {}
+                            it.increment(ec);
+                            if (ec) ec.clear();
+                        }
+                    } catch (...) {}
+                });
+            }
+            for (auto& w : workers) {
+                if (w.joinable()) w.join();
+            }
+        }
+
+        std::sort(res.largeFiles.begin(), res.largeFiles.end(), [](const LargeFileInfo& a, const LargeFileInfo& b) {
+            return a.sizeBytes > b.sizeBytes;
+        });
+
+        return res;
     }
 
     void EmptyWindowsRecycleBin() {
